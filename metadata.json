@@ -1,0 +1,6 @@
+{
+  "name": "Sawmill Performance Dashboard",
+  "description": "Dashboard pemantauan produksi dan kinerja mesin sawmill, diadaptasi dari database AppScript dengan antarmuka modern dan mobile-friendly.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
