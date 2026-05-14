@@ -82,11 +82,10 @@ export default function App() {
   const stats = useMemo(() => getSummaryStats(data), [data]);
   const machinePerformance = useMemo(() => getPerformanceByMachine(data), [data]);
 
-  // Update progress chart to use rendemen utama (yield_primary) for the Breakdown machine
-  const topMachineName = 'Breakdown';
+  const topMachineName = machinePerformance.length > 0 ? machinePerformance[0].name : 'BS 1';
   const progressData = useMemo(() => 
-    data.filter(d => normalizeMachineName(d.mesin || '') === 'Breakdown' && d.input > 0).slice(-15),
-    [data]
+    data.filter(d => normalizeMachineName(d.mesin || '') === topMachineName && d.input > 0).slice(-15),
+    [data, topMachineName]
   );
   
   const periods = useMemo(() => getAvailablePeriods(data), [data]);
@@ -731,7 +730,7 @@ export default function App() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {['Bs 1', 'Bs 2', 'Bs 3', 'Bs 4', 'Bs 5', 'Bs 6', 'Bs 7', 'Bs 8', 'Poni A', 'Poni B', 'Breakdown'].map(machineName => {
+              {['Bs 1', 'Bs 2', 'Bs 3', 'Bs 4', 'Bs 5', 'Bs 6', 'Bs 7', 'Bs 8'].map(machineName => {
                 const availableKey = Object.keys(filteredDowntimeData).find(k => k.replace(/\s+/g, '').toLowerCase() === machineName.replace(/\s+/g, '').toLowerCase());
                 
                 const rows = availableKey ? filteredDowntimeData[availableKey] : [];

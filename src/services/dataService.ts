@@ -85,27 +85,27 @@ export function normalizeMachineName(mesin: string): string {
 }
 
 export function getSummaryStats(data: ProductionData[]): SummaryStats {
-  const filtered = data.filter(d => {
+  const filteredBsOnly = data.filter(d => {
     if (!d.mesin || d.input <= 0) return false;
-    const lowerMesin = d.mesin.toLowerCase().trim();
-    return (lowerMesin.startsWith('bs') || lowerMesin.startsWith('poni') || lowerMesin === 'breakdown');
+    const lowerMesin = normalizeMachineName(d.mesin).toLowerCase().trim();
+    return lowerMesin.replace(/\s+/g, '').match(/^bs[1-8]$/);
   });
   
-  const totalInput = filtered.reduce((sum, d) => sum + d.input, 0);
-  const totalUtama = filtered.reduce((sum, d) => sum + d.utama, 0);
-  const totalAllOutput = filtered.reduce((sum, d) => sum + d.total, 0);
+  const totalInput = filteredBsOnly.reduce((sum, d) => sum + d.input, 0);
+  const totalUtama = filteredBsOnly.reduce((sum, d) => sum + d.utama, 0);
+  const totalAllOutput = filteredBsOnly.reduce((sum, d) => sum + d.total, 0);
   
   // Real Yield = Total Utama / Total Input
   const avgYield = totalInput > 0 ? (totalUtama / totalInput) : 0;
   
   // Real Achievement = Total Actual / Total Target
-  const totalTarget = filtered.reduce((sum, d) => sum + d.target_total, 0);
+  const totalTarget = filteredBsOnly.reduce((sum, d) => sum + d.target_total, 0);
   const avgAchievement = totalTarget > 0 ? (totalUtama / totalTarget) : 0;
   
-  const uniqueMachines = 11; // Hardcoded total operational machines in the factory
+  const uniqueMachines = 8; // Only counting BS 1 to BS 8
   
   let totalDowntimeMinutes = 0;
-  data.forEach(d => {
+  filteredBsOnly.forEach(d => {
     if (d.downtime) {
       // Improved parsing for fragmented downtime strings
       const parts = d.downtime.split(/[;,]/);
@@ -138,23 +138,17 @@ export function getPerformanceByMachine(data: ProductionData[]) {
     'BS 5': { totalUtama: 0, count: 0 },
     'BS 6': { totalUtama: 0, count: 0 },
     'BS 7': { totalUtama: 0, count: 0 },
-    'BS 8': { totalUtama: 0, count: 0 },
-    'Poni A': { totalUtama: 0, count: 0 },
-    'Poni B': { totalUtama: 0, count: 0 },
-    'Breakdown': { totalUtama: 0, count: 0 }
+    'BS 8': { totalUtama: 0, count: 0 }
   };
   
   data.forEach(d => {
     if (d.mesin) {
-      const lowerMesin = d.mesin.toLowerCase().trim();
-      if (lowerMesin.startsWith('bs') || lowerMesin.startsWith('poni') || lowerMesin === 'breakdown') {
+      const lowerMesin = normalizeMachineName(d.mesin).toLowerCase().trim();
+      if (lowerMesin.replace(/\s+/g, '').match(/^bs[1-8]$/)) {
         const normalizedMesin = normalizeMachineName(d.mesin);
         if (machines[normalizedMesin] !== undefined) {
           machines[normalizedMesin].totalUtama += d.utama;
           machines[normalizedMesin].count += 1;
-        } else {
-          // If we somehow get a new valid machine not in our list
-          machines[normalizedMesin] = { totalUtama: d.utama, count: 1 };
         }
       }
     }
@@ -212,8 +206,8 @@ export function getAvailablePeriods(data: ProductionData[]) {
 export function getTodayMachineStats(data: ProductionData[]): { date: string, stats: MachineRanking[] } {
   const validData = data.filter(d => {
     if (!d.mesin || d.input <= 0) return false;
-    const lowerMesin = d.mesin.toLowerCase().trim();
-    return lowerMesin.startsWith('bs') || lowerMesin.startsWith('poni') || lowerMesin === 'breakdown';
+    const lowerMesin = normalizeMachineName(d.mesin).toLowerCase().trim();
+    return lowerMesin.replace(/\s+/g, '').match(/^bs[1-8]$/);
   });
   if (validData.length === 0) return { date: '', stats: [] };
   
@@ -221,11 +215,11 @@ export function getTodayMachineStats(data: ProductionData[]): { date: string, st
   const todayData = validData.filter(d => d.tanggal === latestDate);
   
   const statsMap = new Map<string, any>();
-  const ALL_MACHINES = ['BS 1', 'BS 2', 'BS 3', 'BS 4', 'BS 5', 'BS 6', 'BS 7', 'BS 8', 'Poni A', 'Poni B', 'Breakdown'];
+  const ALL_MACHINES = ['BS 1', 'BS 2', 'BS 3', 'BS 4', 'BS 5', 'BS 6', 'BS 7', 'BS 8'];
   ALL_MACHINES.forEach(machine => {
     statsMap.set(machine, {
       mesin: machine,
-      line: machine.startsWith('BS') ? `Line ${machine.replace('BS ', '')}` : '-',
+      line: `Line ${machine.replace('BS ', '')}`,
       input: 0,
       utama: 0,
       turunan: 0,
@@ -294,8 +288,8 @@ export function getTodayMachineStats(data: ProductionData[]): { date: string, st
 export function getMachineRankings(data: ProductionData[], periodType: 'weekly' | 'monthly', periodValue: number): MachineRanking[] {
   const filtered = data.filter(d => {
     if (!d.mesin || d.input <= 0) return false;
-    const lowerMesin = d.mesin.toLowerCase().trim();
-    if (!lowerMesin.startsWith('bs')) return false;
+    const lowerMesin = normalizeMachineName(d.mesin).toLowerCase().trim();
+    if (!lowerMesin.replace(/\s+/g, '').match(/^bs[1-8]$/)) return false;
 
     return (periodType === 'weekly' && d.week === periodValue) || 
            (periodType === 'monthly' && d.month === periodValue);
@@ -339,8 +333,8 @@ export function getMachineRankings(data: ProductionData[], periodType: 'weekly' 
 export function getPerformanceByTimeframe(data: ProductionData[], type: 'daily' | 'weekly' | 'monthly' | 'quarterly'): TimeframePerformance[] {
   const filtered = data.filter(d => {
     if (!d.mesin || d.input <= 0) return false;
-    const lowerMesin = d.mesin.toLowerCase().trim();
-    return (lowerMesin.startsWith('bs') || lowerMesin.startsWith('poni') || lowerMesin === 'breakdown');
+    const lowerMesin = normalizeMachineName(d.mesin).toLowerCase().trim();
+    return lowerMesin.replace(/\s+/g, '').match(/^bs[1-8]$/);
   });
   const groups: Record<string, { input: number; utama: number }> = {};
 
