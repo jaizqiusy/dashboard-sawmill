@@ -64,10 +64,10 @@ export default function App() {
 
   if (isLoading) {
     return (
-      <div className="min-h-[100dvh] bg-[#022c22] flex items-center justify-center">
+      <div className="min-h-[100dvh] bg-[#fdfbf7] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-emerald-500/20 border-t-emerald-400 rounded-full animate-spin" />
-          <p className="text-emerald-400 font-medium animate-pulse tracking-widest text-xs uppercase">Connecting Database...</p>
+          <div className="w-12 h-12 border-4 border-sky-200 border-t-sky-500 rounded-full animate-spin" />
+          <p className="text-sky-600 font-bold animate-pulse tracking-widest text-xs uppercase">Connecting Database...</p>
         </div>
       </div>
     );
