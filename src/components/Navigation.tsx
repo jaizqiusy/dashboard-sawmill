@@ -39,20 +39,20 @@ interface TabBarProps {
 
 export function TabBar({ tabs, activeTab, onTabChange }: TabBarProps) {
   return (
-    <div className="flex border-b border-slate-200 mb-8 overflow-x-auto no-scrollbar scroll-smooth" id="tab-bar">
+    <div className="flex border-b border-slate-700/50 mb-8 overflow-x-auto no-scrollbar scroll-smooth" id="tab-bar">
       {tabs.map((tab) => (
         <button
           key={tab}
           onClick={() => onTabChange(tab)}
           className={`px-6 py-4 text-sm font-medium whitespace-nowrap transition-all relative ${
             activeTab === tab 
-              ? 'text-[#4285F4]' 
-              : 'text-slate-500 hover:text-slate-700'
+              ? 'text-cyan-400' 
+              : 'text-slate-400 hover:text-slate-200'
           }`}
         >
           {tab}
           {activeTab === tab && (
-            <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#4285F4] rounded-t-sm" />
+            <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-cyan-400 rounded-t-sm shadow-[0_-2px_10px_rgba(34,211,238,0.5)]" />
           )}
         </button>
       ))}
