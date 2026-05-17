@@ -29,84 +29,84 @@ export function HistoryPage({ data }) {
 
   return (
     <div className="p-5 space-y-6">
-      <div className="bg-[#1e293b] rounded-2xl p-5 border border-white/10 shadow-lg flex items-center justify-between">
+      <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold text-white flex items-center gap-2 tracking-tight">
-            <History className="w-5 h-5 text-indigo-400" />
+          <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2 tracking-tight">
+            <History className="w-5 h-5 text-indigo-500" />
             History & Reports
           </h2>
-          <p className="text-[11px] text-slate-300 mt-1 uppercase tracking-widest font-bold">Rekor & Laporan Operasional</p>
+          <p className="text-[11px] text-slate-500 mt-1 uppercase tracking-widest font-bold">Rekor & Laporan Operasional</p>
         </div>
-        <button className="w-10 h-10 bg-indigo-500/30 text-indigo-300 rounded-full flex items-center justify-center border border-indigo-500/40">
+        <button className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center border border-indigo-100">
           <Download className="w-4 h-4" />
         </button>
       </div>
 
       <div className="space-y-4">
         {extremes.map((section, idx) => (
-          <div key={idx} className="bg-[#1e293b] rounded-2xl border border-white/10 shadow-lg overflow-hidden">
-            <div className={`px-4 py-3 border-b flex items-center gap-2 ${section.bg}`}>
+          <div key={idx} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <div className={`px-4 py-3 border-b border-slate-100 flex items-center gap-2 ${section.bg}`}>
               <History className={`w-4 h-4 ${section.color}`} />
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Rekor {section.title}</h3>
+              <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Rekor {section.title}</h3>
             </div>
             
             <div className="p-4 space-y-4">
               {/* Highest */}
-              <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4">
+              <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center gap-2">
-                    <div className="bg-emerald-500/30 p-1.5 rounded-lg">
-                      <TrendingUp className="w-4 h-4 text-emerald-400" />
+                    <div className="bg-emerald-100 p-1.5 rounded-lg">
+                      <TrendingUp className="w-4 h-4 text-emerald-600" />
                     </div>
                     <div>
-                      <span className="text-[10px] text-emerald-400 font-black uppercase tracking-widest block">Tertinggi</span>
-                      <span className="text-xs text-slate-200 font-bold">{section.data?.highest?.label || '-'}</span>
+                      <span className="text-[10px] text-emerald-600 font-black uppercase tracking-widest block">Tertinggi</span>
+                      <span className="text-xs text-slate-700 font-bold">{section.data?.highest?.label || '-'}</span>
                     </div>
                   </div>
                   <div className="text-right">
-                    <span className="text-xl font-bold font-mono text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]">
+                    <span className="text-xl font-bold font-mono text-emerald-600">
                       {section.data?.highest ? (section.data.highest.yield * 100).toFixed(1) + '%' : '-'}
                     </span>
                   </div>
                 </div>
-                <div className="flex justify-between items-center pt-2 border-t border-white/10 mt-2">
+                <div className="flex justify-between items-center pt-2 border-t border-emerald-100/50 mt-2">
                   <div>
-                    <span className="text-[9px] text-slate-400 uppercase tracking-widest font-bold">Input: </span>
-                    <span className="text-xs text-slate-200 font-mono font-bold">{section.data?.highest?.input?.toFixed(1) || '-'} m³</span>
+                    <span className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Input: </span>
+                    <span className="text-xs text-slate-700 font-mono font-bold">{section.data?.highest?.input?.toFixed(1) || '-'} m³</span>
                   </div>
                   <div>
-                    <span className="text-[9px] text-slate-400 uppercase tracking-widest font-bold">Output: </span>
-                    <span className="text-xs text-emerald-400 font-mono font-bold">{section.data?.highest?.utama?.toFixed(1) || '-'} m³</span>
+                    <span className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Output: </span>
+                    <span className="text-xs text-emerald-600 font-mono font-bold">{section.data?.highest?.utama?.toFixed(1) || '-'} m³</span>
                   </div>
                 </div>
               </div>
 
               {/* Lowest */}
-              <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-4">
+              <div className="bg-rose-50 border border-rose-100 rounded-xl p-4">
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center gap-2">
-                    <div className="bg-rose-500/30 p-1.5 rounded-lg">
-                      <TrendingDown className="w-4 h-4 text-rose-400" />
+                    <div className="bg-rose-100 p-1.5 rounded-lg">
+                      <TrendingDown className="w-4 h-4 text-rose-600" />
                     </div>
                     <div>
-                      <span className="text-[10px] text-rose-400 font-black uppercase tracking-widest block">Terendah</span>
-                      <span className="text-xs text-slate-200 font-bold">{section.data?.lowest?.label || '-'}</span>
+                      <span className="text-[10px] text-rose-600 font-black uppercase tracking-widest block">Terendah</span>
+                      <span className="text-xs text-slate-700 font-bold">{section.data?.lowest?.label || '-'}</span>
                     </div>
                   </div>
                   <div className="text-right">
-                    <span className="text-xl font-bold font-mono text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.3)]">
+                    <span className="text-xl font-bold font-mono text-rose-600">
                       {section.data?.lowest ? (section.data.lowest.yield * 100).toFixed(1) + '%' : '-'}
                     </span>
                   </div>
                 </div>
-                <div className="flex justify-between items-center pt-2 border-t border-white/10 mt-2">
+                <div className="flex justify-between items-center pt-2 border-t border-rose-100/50 mt-2">
                   <div>
-                    <span className="text-[9px] text-slate-400 uppercase tracking-widest font-bold">Input: </span>
-                    <span className="text-xs text-slate-200 font-mono font-bold">{section.data?.lowest?.input?.toFixed(1) || '-'} m³</span>
+                    <span className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Input: </span>
+                    <span className="text-xs text-slate-700 font-mono font-bold">{section.data?.lowest?.input?.toFixed(1) || '-'} m³</span>
                   </div>
                   <div>
-                    <span className="text-[9px] text-slate-400 uppercase tracking-widest font-bold">Output: </span>
-                    <span className="text-xs text-rose-400 font-mono font-bold">{section.data?.lowest?.utama?.toFixed(1) || '-'} m³</span>
+                    <span className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Output: </span>
+                    <span className="text-xs text-rose-600 font-mono font-bold">{section.data?.lowest?.utama?.toFixed(1) || '-'} m³</span>
                   </div>
                 </div>
               </div>

@@ -4,17 +4,16 @@ import {
   BarChart3, 
   Clock, 
   Package, 
-  CheckCircle,
   Activity
 } from 'lucide-react';
-import { ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts';
+import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
-export function OverviewPage({ stats, todayStats, trendData }) {
+export function OverviewPage({ stats, todayStats, monthPerformance }) {
   const kpiCards = [
-    { title: 'Total Produksi', value: stats.totalAllOutput.toLocaleString('id-ID'), unit: 'm³', icon: Package, color: 'text-indigo-400', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20' },
-    { title: 'Efisiensi', value: (stats.avgYield * 100).toFixed(1), unit: '%', icon: TrendingUp, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
-    { title: 'Downtime', value: stats.totalDowntimeMinutes.toLocaleString('id-ID'), unit: 'mnt', icon: Clock, color: 'text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/20' },
-    { title: 'Input Log', value: stats.totalInput.toLocaleString('id-ID'), unit: 'm³', icon: BarChart3, color: 'text-sky-400', bg: 'bg-sky-500/10', border: 'border-sky-500/20' },
+    { title: 'Input Log', value: stats.totalInput.toLocaleString('id-ID'), unit: 'm³', icon: BarChart3, color: 'text-sky-900', bg: 'bg-sky-300/50', cardBg: 'bg-sky-200', border: 'border-sky-300' },
+    { title: 'Total Produksi', value: stats.totalAllOutput.toLocaleString('id-ID'), unit: 'm³', icon: Package, color: 'text-orange-900', bg: 'bg-orange-300/50', cardBg: 'bg-orange-200', border: 'border-orange-300' },
+    { title: 'Rendemen Utama', value: (stats.avgYield * 100).toFixed(1), unit: '%', icon: TrendingUp, color: 'text-emerald-900', bg: 'bg-emerald-300/50', cardBg: 'bg-emerald-200', border: 'border-emerald-300' },
+    { title: 'Downtime', value: stats.totalDowntimeMinutes.toLocaleString('id-ID'), unit: 'mnt', icon: Clock, color: 'text-rose-900', bg: 'bg-rose-300/50', cardBg: 'bg-rose-200', border: 'border-rose-300' },
   ];
 
   const activeMachinesCount = todayStats?.stats?.length || 0;
@@ -22,35 +21,32 @@ export function OverviewPage({ stats, todayStats, trendData }) {
   return (
     <div className="p-5 space-y-6">
       {/* Live Status Banner */}
-      <div className="bg-[#1e293b] rounded-2xl p-4 border border-white/10 shadow-lg flex items-center justify-between">
+      <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center justify-between">
         <div className="flex flex-col">
-          <span className="text-xs text-slate-300 font-bold tracking-widest uppercase">Live Status</span>
+          <span className="text-xs text-slate-500 font-bold tracking-widest uppercase">Live Status</span>
           <div className="flex items-center gap-2 mt-1">
             <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse" />
-            <span className="text-emerald-400 font-bold text-sm tracking-wide">OPERATING NORMAL</span>
+            <span className="text-emerald-500 font-bold text-sm tracking-wide">OPERATING NORMAL</span>
           </div>
         </div>
         <div className="flex flex-col items-end">
-          <span className="text-[10px] text-slate-300 uppercase font-bold">Active Machines</span>
-          <span className="text-xl font-bold text-white leading-none mt-1">{activeMachinesCount} <span className="text-xs text-slate-400 font-normal">/ 8</span></span>
+          <span className="text-[10px] text-slate-500 uppercase font-bold">Active Machines</span>
+          <span className="text-xl font-bold text-slate-800 leading-none mt-1">{activeMachinesCount} <span className="text-xs text-slate-400 font-normal">/ 8</span></span>
         </div>
       </div>
 
       {/* KPI Grid */}
       <div className="grid grid-cols-2 gap-4">
         {kpiCards.map((card, i) => (
-          <div key={i} className={`bg-[#1e293b] rounded-2xl p-4 border ${card.border} shadow-lg relative overflow-hidden group`}>
-            <div className="absolute top-0 right-0 w-16 h-16 bg-white/5 rounded-full -mr-4 -mt-4 blur-xl transition-transform group-hover:scale-150" />
-            <div className="flex items-start justify-between mb-3 relative z-10">
-              <div className={`p-2 rounded-xl ${card.bg}`}>
-                <card.icon className={`w-5 h-5 ${card.color}`} />
+          <div key={i} className={`${card.cardBg} rounded-2xl p-4 border ${card.border} shadow-sm relative overflow-hidden group`}>
+            <div className="relative z-10 flex flex-col h-full">
+              <div className={`self-start p-2.5 rounded-2xl ${card.bg} mb-4`}>
+                <card.icon className={`w-5 h-5 ${card.color}`} strokeWidth={2.5} />
               </div>
-            </div>
-            <div className="relative z-10">
-              <p className="text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">{card.title}</p>
+              <p className="text-[10px] font-black text-slate-800 uppercase tracking-widest mb-1.5 opacity-90">{card.title}</p>
               <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-bold text-white tracking-tight">{card.value}</span>
-                <span className="text-xs font-bold text-slate-400">{card.unit}</span>
+                <span className="text-[26px] leading-[1.1] font-black text-slate-900 tracking-tighter">{card.value}</span>
+                <span className="text-xs font-bold text-slate-700">{card.unit}</span>
               </div>
             </div>
           </div>
@@ -58,10 +54,10 @@ export function OverviewPage({ stats, todayStats, trendData }) {
       </div>
 
       {/* Gauge Charts - Efficiency & Rendemen */}
-      <div className="bg-[#1e293b] rounded-2xl p-5 border border-white/5 shadow-lg">
-        <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-3">
-          <h3 className="text-sm font-bold text-white tracking-wide uppercase flex items-center gap-2">
-            <Activity className="w-4 h-4 text-sky-400" />
+      <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+        <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+          <h3 className="text-sm font-bold text-slate-700 tracking-wide uppercase flex items-center gap-2">
+            <Activity className="w-4 h-4 text-sky-500" />
             Rendemen Performance
           </h3>
         </div>
@@ -75,18 +71,18 @@ export function OverviewPage({ stats, todayStats, trendData }) {
                     cx="50%" cy="100%" startAngle={180} endAngle={0} innerRadius={45} outerRadius={60} stroke="none" paddingAngle={2}
                   >
                     <Cell fill="#38bdf8" />
-                    <Cell fill="#334155" />
+                    <Cell fill="#f1f5f9" />
                   </Pie>
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center">
-                <span className="text-xl font-bold text-white">{(stats.avgYield * 100).toFixed(1)}%</span>
-                <span className="text-[9px] text-sky-400 font-black uppercase tracking-widest mt-0.5">Utama</span>
+                <span className="text-xl font-bold text-slate-800">{(stats.avgYield * 100).toFixed(1)}%</span>
+                <span className="text-[9px] text-sky-500 font-black uppercase tracking-widest mt-0.5">Utama</span>
                 <span className="text-[8px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">TGT 30%</span>
               </div>
             </div>
           </div>
-          <div className="w-px bg-white/10 shrink-0" />
+          <div className="w-px bg-slate-100 shrink-0" />
           <div className="flex-1 flex flex-col items-center">
             <div className="w-full h-[120px] relative">
               <ResponsiveContainer width="100%" height="100%">
@@ -96,13 +92,13 @@ export function OverviewPage({ stats, todayStats, trendData }) {
                     cx="50%" cy="100%" startAngle={180} endAngle={0} innerRadius={45} outerRadius={60} stroke="none" paddingAngle={2}
                   >
                     <Cell fill="#10b981" />
-                    <Cell fill="#334155" />
+                    <Cell fill="#f1f5f9" />
                   </Pie>
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center">
-                <span className="text-xl font-bold text-white">{stats.totalInput > 0 ? ((stats.totalAllOutput / stats.totalInput) * 100).toFixed(1) : '0'}%</span>
-                <span className="text-[9px] text-emerald-400 font-black uppercase tracking-widest mt-0.5">Total</span>
+                <span className="text-xl font-bold text-slate-800">{stats.totalInput > 0 ? ((stats.totalAllOutput / stats.totalInput) * 100).toFixed(1) : '0'}%</span>
+                <span className="text-[9px] text-emerald-500 font-black uppercase tracking-widest mt-0.5">Total</span>
                 <span className="text-[8px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">TGT 65%</span>
               </div>
             </div>
@@ -110,37 +106,95 @@ export function OverviewPage({ stats, todayStats, trendData }) {
         </div>
       </div>
 
-      {/* Production Trend Area Chart */}
-      <div className="bg-[#1e293b] rounded-2xl px-5 pt-5 pb-3 border border-white/10 shadow-lg">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-sm font-bold text-white tracking-wide uppercase">
-            Tren Produksi Harian
-          </h3>
-          <div className="px-2.5 py-1 rounded bg-[#0f172a] text-[9px] font-bold text-slate-300 uppercase tracking-widest border border-white/5">
-            Last 7 Days
+      {/* Performance Bulan Ini */}
+      {monthPerformance && (
+        <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm space-y-5">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h3 className="text-sm font-bold text-slate-800 tracking-wide uppercase">
+              Performance {monthPerformance.monthName}
+            </h3>
+            <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[10px] font-black uppercase tracking-wider rounded border border-indigo-100">
+              {monthPerformance.days} Hari Operasi
+            </span>
+          </div>
+
+          <div className="space-y-5">
+            {/* Totals Section */}
+            <div>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Total Volume Produksi (m³)</p>
+              <div className="grid grid-cols-6 gap-2">
+                <div className="col-span-3 bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col">
+                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Input</span>
+                  <span className="text-sm font-black text-slate-800 mt-0.5">{monthPerformance.totals.input.toLocaleString('id-ID', { maximumFractionDigits: 3 })}</span>
+                </div>
+                <div className="col-span-3 bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col">
+                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Total Output</span>
+                  <span className="text-sm font-black text-emerald-600 mt-0.5">{monthPerformance.totals.total.toLocaleString('id-ID', { maximumFractionDigits: 3 })}</span>
+                </div>
+                <div className="col-span-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col">
+                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Utama</span>
+                  <span className="text-sm font-black text-sky-600 mt-0.5">{monthPerformance.totals.utama.toLocaleString('id-ID', { maximumFractionDigits: 3 })}</span>
+                </div>
+                <div className="col-span-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col">
+                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Turunan</span>
+                  <span className="text-sm font-black text-orange-600 mt-0.5">{monthPerformance.totals.turunan.toLocaleString('id-ID', { maximumFractionDigits: 3 })}</span>
+                </div>
+                <div className="col-span-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col">
+                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Lokal</span>
+                  <span className="text-sm font-black text-amber-600 mt-0.5">{monthPerformance.totals.lokal.toLocaleString('id-ID', { maximumFractionDigits: 3 })}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Averages Section */}
+            <div>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Rata-Rata Harian (m³)</p>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="bg-slate-50 p-2 rounded-lg border border-slate-100 flex flex-col items-center text-center">
+                  <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Input</span>
+                  <span className="text-xs font-black text-slate-800 mt-0.5">{monthPerformance.averages.input.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</span>
+                </div>
+                <div className="bg-slate-50 p-2 rounded-lg border border-slate-100 flex flex-col items-center text-center">
+                  <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Utama</span>
+                  <span className="text-xs font-black text-sky-600 mt-0.5">{monthPerformance.averages.utama.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</span>
+                </div>
+                <div className="bg-slate-50 p-2 rounded-lg border border-slate-100 flex flex-col items-center text-center">
+                  <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Output</span>
+                  <span className="text-xs font-black text-emerald-600 mt-0.5">{monthPerformance.averages.total.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</span>
+                </div>
+                <div className="bg-slate-50 p-2 rounded-lg border border-slate-100 flex flex-col items-center text-center">
+                  <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Turunan</span>
+                  <span className="text-xs font-black text-orange-600 mt-0.5">{monthPerformance.averages.turunan.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</span>
+                </div>
+                <div className="bg-slate-50 p-2 rounded-lg border border-slate-100 flex flex-col items-center text-center">
+                  <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Lokal</span>
+                  <span className="text-xs font-black text-amber-600 mt-0.5">{monthPerformance.averages.lokal.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Rendemen Section */}
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-4 shadow-inner relative overflow-hidden">
+               <div className="absolute -right-4 -top-8 w-24 h-24 bg-white/5 rounded-full blur-2xl" />
+               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 relative z-10">Tingkat Rendemen Bulanan</p>
+               <div className="grid grid-cols-3 divide-x divide-white/10 relative z-10">
+                 <div className="flex flex-col px-2 text-center">
+                   <span className="text-xl font-black text-sky-400">{monthPerformance.totals.rendemenUtama.toFixed(1)}%</span>
+                   <span className="text-[8px] font-bold text-slate-300 uppercase tracking-wider mt-1">Utama</span>
+                 </div>
+                 <div className="flex flex-col px-2 text-center">
+                   <span className="text-xl font-black text-orange-400">{monthPerformance.totals.rendemenTurunan.toFixed(1)}%</span>
+                   <span className="text-[8px] font-bold text-slate-300 uppercase tracking-wider mt-1">Turunan</span>
+                 </div>
+                 <div className="flex flex-col px-2 text-center">
+                   <span className="text-xl font-black text-emerald-400">{monthPerformance.totals.rendemenTotal.toFixed(1)}%</span>
+                   <span className="text-[8px] font-bold text-slate-300 uppercase tracking-wider mt-1">Total Output</span>
+                 </div>
+               </div>
+            </div>
           </div>
         </div>
-        <div className="h-[160px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={trendData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-              <defs>
-                <linearGradient id="colorProd" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#818cf8" stopOpacity={0.4}/>
-                  <stop offset="95%" stopColor="#818cf8" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <XAxis dataKey="w" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#94a3b8', fontWeight: 600 }} dy={10} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#94a3b8', fontWeight: 600 }} tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(1)}k` : v} />
-              <Tooltip 
-                cursor={{ stroke: '#475569', strokeWidth: 1, strokeDasharray: '4 4' }} 
-                contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', fontSize: '12px', color: '#f8fafc' }}
-                itemStyle={{ color: '#f8fafc' }}
-              />
-              <Area type="monotone" dataKey="v2" stroke="#818cf8" strokeWidth={2} fill="url(#colorProd)" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

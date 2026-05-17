@@ -182,6 +182,7 @@ export interface MachineRanking {
   yield: number;
   achievement: number;
   downtime?: string[];
+  score?: number;
 }
 
 export function getAvailablePeriods(data: ProductionData[]) {
@@ -317,7 +318,7 @@ export function getMachineRankings(data: ProductionData[], periodType: 'weekly' 
     machines[normalizedMesin].target += d.target_total || 0;
   });
 
-  return Object.entries(machines).map(([mesin, stats]) => ({
+  const parsed = Object.entries(machines).map(([mesin, stats]) => ({
     mesin,
     line: stats.line,
     input: Math.round(stats.input * 100) / 100,
@@ -327,7 +328,17 @@ export function getMachineRankings(data: ProductionData[], periodType: 'weekly' 
     total: Math.round(stats.total * 100) / 100,
     yield: stats.input > 0 ? stats.utama / stats.input : 0,
     achievement: stats.target > 0 ? stats.utama / stats.target : 0
-  })).sort((a, b) => b.utama - a.utama);
+  }));
+
+  const maxYield = Math.max(...parsed.map(m => m.yield), 0.0001);
+  const maxTotal = Math.max(...parsed.map(m => m.total), 0.0001);
+
+  return parsed.map(m => {
+    // Normalisasi: (Rendemen/Max_Rendemen * 55) + (Total/Max_Total * 45)
+    // agar adil dalam persentase
+    const score = ((m.yield / maxYield) * 55) + ((m.total / maxTotal) * 45);
+    return { ...m, score };
+  }).sort((a, b) => (b.score || 0) - (a.score || 0));
 }
 
 export function getPerformanceByTimeframe(data: ProductionData[], type: 'daily' | 'weekly' | 'monthly' | 'quarterly'): TimeframePerformance[] {

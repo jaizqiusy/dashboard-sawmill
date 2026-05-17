@@ -4,16 +4,16 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 import { getPerformanceByTimeframe } from '../../services/dataService';
 
 export function AnalyticsPage({ data }) {
-  const timeframes = ['daily', 'weekly', 'monthly'] as const;
+  const timeframes = ['daily', 'weekly', 'monthly', 'quarterly'] as const;
 
   return (
     <div className="p-5 space-y-6">
-      <div className="bg-[#1e293b] rounded-2xl p-5 border border-white/10 shadow-lg">
-        <h2 className="text-lg font-bold text-white flex items-center gap-2 tracking-tight">
-          <BarChart3 className="w-5 h-5 text-sky-400" />
+      <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+        <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2 tracking-tight">
+          <BarChart3 className="w-5 h-5 text-sky-500" />
           Analytics
         </h2>
-        <p className="text-[11px] text-slate-300 mt-1 uppercase tracking-widest font-bold">Trend & Performance Analysis</p>
+        <p className="text-[11px] text-slate-500 mt-1 uppercase tracking-widest font-bold">Trend & Performance Analysis</p>
       </div>
 
       <div className="space-y-6">
@@ -22,10 +22,10 @@ export function AnalyticsPage({ data }) {
           if (timeframeData.length === 0) return null;
 
           return (
-            <div key={type} className="bg-[#1e293b] rounded-2xl p-5 border border-white/10 shadow-lg">
+            <div key={type} className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-sm font-bold text-white tracking-wide capitalize flex items-center gap-2">
-                  <LineIcon className="w-4 h-4 text-indigo-400" />
+                <h3 className="text-sm font-bold text-slate-800 tracking-wide capitalize flex items-center gap-2">
+                  <LineIcon className="w-4 h-4 text-indigo-500" />
                   {type} Trend
                 </h3>
               </div>
@@ -33,42 +33,51 @@ export function AnalyticsPage({ data }) {
               <div className="h-[200px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={timeframeData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.5} />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" opacity={0.5} />
                     <XAxis 
                       dataKey="label" 
                       axisLine={false} 
                       tickLine={false} 
-                      tick={{ fontSize: 9, fill: '#cbd5e1', fontWeight: 600 }} 
+                      tick={{ fontSize: 9, fill: '#64748b', fontWeight: 600 }} 
                       dy={10}
                     />
                     <YAxis 
                       axisLine={false} 
                       tickLine={false} 
-                      tick={{ fontSize: 9, fill: '#cbd5e1', fontWeight: 600 }} 
+                      tick={{ fontSize: 9, fill: '#64748b', fontWeight: 600 }} 
                       tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(1)}k` : v}
                     />
                     <Tooltip 
-                      cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                      contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', fontSize: '12px', color: '#f8fafc' }}
-                      itemStyle={{ color: '#f8fafc' }}
+                      cursor={{ fill: 'rgba(0,0,0,0.05)' }}
+                      contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px', color: '#1e293b' }}
+                      itemStyle={{ color: '#1e293b' }}
                     />
                     <Bar dataKey="utama" fill="#38bdf8" radius={[4, 4, 0, 0]} name="Output Utama" />
-                    <Bar dataKey="input" fill="#312e81" radius={[4, 4, 0, 0]} name="Input" />
+                    <Bar dataKey="input" fill="#c7d2fe" radius={[4, 4, 0, 0]} name="Input" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
 
               <div className="grid grid-cols-2 gap-4 mt-6">
-                <div className="bg-[#0f172a] rounded-xl p-3 border border-white/10">
-                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mb-1">Avg Efficiency</p>
-                  <p className="text-lg font-bold text-emerald-400">
-                    {(timeframeData.reduce((acc, curr) => acc + curr.yield, 0) / timeframeData.length * 100).toFixed(1)}%
+                <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
+                  <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Rendemen Utama</p>
+                  <p className="text-lg font-bold text-emerald-500">
+                    {(() => {
+                      const totalInput = timeframeData.reduce((acc, curr) => acc + curr.input, 0);
+                      const totalUtama = timeframeData.reduce((acc, curr) => acc + curr.utama, 0);
+                      return totalInput > 0 ? ((totalUtama / totalInput) * 100).toFixed(1) : '0.0';
+                    })()}%
                   </p>
                 </div>
-                <div className="bg-[#0f172a] rounded-xl p-3 border border-white/10 text-right">
-                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mb-1">Total Output</p>
-                  <p className="text-lg font-bold text-sky-400">
-                    {(timeframeData.reduce((acc, curr) => acc + curr.utama, 0)/1000).toFixed(1)}k <span className="text-[10px] text-sky-500/50">m³</span>
+                <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 text-right">
+                  <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Total Output Utama</p>
+                  <p className="text-lg font-bold text-sky-500">
+                    {(() => {
+                      const totalUtama = timeframeData.reduce((acc, curr) => acc + curr.utama, 0);
+                      return totalUtama >= 1000 
+                        ? `${(totalUtama / 1000).toFixed(1)}k` 
+                        : totalUtama.toLocaleString('id-ID', { maximumFractionDigits: 1 });
+                    })()} <span className="text-[10px] text-sky-400">m³</span>
                   </p>
                 </div>
               </div>
