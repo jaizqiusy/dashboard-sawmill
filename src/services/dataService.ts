@@ -1,8 +1,9 @@
 import { RAW_CSV_DATA } from '../data/raw_data';
-import { ProductionData, SummaryStats } from '../types';
+import { ProductionData, SummaryStats, SupplierData } from '../types';
+
+const SPREADSHEET_ID = '1G7x3dtE2KFF338w6qdd4jrMkz-yrbThlzx5Vi0I8AqQ';
 
 export async function fetchProductionData(): Promise<ProductionData[]> {
-  const SPREADSHEET_ID = '1G7x3dtE2KFF338w6qdd4jrMkz-yrbThlzx5Vi0I8AqQ';
   const GID = '0'; // Assuming first sheet, or you can specify GID
   const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&gid=${GID}`;
   
@@ -16,6 +17,72 @@ export async function fetchProductionData(): Promise<ProductionData[]> {
     // Fallback to static data on error
     return parseCSV(RAW_CSV_DATA);
   }
+}
+
+export async function fetchSupplierData(): Promise<SupplierData[]> {
+  const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=LOG%20SUPPLIER`;
+  
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Failed to fetch data');
+    const csvData = await response.text();
+    return parseSupplierCSV(csvData);
+  } catch (error) {
+    console.error('Error fetching supplier data:', error);
+    return getMockSupplierData();
+  }
+}
+
+function parseSupplierCSV(csv: string): SupplierData[] {
+  const lines = csv.trim().split('\n');
+  if (lines.length <= 1) return [];
+
+  const parseLine = (line: string) => {
+    const result = [];
+    let start = 0;
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+        if (line[i] === '"') inQuotes = !inQuotes;
+        if (line[i] === ',' && !inQuotes) {
+            result.push(line.substring(start, i));
+            start = i + 1;
+        }
+    }
+    result.push(line.substring(start));
+    return result.map(v => v.replace(/^"|"$/g, '').trim());
+  };
+
+  return lines.slice(1).map(line => {
+    const values = parseLine(line);
+    return {
+      kode: values[0] || '',
+      supplier: values[1] || '',
+      input: parseFloat(values[2]) || 0,
+      utama: parseFloat(values[3]) || 0,
+      yieldUtama: parseFloat(values[4]) || 0,
+      turunan: parseFloat(values[5]) || 0,
+      yieldTurunan: parseFloat(values[6]) || 0,
+      export: parseFloat(values[7]) || 0,
+      yieldExport: parseFloat(values[8]) || 0,
+      lokalSuper: parseFloat(values[9]) || 0,
+      yieldLokalSuper: parseFloat(values[10]) || 0,
+      lokal: parseFloat(values[11]) || 0,
+      yieldLokal: parseFloat(values[12]) || 0,
+      totalLokal: parseFloat(values[13]) || 0,
+      yieldTotalLokal: parseFloat(values[14]) || 0,
+      total: parseFloat(values[15]) || 0,
+      yieldTotal: parseFloat(values[16]) || 0,
+    };
+  }).filter(row => row.kode && row.kode.trim() !== '' && row.supplier.toLowerCase() !== 'total');
+}
+
+export function getMockSupplierData(): SupplierData[] {
+  return [
+    { kode: '25AZ', supplier: '25 AKI 15 (LOG END)', input: 27.8833, utama: 9.9834, yieldUtama: 35.80, turunan: 0, yieldTurunan: 0.00, export: 9.9834, yieldExport: 35.80, lokalSuper: 0.8529, yieldLokalSuper: 3.06, lokal: 6.4583, yieldLokal: 23.16, totalLokal: 7.3112, yieldTotalLokal: 26.22, total: 17.2946, yieldTotal: 62.02 },
+    { kode: '25AAA', supplier: '25 WAI O5 (LOG END)', input: 15.9855, utama: 4.4162, yieldUtama: 27.63, turunan: 0, yieldTurunan: 0.00, export: 4.4162, yieldExport: 27.63, lokalSuper: 0.1812, yieldLokalSuper: 1.13, lokal: 4.3648, yieldLokal: 27.30, totalLokal: 4.546, yieldTotalLokal: 28.44, total: 8.9622, yieldTotal: 56.06 },
+    { kode: '25AAB', supplier: '25 JSI 01 (MRT)', input: 8.7331, utama: 0, yieldUtama: 0.00, turunan: 5.8723, yieldTurunan: 67.24, export: 5.8723, yieldExport: 67.24, lokalSuper: 0, yieldLokalSuper: 0.00, lokal: 0.0828, yieldLokal: 0.95, totalLokal: 0.0828, yieldTotalLokal: 0.95, total: 5.9551, yieldTotal: 68.19 },
+    { kode: '25AAC', supplier: '25 KMI 08 (MRT)', input: 9.4319, utama: 0, yieldUtama: 0.00, turunan: 5.2100, yieldTurunan: 55.24, export: 5.2100, yieldExport: 55.24, lokalSuper: 1.100, yieldLokalSuper: 11.66, lokal: 0.500, yieldLokal: 5.30, totalLokal: 1.600, yieldTotalLokal: 16.96, total: 6.8100, yieldTotal: 72.20 }
+  ];
 }
 
 function parseCSV(csv: string): ProductionData[] {

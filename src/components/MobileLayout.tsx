@@ -4,6 +4,7 @@ import {
   BarChart3, 
   Trophy, 
   Factory, 
+  FileText,
   AlertTriangle, 
   History,
   Bell,
@@ -24,6 +25,7 @@ export function MobileLayout({ children, activeTab, setActiveTab, title }: Mobil
     { id: 'Analytics', icon: BarChart3, label: 'Analytics' },
     { id: 'Ranking', icon: Trophy, label: 'Ranking' },
     { id: 'Production', icon: Factory, label: 'Production' },
+    { id: 'Recap', icon: FileText, label: 'Rekap' },
     { id: 'Downtime', icon: AlertTriangle, label: 'Downtime' },
     { id: 'History', icon: History, label: 'History' },
   ];
@@ -66,7 +68,7 @@ export function MobileLayout({ children, activeTab, setActiveTab, title }: Mobil
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
-                className="relative flex flex-col items-center justify-center w-[16%] py-2 gap-1 group transition-all"
+                className="relative flex flex-col items-center justify-center w-[14%] py-2 gap-1 group transition-all"
               >
                 {isActive && (
                   <div className="absolute inset-0 bg-blue-50/80 rounded-xl transition-all duration-300" />

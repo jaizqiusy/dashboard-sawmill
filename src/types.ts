@@ -30,3 +30,23 @@ export interface SummaryStats {
   totalMachines: number;
   totalDowntimeMinutes: number;
 }
+
+export interface SupplierData {
+  kode: string;
+  supplier: string;
+  input: number;
+  utama: number;
+  yieldUtama: number;
+  turunan: number;
+  yieldTurunan: number;
+  export: number;
+  yieldExport: number;
+  lokalSuper: number;
+  yieldLokalSuper: number;
+  lokal: number;
+  yieldLokal: number;
+  totalLokal: number;
+  yieldTotalLokal: number;
+  total: number;
+  yieldTotal: number;
+}

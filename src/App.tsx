@@ -4,24 +4,31 @@ import { OverviewPage } from './components/Pages/OverviewPage';
 import { AnalyticsPage } from './components/Pages/AnalyticsPage';
 import { RankingPage } from './components/Pages/RankingPage';
 import { ProductionPage } from './components/Pages/ProductionPage';
+import { RecapPage } from './components/Pages/RecapPage';
 import { DowntimePage } from './components/Pages/DowntimePage';
 import { HistoryPage } from './components/Pages/HistoryPage';
 import { 
   fetchProductionData, 
+  fetchSupplierData,
   getSummaryStats,
   getTodayMachineStats,
   normalizeMachineName
 } from './services/dataService';
-import { ProductionData } from './types';
+import { ProductionData, SupplierData } from './types';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('Overview');
   const [data, setData] = useState<ProductionData[]>([]);
+  const [supplierData, setSupplierData] = useState<SupplierData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    fetchProductionData().then(fetchedData => {
-      setData(fetchedData);
+    Promise.all([
+      fetchProductionData(),
+      fetchSupplierData()
+    ]).then(([prodData, suppData]) => {
+      setData(prodData);
+      setSupplierData(suppData);
       setIsLoading(false);
     });
   }, []);
@@ -101,6 +108,7 @@ export default function App() {
       {activeTab === 'Analytics' && <AnalyticsPage data={data} />}
       {activeTab === 'Ranking' && <RankingPage data={data} />}
       {activeTab === 'Production' && <ProductionPage todayStats={todayStats} />}
+      {activeTab === 'Recap' && <RecapPage data={data} supplierData={supplierData} />}
       {activeTab === 'Downtime' && <DowntimePage data={data} />}
       {activeTab === 'History' && <HistoryPage data={data} />}
     </MobileLayout>

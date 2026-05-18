@@ -30,33 +30,33 @@ export function ProductionPage({ todayStats }) {
 
           return (
             <div key={i} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden group">
-              <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                <div className="flex items-center gap-3">
+              <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/40">
+                <div className="flex items-center gap-3.5">
                   <div className={cn(
-                    "w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm border",
-                    isDown ? "bg-rose-50 text-rose-500 border-rose-200" : 
+                    "w-11 h-11 rounded-xl flex items-center justify-center font-black text-sm border shadow-sm transition-all",
+                    isDown ? "bg-rose-50 text-rose-600 border-rose-200" : 
                     hasData ? "bg-emerald-50 text-emerald-600 border-emerald-200" : 
                     "bg-slate-100 text-slate-400 border-slate-200"
                   )}>
                     {mName.replace('BS ', 'BS')}
                   </div>
                   <div>
-                    <h3 className="text-slate-800 font-bold text-sm">{mName}</h3>
-                    <div className="flex items-center gap-1.5 mt-0.5">
+                    <h3 className="text-slate-900 font-black text-base leading-none mb-1">{mName}</h3>
+                    <div className="flex items-center gap-1.5">
                       {isDown ? (
                         <>
                           <div className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
-                          <span className="text-[9px] text-rose-500 font-bold uppercase tracking-wider">Downtime</span>
+                          <span className="text-[9px] text-rose-600 font-black uppercase tracking-widest">Downtime</span>
                         </>
                       ) : hasData ? (
                         <>
                           <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                          <span className="text-[9px] text-emerald-500 font-bold uppercase tracking-wider">Running</span>
+                          <span className="text-[9px] text-emerald-600 font-bold uppercase tracking-widest">Kondisi: Jalan</span>
                         </>
                       ) : (
                         <>
                           <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />
-                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Off / No Data</span>
+                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Off / No Data</span>
                         </>
                       )}
                     </div>
@@ -64,11 +64,11 @@ export function ProductionPage({ todayStats }) {
                 </div>
                 
                 {hasData && (
-                  <div className="text-right">
-                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block mb-0.5">Yield</span>
+                  <div className="text-right flex flex-col items-end">
+                    <span className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-0.5">Yield</span>
                     <span className={cn(
-                      "text-sm font-bold font-mono px-2 py-0.5 rounded",
-                      stat.yield >= 0.30 ? "bg-emerald-100 text-emerald-600" : "bg-amber-100 text-amber-600"
+                      "text-base font-black font-mono px-2 py-0.5 rounded-lg leading-tight",
+                      stat.yield >= 0.30 ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
                     )}>
                       {(stat.yield * 100).toFixed(1)}%
                     </span>
@@ -77,31 +77,39 @@ export function ProductionPage({ todayStats }) {
               </div>
 
               {hasData && (
-                <div className="p-4 grid grid-cols-2 gap-x-4 gap-y-3">
-                  <div>
-                    <span className="text-[9px] text-slate-500 uppercase tracking-widest block mb-1 font-bold">Input Log</span>
-                    <span className="text-slate-700 font-mono text-sm font-bold">{stat.input.toFixed(1)} <span className="text-[10px] text-slate-400">m³</span></span>
+                <div className="p-4 grid grid-cols-2 gap-y-5 gap-x-6">
+                  <div className="border-l-2 border-slate-100 pl-3">
+                    <span className="text-[9px] text-slate-400 uppercase tracking-widest block mb-1 font-black">Input Log</span>
+                    <span className="text-slate-800 font-mono text-lg font-black leading-none block">
+                      {stat.input.toFixed(1)} <span className="text-[10px] text-slate-400 font-bold">m³</span>
+                    </span>
                   </div>
-                  <div className="text-right">
-                    <span className="text-[9px] text-emerald-600 uppercase tracking-widest block mb-1 font-black">Output Utama</span>
-                    <span className="text-emerald-500 font-mono font-bold text-sm tracking-tight">{stat.utama.toFixed(1)} <span className="text-[10px] text-emerald-400">m³</span></span>
+                  <div className="text-right pr-1">
+                    <span className="text-[9px] text-emerald-600 uppercase tracking-widest block mb-1 font-black underline decoration-emerald-200 underline-offset-4">Output Utama</span>
+                    <span className="text-emerald-700 font-mono font-black text-xl tracking-tighter leading-none block">
+                      {stat.utama.toFixed(1)} <span className="text-[10px] text-emerald-400 font-bold">m³</span>
+                    </span>
                   </div>
-                  <div>
-                    <span className="text-[9px] text-slate-500 uppercase tracking-widest block mb-1 font-bold">Total Output</span>
-                    <span className="text-sky-500 font-mono text-sm font-bold">{stat.total.toFixed(1)} <span className="text-[10px] text-sky-400">m³</span></span>
+                  <div className="border-l-2 border-sky-100 pl-3">
+                    <span className="text-[9px] text-slate-400 uppercase tracking-widest block mb-1 font-black">Total Output</span>
+                    <span className="text-sky-600 font-mono text-lg font-black leading-none block">
+                      {stat.total.toFixed(1)} <span className="text-[10px] text-sky-400 font-bold">m³</span>
+                    </span>
                   </div>
-                  <div className="text-right">
-                    <span className="text-[9px] text-slate-500 uppercase tracking-widest block mb-1 font-bold">Turunan/Lokal</span>
-                    <span className="text-slate-600 font-mono text-xs font-bold">{(stat.turunan + stat.lokal).toFixed(1)} <span className="text-[10px] text-slate-400">m³</span></span>
+                  <div className="text-right pr-1">
+                    <span className="text-[9px] text-slate-400 uppercase tracking-widest block mb-1 font-black">Turunan/Lokal</span>
+                    <span className="text-slate-600 font-mono text-lg font-black leading-none block">
+                      {(stat.turunan + stat.lokal).toFixed(1)} <span className="text-[10px] text-slate-400 font-bold">m³</span>
+                    </span>
                   </div>
                   
                   {isDown && (
-                    <div className="col-span-2 mt-2 pt-3 border-t border-rose-100">
-                      <div className="flex items-start gap-2">
-                        <AlertOctagon className="w-3.5 h-3.5 text-rose-500 shrink-0 mt-0.5" />
-                        <div className="flex flex-wrap gap-1.5">
+                    <div className="col-span-2 mt-1 pt-3 border-t-2 border-rose-50 border-dotted">
+                      <div className="flex items-start gap-2.5">
+                        <AlertOctagon className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                        <div className="flex flex-wrap gap-2">
                           {stat.downtime.map((dt, idx) => (
-                            <span key={idx} className="bg-rose-50 text-rose-600 text-[10px] font-medium px-2 py-0.5 rounded border border-rose-200">
+                            <span key={idx} className="bg-rose-50 text-rose-700 text-[10px] font-black px-2.5 py-1 rounded-lg border border-rose-100 shadow-sm uppercase tracking-tight">
                               {dt}
                             </span>
                           ))}
