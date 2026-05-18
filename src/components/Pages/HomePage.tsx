@@ -30,16 +30,16 @@ export function HomePage({ setActiveTab }: HomePageProps) {
   return (
     <div className="p-5 space-y-6">
       {/* Welcome Card */}
-      <div className="bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-2xl p-5 shadow-emerald-600/20 shadow-lg text-white">
-        <h2 className="text-xl font-black tracking-tight mb-1">Selamat Datang!</h2>
+      <div className="bg-slate-50 rounded-2xl p-4 shadow-sm border border-slate-200 text-slate-900">
+        <h2 className="text-xl font-black tracking-tight">Selamat Datang!</h2>
         
         {/* Daily Quote */}
-        <div className="mt-4 pt-4 border-t border-emerald-400/30">
-          <p className="text-[10px] text-emerald-100 font-bold uppercase tracking-[0.2em] mb-1.5 flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
+        <div className="mt-3 pt-3 border-t border-slate-200">
+          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em] mb-1.5 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
             Motivasi Hari Ini
           </p>
-          <p className="text-xs font-semibold italic text-white/90 leading-relaxed">
+          <p className="text-xs font-bold italic text-slate-800 leading-relaxed">
             "{[
               "Semangat kerja hari ini adalah kunci sukses hari esok.",
               "Setiap batang kayu adalah hasil dari kesabaran dan kerja keras.",
