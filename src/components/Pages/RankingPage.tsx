@@ -51,7 +51,7 @@ export function RankingPage({ data }) {
 
       <div className="space-y-3">
         {rankings.length > 0 && (
-          <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 shadow-sm grid grid-cols-12 gap-2 items-center text-[11px] sm:text-[12px] font-black text-slate-800 uppercase tracking-wider">
+          <div className="sticky top-0 z-20 bg-slate-50/90 backdrop-blur-md border border-slate-200 rounded-xl p-3 shadow-sm grid grid-cols-12 gap-2 items-center text-[11px] sm:text-[12px] font-black text-slate-800 uppercase tracking-wider">
             <div className="col-span-2 text-center">No</div>
             <div className="col-span-3">Mesin</div>
             <div className="col-span-4 text-center">Output</div>

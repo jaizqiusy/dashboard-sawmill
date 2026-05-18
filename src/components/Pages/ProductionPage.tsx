@@ -10,7 +10,18 @@ import { cn } from '../../lib/utils';
 import { normalizeMachineName } from '../../services/dataService';
 
 export function ProductionPage({ todayStats }) {
-  const machines = ['BS 1', 'BS 2', 'BS 3', 'BS 4', 'BS 5', 'BS 6', 'BS 7', 'BS 8'];
+  const machines = ['BS 1', 'BS 2', 'BS 3', 'BS 4', 'BS 5', 'BS 6', 'BS 7', 'BS 8', 'Pony A', 'Pony B', 'Breakdown'];
+
+  const MACHINE_THEMES = [
+    'border-indigo-400',
+    'border-emerald-400',
+    'border-blue-400',
+    'border-amber-400',
+    'border-fuchsia-400',
+    'border-cyan-400',
+    'border-rose-400',
+    'border-teal-400'
+  ];
 
   return (
     <div className="p-5 space-y-6">
@@ -27,9 +38,13 @@ export function ProductionPage({ todayStats }) {
           const stat = todayStats?.stats?.find(s => normalizeMachineName(s.mesin) === mName);
           const isDown = stat?.downtime && stat.downtime.length > 0;
           const hasData = !!stat;
+          const borderColor = MACHINE_THEMES[i % MACHINE_THEMES.length];
 
           return (
-            <div key={i} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden group">
+            <div key={i} className={cn(
+              "bg-white rounded-2xl shadow-sm overflow-hidden group transition-all",
+              hasData ? `border-[3px] ${borderColor}` : "border-2 border-slate-200 opacity-60"
+            )}>
               <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/40">
                 <div className="flex items-center gap-3.5">
                   <div className={cn(
@@ -38,7 +53,7 @@ export function ProductionPage({ todayStats }) {
                     hasData ? "bg-emerald-50 text-emerald-600 border-emerald-200" : 
                     "bg-slate-100 text-slate-400 border-slate-200"
                   )}>
-                    {mName.replace('BS ', 'BS')}
+                    {mName === 'Breakdown' ? 'BD' : mName.replace('BS ', 'BS').replace('Pony ', 'P')}
                   </div>
                   <div>
                     <h3 className="text-slate-900 font-black text-base leading-none mb-1">{mName}</h3>
@@ -65,7 +80,7 @@ export function ProductionPage({ todayStats }) {
                 
                 {hasData && (
                   <div className="text-right flex flex-col items-end">
-                    <span className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-0.5">Yield</span>
+                    <span className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-0.5">Utama</span>
                     <span className={cn(
                       "text-base font-black font-mono px-2 py-0.5 rounded-lg leading-tight",
                       stat.yield >= 0.30 ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
@@ -77,39 +92,51 @@ export function ProductionPage({ todayStats }) {
               </div>
 
               {hasData && (
-                <div className="p-4 grid grid-cols-2 gap-y-5 gap-x-6">
-                  <div className="border-l-2 border-slate-100 pl-3">
-                    <span className="text-[9px] text-slate-400 uppercase tracking-widest block mb-1 font-black">Input Log</span>
-                    <span className="text-slate-800 font-mono text-lg font-black leading-none block">
-                      {stat.input.toFixed(1)} <span className="text-[10px] text-slate-400 font-bold">m³</span>
-                    </span>
-                  </div>
-                  <div className="text-right pr-1">
-                    <span className="text-[9px] text-emerald-600 uppercase tracking-widest block mb-1 font-black underline decoration-emerald-200 underline-offset-4">Output Utama</span>
-                    <span className="text-emerald-700 font-mono font-black text-xl tracking-tighter leading-none block">
-                      {stat.utama.toFixed(1)} <span className="text-[10px] text-emerald-400 font-bold">m³</span>
-                    </span>
-                  </div>
-                  <div className="border-l-2 border-sky-100 pl-3">
-                    <span className="text-[9px] text-slate-400 uppercase tracking-widest block mb-1 font-black">Total Output</span>
-                    <span className="text-sky-600 font-mono text-lg font-black leading-none block">
-                      {stat.total.toFixed(1)} <span className="text-[10px] text-sky-400 font-bold">m³</span>
-                    </span>
-                  </div>
-                  <div className="text-right pr-1">
-                    <span className="text-[9px] text-slate-400 uppercase tracking-widest block mb-1 font-black">Turunan/Lokal</span>
-                    <span className="text-slate-600 font-mono text-lg font-black leading-none block">
-                      {(stat.turunan + stat.lokal).toFixed(1)} <span className="text-[10px] text-slate-400 font-bold">m³</span>
-                    </span>
+                <div className="p-3 bg-slate-50 border-t border-slate-100">
+                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
+                    <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-200">
+                      <span className="text-[9px] text-slate-500 uppercase tracking-widest block mb-1 font-black">Input Log</span>
+                      <span className="text-slate-800 font-mono text-lg font-black leading-none block">
+                        {stat.input.toFixed(1)} <span className="text-[10px] text-slate-400 font-bold">m³</span>
+                      </span>
+                    </div>
+                    
+                    <div className="bg-emerald-50 p-3 rounded-xl shadow-sm border border-emerald-200">
+                      <span className="text-[9px] text-emerald-600 uppercase tracking-widest block mb-1 font-black">Output Utama</span>
+                      <span className="text-emerald-700 font-mono text-xl font-black leading-none block tracking-tighter">
+                        {stat.utama.toFixed(1)} <span className="text-[10px] text-emerald-500 font-bold">m³</span>
+                      </span>
+                    </div>
+
+                    <div className="bg-sky-50 p-3 rounded-xl shadow-sm border border-sky-200">
+                      <span className="text-[9px] text-sky-600 uppercase tracking-widest block mb-1 font-black">Total Output</span>
+                      <span className="text-sky-700 font-mono text-xl font-black leading-none block tracking-tighter">
+                        {stat.total.toFixed(1)} <span className="text-[10px] text-sky-500 font-bold">m³</span>
+                      </span>
+                    </div>
+
+                    <div className="bg-amber-50 p-3 rounded-xl shadow-sm border border-amber-200">
+                      <span className="text-[9px] text-amber-600 uppercase tracking-widest block mb-1 font-black">Turunan</span>
+                      <span className="text-amber-700 font-mono text-lg font-black leading-none block">
+                        {stat.turunan.toFixed(1)} <span className="text-[10px] text-amber-500 font-bold">m³</span>
+                      </span>
+                    </div>
+
+                    <div className="bg-indigo-50 p-3 rounded-xl shadow-sm border border-indigo-200">
+                      <span className="text-[9px] text-indigo-600 uppercase tracking-widest block mb-1 font-black">Lokal</span>
+                      <span className="text-indigo-700 font-mono text-lg font-black leading-none block">
+                        {stat.lokal.toFixed(1)} <span className="text-[10px] text-indigo-500 font-bold">m³</span>
+                      </span>
+                    </div>
                   </div>
                   
                   {isDown && (
-                    <div className="col-span-2 mt-1 pt-3 border-t-2 border-rose-50 border-dotted">
+                    <div className="mt-3 pt-3 border-t-2 border-rose-100 border-dashed">
                       <div className="flex items-start gap-2.5">
                         <AlertOctagon className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
                         <div className="flex flex-wrap gap-2">
                           {stat.downtime.map((dt, idx) => (
-                            <span key={idx} className="bg-rose-50 text-rose-700 text-[10px] font-black px-2.5 py-1 rounded-lg border border-rose-100 shadow-sm uppercase tracking-tight">
+                            <span key={idx} className="bg-rose-50 text-rose-700 text-[13px] sm:text-sm font-black px-3.5 py-1.5 rounded-lg border border-rose-100 shadow-sm uppercase tracking-tight">
                               {dt}
                             </span>
                           ))}

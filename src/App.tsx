@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { MobileLayout } from './components/MobileLayout';
+import { HomePage } from './components/Pages/HomePage';
 import { OverviewPage } from './components/Pages/OverviewPage';
 import { AnalyticsPage } from './components/Pages/AnalyticsPage';
 import { RankingPage } from './components/Pages/RankingPage';
@@ -17,10 +18,33 @@ import {
 import { ProductionData, SupplierData } from './types';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('Overview');
+  const [activeTab, setActiveTab] = useState('Home');
   const [data, setData] = useState<ProductionData[]>([]);
   const [supplierData, setSupplierData] = useState<SupplierData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Handle back button natively
+  useEffect(() => {
+    window.history.replaceState({ page: 'Home' }, '', '/');
+
+    const handlePopState = (event: PopStateEvent) => {
+      if (event.state && event.state.page) {
+        setActiveTab(event.state.page);
+      } else {
+        setActiveTab('Home');
+      }
+    };
+    
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const handleTabChange = (tab: string) => {
+    if (tab !== activeTab) {
+      window.history.pushState({ page: tab }, '', `/${tab}`);
+      setActiveTab(tab);
+    }
+  };
 
   useEffect(() => {
     Promise.all([
@@ -103,7 +127,8 @@ export default function App() {
   }
 
   return (
-    <MobileLayout activeTab={activeTab} setActiveTab={setActiveTab} title={activeTab}>
+    <MobileLayout activeTab={activeTab} setActiveTab={handleTabChange} title={activeTab}>
+      {activeTab === 'Home' && <HomePage setActiveTab={handleTabChange} />}
       {activeTab === 'Overview' && <OverviewPage stats={stats} todayStats={todayStats} monthPerformance={monthPerformance} />}
       {activeTab === 'Analytics' && <AnalyticsPage data={data} />}
       {activeTab === 'Ranking' && <RankingPage data={data} />}

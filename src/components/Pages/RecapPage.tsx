@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
-  PieChart, Pie, Cell
+  PieChart, Pie, Cell, ComposedChart, Line
 } from 'recharts';
 import { 
   Trees, 
@@ -9,7 +9,9 @@ import {
   TrendingUp, 
   Globe, 
   Search,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Activity,
+  Trophy
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -23,23 +25,27 @@ export function RecapPage({ data, supplierData }) {
   const supplierKPI = useMemo(() => {
     let totalInput = 0;
     let totalOutput = 0;
+    let totalUtama = 0;
     let totalExport = 0;
     let totalLokal = 0;
 
     supplierData.forEach(row => {
       totalInput += row.input;
       totalOutput += row.total;
+      totalUtama += row.utama;
       totalExport += row.export;
       totalLokal += row.totalLokal;
     });
 
     const avgYield = totalInput > 0 ? ((totalOutput / totalInput) * 100).toFixed(2) : 0;
+    const rendemenUtama = totalInput > 0 ? ((totalUtama / totalInput) * 100).toFixed(2) : 0;
     const exportRatio = totalOutput > 0 ? ((totalExport / totalOutput) * 100).toFixed(1) : 0;
 
     return {
       totalInput: totalInput.toFixed(2),
       totalOutput: totalOutput.toFixed(2),
       avgYield,
+      rendemenUtama,
       exportRatio,
       pieData: [
         { name: 'Export', value: Number(totalExport.toFixed(2)) },
@@ -49,10 +55,20 @@ export function RecapPage({ data, supplierData }) {
     };
   }, [supplierData]);
 
-  const filteredSupplierData = supplierData.filter(item => 
-    item.supplier.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    item.kode.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredSupplierData = useMemo(() => {
+    return supplierData
+      .filter(item => 
+        item.supplier.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        item.kode.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+      .sort((a, b) => b.yieldTotal - a.yieldTotal);
+  }, [supplierData, searchTerm]);
+
+  const topSuppliers = useMemo(() => {
+    return [...supplierData]
+      .sort((a, b) => b.yieldTotal - a.yieldTotal)
+      .slice(0, 5);
+  }, [supplierData]);
 
   return (
     <div className="p-4 bg-slate-50 min-h-screen font-sans text-slate-800 pb-20">
@@ -71,8 +87,8 @@ export function RecapPage({ data, supplierData }) {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         <KpiCard title="Total Input Log" value={supplierKPI.totalInput} icon={<Trees size={20} className="text-emerald-600" />} color="bg-emerald-50" />
         <KpiCard title="Total Output" value={supplierKPI.totalOutput} icon={<Package size={20} className="text-blue-600" />} color="bg-blue-50" />
-        <KpiCard title="Rata-rata Yield" value={`${supplierKPI.avgYield}%`} icon={<TrendingUp size={20} className="text-amber-600" />} color="bg-amber-50" />
-        <KpiCard title="Porsi Ekspor" value={`${supplierKPI.exportRatio}%`} icon={<Globe size={20} className="text-indigo-600" />} color="bg-indigo-50" />
+        <KpiCard title="Rendemen Utama" value={`${supplierKPI.rendemenUtama}%`} icon={<Activity size={20} className="text-amber-600" />} color="bg-amber-50" />
+        <KpiCard title="Rendemen Total" value={`${supplierKPI.avgYield}%`} icon={<TrendingUp size={20} className="text-indigo-600" />} color="bg-indigo-50" />
       </div>
 
       {/* Charts Section Supplier */}
@@ -97,19 +113,22 @@ export function RecapPage({ data, supplierData }) {
         </div>
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
           <h2 className="text-sm font-black uppercase tracking-wider mb-4 text-slate-700 flex items-center gap-2">
-            <Package size={16} /> Distribusi Produk Supplier
+            <Trophy size={16} className="text-amber-500" /> Top 5 Supplier (Rendemen Tertinggi)
           </h2>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={supplierKPI.pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
-                  {PIE_COLORS.map((color, index) => (
-                    <Cell key={`cell-${index}`} fill={color} />
-                  ))}
-                </Pie>
-                <RechartsTooltip formatter={(value) => `${value} M³`} contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '11px'}} />
-                <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{fontSize: '10px'}}/>
-              </PieChart>
+              <ComposedChart data={topSuppliers} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="kode" tick={{fontSize: 10, fill: '#64748b', fontWeight: 600}} axisLine={{stroke: '#f1f5f9'}} tickLine={false} />
+                <YAxis yAxisId="left" tick={{fontSize: 10, fill: '#64748b'}} axisLine={false} tickLine={false} width={30} />
+                <YAxis yAxisId="right" orientation="right" tick={{fontSize: 10, fill: '#64748b'}} axisLine={false} tickLine={false} tickFormatter={(val) => `${val}%`} width={40} />
+                <RechartsTooltip cursor={{fill: '#f8fafc'}} contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '11px'}} />
+                <Legend iconType="circle" wrapperStyle={{paddingTop: '10px', fontSize: '10px'}}/>
+                <Bar yAxisId="left" dataKey="input" name="Input Log" fill="#10b981" radius={[4, 4, 0, 0]} />
+                <Bar yAxisId="left" dataKey="total" name="Total Output" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                <Line yAxisId="right" type="monotone" dataKey="yieldUtama" name="R. Utama" stroke="#f59e0b" strokeWidth={2} dot={{ r: 4 }} />
+                <Line yAxisId="right" type="monotone" dataKey="yieldTotal" name="R. Total" stroke="#6366f1" strokeWidth={2} dot={{ r: 4 }} />
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
         </div>
@@ -123,28 +142,30 @@ export function RecapPage({ data, supplierData }) {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-[11px]">
-            <thead>
-              <tr className="bg-slate-50/50 text-slate-500 uppercase tracking-widest font-black border-b border-slate-100">
+            <thead className="sticky top-0 z-20 shadow-[0_1px_2px_rgba(0,0,0,0.05)] bg-slate-50">
+              <tr className="text-slate-500 uppercase tracking-widest font-black border-b border-slate-100">
                 <th className="p-3">Kode</th>
                 <th className="p-3">Supplier</th>
                 <th className="p-3 text-right">Input</th>
-                <th className="p-3 text-right">Total</th>
-                <th className="p-3 text-center">Yield</th>
+                <th className="p-3 text-right">Rendemen Utama</th>
+                <th className="p-3 text-right">Total Output</th>
+                <th className="p-3 text-center">Rendemen Total</th>
               </tr>
             </thead>
             <tbody>
               {filteredSupplierData.map((row, index) => (
                 <tr key={index} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
                   <td className="p-3 font-bold text-slate-900">{row.kode}</td>
-                  <td className="p-3 text-slate-600 truncate max-w-[150px]">{row.supplier}</td>
+                  <td className="p-3 text-slate-600 truncate max-w-[150px]" title={row.supplier}>{row.supplier}</td>
                   <td className="p-3 text-right font-mono">{row.input.toFixed(2)}</td>
+                  <td className="p-3 text-right font-mono font-bold text-amber-600">{row.yieldUtama.toFixed(2)}%</td>
                   <td className="p-3 text-right font-mono font-bold text-emerald-600">{row.total.toFixed(2)}</td>
                   <td className="p-3 text-center">
                     <span className={cn(
                       "px-2 py-0.5 rounded-lg text-[10px] font-black",
-                      row.yieldTotal > 60 ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+                      row.yieldTotal > 60 ? "bg-indigo-100 text-indigo-700" : "bg-slate-100 text-slate-600"
                     )}>
-                      {row.yieldTotal.toFixed(1)}%
+                      {row.yieldTotal.toFixed(2)}%
                     </span>
                   </td>
                 </tr>

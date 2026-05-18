@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AlertTriangle, Clock } from 'lucide-react';
-import { getAvailablePeriods } from '../../services/dataService';
+import { getAvailablePeriods, normalizeMachineName } from '../../services/dataService';
 import { cn } from '../../lib/utils';
 
 export function DowntimePage({ data }) {
@@ -20,11 +20,12 @@ export function DowntimePage({ data }) {
 
   const grouped = {};
   filtered.forEach(d => {
-    if (!grouped[d.mesin]) grouped[d.mesin] = [];
-    grouped[d.mesin].push(d);
+    const normalizedMesin = normalizeMachineName(d.mesin);
+    if (!grouped[normalizedMesin]) grouped[normalizedMesin] = [];
+    grouped[normalizedMesin].push(d);
   });
 
-  const machines = ['BS 1', 'BS 2', 'BS 3', 'BS 4', 'BS 5', 'BS 6', 'BS 7', 'BS 8'];
+  const machines = ['BS 1', 'BS 2', 'BS 3', 'BS 4', 'BS 5', 'BS 6', 'BS 7', 'BS 8', 'Pony A', 'Pony B', 'Breakdown'];
 
   return (
     <div className="p-5 space-y-6">
@@ -56,9 +57,18 @@ export function DowntimePage({ data }) {
 
       <div className="space-y-4">
         {machines.map(mName => {
-          const mKey = Object.keys(grouped).find(k => k.replace(/\s+/g,'').toLowerCase() === mName.replace(/\s+/g,'').toLowerCase());
-          const rows = mKey ? grouped[mKey] : [];
-          if (rows.length === 0) return null;
+          const rows = grouped[mName] || [];
+          
+          if (rows.length === 0) {
+            return (
+              <div key={mName} className="bg-slate-50/50 rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex items-center justify-between p-4 opacity-70">
+                <h3 className="text-slate-600 font-bold ml-1">{mName}</h3>
+                <span className="px-2 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-black uppercase tracking-wider rounded border border-slate-200">
+                  0 Events
+                </span>
+              </div>
+            );
+          }
 
           return (
             <div key={mName} className="bg-white rounded-2xl border border-rose-100 shadow-sm overflow-hidden relative">
@@ -99,12 +109,6 @@ export function DowntimePage({ data }) {
             </div>
           );
         })}
-
-        {Object.keys(grouped).length === 0 && (
-          <div className="text-center text-slate-500 py-10 text-sm">
-            Tidak ada laporan downtime.
-          </div>
-        )}
       </div>
     </div>
   );

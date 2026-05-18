@@ -141,10 +141,10 @@ export function normalizeMachineName(mesin: string): string {
     const numMatch = mesin.match(/\d+/);
     const num = numMatch ? parseInt(numMatch[0]) : 0;
     if (num >= 1 && num <= 8) return `BS ${num}`;
-  } else if (lowerMesin.startsWith('poni a')) {
-    return 'Poni A';
-  } else if (lowerMesin.startsWith('poni b')) {
-    return 'Poni B';
+  } else if (lowerMesin.startsWith('poni a') || lowerMesin.startsWith('pony a')) {
+    return 'Pony A';
+  } else if (lowerMesin.startsWith('poni b') || lowerMesin.startsWith('pony b')) {
+    return 'Pony B';
   } else if (lowerMesin === 'breakdown') {
     return 'Breakdown';
   }
@@ -275,7 +275,9 @@ export function getTodayMachineStats(data: ProductionData[]): { date: string, st
   const validData = data.filter(d => {
     if (!d.mesin || d.input <= 0) return false;
     const lowerMesin = normalizeMachineName(d.mesin).toLowerCase().trim();
-    return lowerMesin.replace(/\s+/g, '').match(/^bs[1-8]$/);
+    return lowerMesin.replace(/\s+/g, '').match(/^bs[1-8]$/) || 
+           lowerMesin === 'pony a' || lowerMesin === 'pony b' || lowerMesin === 'breakdown' ||
+           lowerMesin === 'poni a' || lowerMesin === 'poni b';
   });
   if (validData.length === 0) return { date: '', stats: [] };
   
@@ -283,11 +285,11 @@ export function getTodayMachineStats(data: ProductionData[]): { date: string, st
   const todayData = validData.filter(d => d.tanggal === latestDate);
   
   const statsMap = new Map<string, any>();
-  const ALL_MACHINES = ['BS 1', 'BS 2', 'BS 3', 'BS 4', 'BS 5', 'BS 6', 'BS 7', 'BS 8'];
+  const ALL_MACHINES = ['BS 1', 'BS 2', 'BS 3', 'BS 4', 'BS 5', 'BS 6', 'BS 7', 'BS 8', 'Pony A', 'Pony B', 'Breakdown'];
   ALL_MACHINES.forEach(machine => {
     statsMap.set(machine, {
       mesin: machine,
-      line: `Line ${machine.replace('BS ', '')}`,
+      line: machine.startsWith('BS') ? `Line ${machine.replace('BS ', '')}` : machine,
       input: 0,
       utama: 0,
       turunan: 0,
@@ -342,8 +344,8 @@ export function getTodayMachineStats(data: ProductionData[]): { date: string, st
       if (m.startsWith('BS')) {
         return parseInt(m.replace(/\D/g, '')) || 0;
       }
-      if (m === 'Poni A') return 100;
-      if (m === 'Poni B') return 101;
+      if (m === 'Pony A' || m === 'Poni A') return 100;
+      if (m === 'Pony B' || m === 'Poni B') return 101;
       if (m === 'Breakdown') return 102;
       return 200;
     };

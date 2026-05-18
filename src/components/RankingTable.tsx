@@ -32,7 +32,7 @@ export function RankingTable({ data, periodLabel }: RankingTableProps) {
       <div className="overflow-x-auto">
         {/* Desktop Table */}
         <table className="hidden md:table w-full text-left border-collapse">
-          <thead>
+          <thead className="sticky top-0 z-20 shadow-sm">
             <tr className="bg-white border-b border-slate-200">
               <th className="p-4 text-sm font-bold text-slate-500 uppercase w-16 text-center">#</th>
               <th className="p-4 text-sm font-bold text-slate-500 uppercase">Mesin</th>
