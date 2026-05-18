@@ -59,7 +59,7 @@ export function MobileLayout({ children, activeTab, setActiveTab, title }: Mobil
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 overflow-y-auto overflow-x-hidden relative z-10 pb-6 custom-scrollbar">
+      <main className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain relative z-10 pb-6 custom-scrollbar [-webkit-overflow-scrolling:touch] will-change-scroll transform-gpu">
         {children}
       </main>
     </div>
