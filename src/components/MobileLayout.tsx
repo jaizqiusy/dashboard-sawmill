@@ -1,6 +1,7 @@
 import React from 'react';
 import { 
-  ArrowLeft
+  ArrowLeft,
+  Sparkles
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -31,17 +32,28 @@ export function MobileLayout({ children, activeTab, setActiveTab, title }: Mobil
             </button>
           )}
           <div className="flex flex-col">
-            <h1 className="text-lg font-black tracking-tight text-white flex items-center gap-1.5">
-              SAWMILL <span className="text-blue-500 italic">PERFORMANCE DASHBOARD</span>
+            <h1 className="text-lg font-black tracking-tight text-white flex items-center gap-1.5 leading-none">
+              SAWMILL <span className="text-blue-500 italic text-[14px]">PERFORMANCE</span>
             </h1>
-            <p className="text-[10px] text-slate-400 font-medium tracking-wide mt-1">
-              {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            <p className="text-[9px] text-slate-500 font-bold tracking-widest mt-1 uppercase">
+              {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
             </p>
           </div>
         </div>
-        <div className="flex items-center">
-          <button className="p-1 text-slate-300 hover:text-white transition-colors">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+        
+        {/* Floating AI Report Button - Absolute position as requested */}
+        <div className="absolute right-4 top-1/2 -translate-y-1/2">
+          <button 
+            onClick={() => setActiveTab('AI')}
+            className={cn(
+              "flex items-center gap-2 px-3 py-2 rounded-xl transition-all active:scale-95 shadow-lg",
+              activeTab === 'AI' 
+                ? "bg-white text-indigo-600 shadow-white/10" 
+                : "bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-indigo-500/20 border border-indigo-400/30"
+            )}
+          >
+            <Sparkles className={cn("w-3.5 h-3.5", activeTab === 'AI' ? "animate-pulse" : "")} />
+            <span className="text-[9px] font-black uppercase tracking-wider">Laporan AI</span>
           </button>
         </div>
       </header>

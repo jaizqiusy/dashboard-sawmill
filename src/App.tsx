@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { MobileLayout } from './components/MobileLayout';
 import { HomePage } from './components/Pages/HomePage';
+import { AIPage } from './components/Pages/AIPage';
 import { OverviewPage } from './components/Pages/OverviewPage';
 import { AnalyticsPage } from './components/Pages/AnalyticsPage';
 import { RankingPage } from './components/Pages/RankingPage';
@@ -136,6 +137,7 @@ export default function App() {
       {activeTab === 'Recap' && <RecapPage data={data} supplierData={supplierData} />}
       {activeTab === 'Downtime' && <DowntimePage data={data} />}
       {activeTab === 'History' && <HistoryPage data={data} />}
+      {activeTab === 'AI' && <AIPage data={data} />}
     </MobileLayout>
   );
 }

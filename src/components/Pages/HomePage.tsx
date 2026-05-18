@@ -6,7 +6,8 @@ import {
   Factory, 
   FileText,
   AlertTriangle, 
-  History 
+  History,
+  Sparkles
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -22,15 +23,37 @@ export function HomePage({ setActiveTab }: HomePageProps) {
     { id: 'Production', icon: Factory, label: 'Live Prod', color: 'text-emerald-600', bg: 'bg-emerald-100', border: 'border-emerald-200' },
     { id: 'Recap', icon: FileText, label: 'Rekap Data', color: 'text-blue-600', bg: 'bg-blue-100', border: 'border-blue-200' },
     { id: 'Downtime', icon: AlertTriangle, label: 'Downtime', color: 'text-rose-600', bg: 'bg-rose-100', border: 'border-rose-200' },
+    { id: 'AI', icon: Sparkles, label: 'Laporan AI', color: 'text-fuchsia-600', bg: 'bg-fuchsia-100', border: 'border-fuchsia-200' },
     { id: 'History', icon: History, label: 'History', color: 'text-slate-600', bg: 'bg-slate-100', border: 'border-slate-200' },
   ];
 
   return (
     <div className="p-5 space-y-6">
       {/* Welcome Card */}
-      <div className="bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/20 shadow-lg text-white">
+      <div className="bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-2xl p-5 shadow-emerald-600/20 shadow-lg text-white">
         <h2 className="text-xl font-black tracking-tight mb-1">Selamat Datang!</h2>
-        <p className="text-sm text-blue-100 font-medium">Pilih menu di bawah untuk melihat detail data.</p>
+        
+        {/* Daily Quote */}
+        <div className="mt-4 pt-4 border-t border-emerald-400/30">
+          <p className="text-[10px] text-emerald-100 font-bold uppercase tracking-[0.2em] mb-1.5 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
+            Motivasi Hari Ini
+          </p>
+          <p className="text-xs font-semibold italic text-white/90 leading-relaxed">
+            "{[
+              "Semangat kerja hari ini adalah kunci sukses hari esok.",
+              "Setiap batang kayu adalah hasil dari kesabaran dan kerja keras.",
+              "Kualitas adalah prioritas utama kita.",
+              "Kerja cerdas, kerja tuntas, kerja ikhlas.",
+              "Keselamatan kerja adalah tanggung jawab kita bersama.",
+              "Berikan yang terbaik di setiap shift, hasil tidak akan mengkhianati usaha.",
+              "Tetap fokus, tetap produktif, tetap semangat!",
+              "Kedisiplinan adalah jembatan antara cita-cita dan pencapaian.",
+              "Jangan pernah berhenti belajar, karena hidup tidak pernah berhenti mengajar.",
+              "Kebersamaan adalah awal dari kesuksesan yang luar biasa."
+            ][new Date().getDate() % 10]}"
+          </p>
+        </div>
       </div>
 
       {/* Main Menu Grid */}
