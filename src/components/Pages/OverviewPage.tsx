@@ -63,12 +63,12 @@ export function OverviewPage({ stats, todayStats, monthPerformance }) {
         </div>
         <div className="flex gap-4">
           <div className="flex-1 flex flex-col items-center">
-            <div className="w-full h-[120px] relative">
+            <div className="w-full h-[150px] relative">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={[{ value: stats.avgYield * 100 }, { value: Math.max(0, 100 - (stats.avgYield * 100)) }]}
-                    cx="50%" cy="100%" startAngle={180} endAngle={0} innerRadius={45} outerRadius={60} stroke="none" paddingAngle={2}
+                    cx="50%" cy="100%" startAngle={180} endAngle={0} innerRadius={60} outerRadius={80} stroke="none" paddingAngle={2}
                   >
                     <Cell fill="#38bdf8" />
                     <Cell fill="#f1f5f9" />
@@ -76,20 +76,20 @@ export function OverviewPage({ stats, todayStats, monthPerformance }) {
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center">
-                <span className="text-xl font-bold text-slate-800">{(stats.avgYield * 100).toFixed(1)}%</span>
-                <span className="text-[9px] text-sky-500 font-black uppercase tracking-widest mt-0.5">Utama</span>
-                <span className="text-[8px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">TGT 30%</span>
+                <span className="text-3xl font-black text-slate-800 tracking-tighter">{(stats.avgYield * 100).toFixed(1)}%</span>
+                <span className="text-[11px] text-sky-500 font-black uppercase tracking-widest mt-1">Utama</span>
+                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">TGT 30%</span>
               </div>
             </div>
           </div>
           <div className="w-px bg-slate-100 shrink-0" />
           <div className="flex-1 flex flex-col items-center">
-            <div className="w-full h-[120px] relative">
+            <div className="w-full h-[150px] relative">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={[{ value: stats.totalInput > 0 ? (stats.totalAllOutput / stats.totalInput) * 100 : 0 }, { value: Math.max(0, 100 - (stats.totalInput > 0 ? (stats.totalAllOutput / stats.totalInput) * 100 : 0)) }]}
-                    cx="50%" cy="100%" startAngle={180} endAngle={0} innerRadius={45} outerRadius={60} stroke="none" paddingAngle={2}
+                    cx="50%" cy="100%" startAngle={180} endAngle={0} innerRadius={60} outerRadius={80} stroke="none" paddingAngle={2}
                   >
                     <Cell fill="#10b981" />
                     <Cell fill="#f1f5f9" />
@@ -97,9 +97,9 @@ export function OverviewPage({ stats, todayStats, monthPerformance }) {
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center">
-                <span className="text-xl font-bold text-slate-800">{stats.totalInput > 0 ? ((stats.totalAllOutput / stats.totalInput) * 100).toFixed(1) : '0'}%</span>
-                <span className="text-[9px] text-emerald-500 font-black uppercase tracking-widest mt-0.5">Total</span>
-                <span className="text-[8px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">TGT 65%</span>
+                <span className="text-3xl font-black text-slate-800 tracking-tighter">{stats.totalInput > 0 ? ((stats.totalAllOutput / stats.totalInput) * 100).toFixed(1) : '0'}%</span>
+                <span className="text-[11px] text-emerald-500 font-black uppercase tracking-widest mt-1">Total</span>
+                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">TGT 65%</span>
               </div>
             </div>
           </div>
@@ -121,54 +121,56 @@ export function OverviewPage({ stats, todayStats, monthPerformance }) {
           <div className="space-y-5">
             {/* Totals Section */}
             <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Total Volume Produksi (m³)</p>
-              <div className="grid grid-cols-6 gap-2">
-                <div className="col-span-3 bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col">
-                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Input</span>
-                  <span className="text-sm font-black text-slate-800 mt-0.5">{monthPerformance.totals.input.toLocaleString('id-ID', { maximumFractionDigits: 3 })}</span>
+              <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Total Volume Produksi (m³)</h4>
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col shadow-sm">
+                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1">Input</span>
+                  <span className="text-xl font-black text-slate-800">{monthPerformance.totals.input.toLocaleString('id-ID', { maximumFractionDigits: 3 })}</span>
                 </div>
-                <div className="col-span-3 bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col">
-                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Total Output</span>
-                  <span className="text-sm font-black text-emerald-600 mt-0.5">{monthPerformance.totals.total.toLocaleString('id-ID', { maximumFractionDigits: 3 })}</span>
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col shadow-sm">
+                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1">Total Output</span>
+                  <span className="text-xl font-black text-emerald-600">{monthPerformance.totals.total.toLocaleString('id-ID', { maximumFractionDigits: 3 })}</span>
                 </div>
-                <div className="col-span-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col">
-                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Utama</span>
-                  <span className="text-sm font-black text-sky-600 mt-0.5">{monthPerformance.totals.utama.toLocaleString('id-ID', { maximumFractionDigits: 3 })}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex flex-col shadow-sm">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Utama</span>
+                  <span className="text-lg font-black text-sky-600">{monthPerformance.totals.utama.toLocaleString('id-ID', { maximumFractionDigits: 3 })}</span>
                 </div>
-                <div className="col-span-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col">
-                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Turunan</span>
-                  <span className="text-sm font-black text-orange-600 mt-0.5">{monthPerformance.totals.turunan.toLocaleString('id-ID', { maximumFractionDigits: 3 })}</span>
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex flex-col shadow-sm">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Turunan</span>
+                  <span className="text-lg font-black text-orange-600">{monthPerformance.totals.turunan.toLocaleString('id-ID', { maximumFractionDigits: 3 })}</span>
                 </div>
-                <div className="col-span-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col">
-                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Lokal</span>
-                  <span className="text-sm font-black text-amber-600 mt-0.5">{monthPerformance.totals.lokal.toLocaleString('id-ID', { maximumFractionDigits: 3 })}</span>
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex flex-col shadow-sm">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Lokal</span>
+                  <span className="text-lg font-black text-amber-600">{monthPerformance.totals.lokal.toLocaleString('id-ID', { maximumFractionDigits: 3 })}</span>
                 </div>
               </div>
             </div>
 
             {/* Averages Section */}
             <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Rata-Rata Harian (m³)</p>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="bg-slate-50 p-2 rounded-lg border border-slate-100 flex flex-col items-center text-center">
-                  <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Input</span>
-                  <span className="text-xs font-black text-slate-800 mt-0.5">{monthPerformance.averages.input.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</span>
+              <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Rata-Rata Harian (m³)</h4>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex flex-col items-center text-center shadow-sm">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Input</span>
+                  <span className="text-lg font-black text-slate-800">{monthPerformance.averages.input.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</span>
                 </div>
-                <div className="bg-slate-50 p-2 rounded-lg border border-slate-100 flex flex-col items-center text-center">
-                  <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Utama</span>
-                  <span className="text-xs font-black text-sky-600 mt-0.5">{monthPerformance.averages.utama.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</span>
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex flex-col items-center text-center shadow-sm">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Utama</span>
+                  <span className="text-lg font-black text-sky-600">{monthPerformance.averages.utama.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</span>
                 </div>
-                <div className="bg-slate-50 p-2 rounded-lg border border-slate-100 flex flex-col items-center text-center">
-                  <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Output</span>
-                  <span className="text-xs font-black text-emerald-600 mt-0.5">{monthPerformance.averages.total.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</span>
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex flex-col items-center text-center shadow-sm">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Output</span>
+                  <span className="text-lg font-black text-emerald-600">{monthPerformance.averages.total.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</span>
                 </div>
-                <div className="bg-slate-50 p-2 rounded-lg border border-slate-100 flex flex-col items-center text-center">
-                  <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Turunan</span>
-                  <span className="text-xs font-black text-orange-600 mt-0.5">{monthPerformance.averages.turunan.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</span>
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex flex-col items-center text-center shadow-sm">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Turunan</span>
+                  <span className="text-lg font-black text-orange-600">{monthPerformance.averages.turunan.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</span>
                 </div>
-                <div className="bg-slate-50 p-2 rounded-lg border border-slate-100 flex flex-col items-center text-center">
-                  <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Lokal</span>
-                  <span className="text-xs font-black text-amber-600 mt-0.5">{monthPerformance.averages.lokal.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</span>
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex flex-col items-center text-center shadow-sm">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Lokal</span>
+                  <span className="text-lg font-black text-amber-600">{monthPerformance.averages.lokal.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</span>
                 </div>
               </div>
             </div>
