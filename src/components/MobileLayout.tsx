@@ -13,15 +13,20 @@ interface MobileLayoutProps {
 }
 
 export function MobileLayout({ children, activeTab, setActiveTab, title }: MobileLayoutProps) {
+  const isHome = activeTab === 'Home';
+  
   return (
-    <div className="min-h-[100dvh] max-h-[100dvh] flex flex-col bg-[#6970f0] text-slate-800 font-sans relative overflow-hidden">
+    <div className={cn(
+      "min-h-[100dvh] max-h-[100dvh] flex flex-col text-slate-800 font-sans relative overflow-hidden transition-colors duration-300",
+      isHome ? "bg-gradient-to-br from-indigo-900 via-purple-900 to-slate-900" : "bg-[#6970f0]"
+    )}>
       {/* Background Gradients (Softer for light theme) */}
       <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] rounded-full bg-white/10 blur-[80px] pointer-events-none" />
       <div className="absolute top-[20%] right-[-20%] w-[60vw] h-[60vw] rounded-full bg-white/5 blur-[80px] pointer-events-none" />
       <div className="absolute bottom-[-10%] left-[20%] w-[80vw] h-[80vw] rounded-full bg-white/10 blur-[100px] pointer-events-none" />
 
       {/* Top Header */}
-      <header className="px-5 py-5 relative z-10 flex items-center justify-between bg-[#202020] border-b border-[#202020]">
+      <header className="px-5 py-5 relative z-20 flex items-center justify-between bg-[#202020] border-b border-[#202020]">
         <div className="flex items-center gap-3">
           {activeTab !== 'Home' && (
             <button 
@@ -35,8 +40,8 @@ export function MobileLayout({ children, activeTab, setActiveTab, title }: Mobil
             <h1 className="text-lg font-black tracking-tight text-white flex items-center gap-1.5 leading-none">
               SAWMILL <span className="text-blue-500 italic text-[14px]">PERFORMANCE</span>
             </h1>
-            <p className="text-[9px] text-slate-500 font-bold tracking-widest mt-1 uppercase">
-              {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+            <p className="text-[9px] text-white font-bold tracking-widest mt-1 uppercase">
+              {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })}
             </p>
           </div>
         </div>
