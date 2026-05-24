@@ -18,7 +18,7 @@ export function MobileLayout({ children, activeTab, setActiveTab, title }: Mobil
   return (
     <div className={cn(
       "min-h-[100dvh] max-h-[100dvh] flex flex-col text-slate-800 font-sans relative overflow-hidden transition-colors duration-300",
-      isHome ? "bg-gradient-to-br from-indigo-900 via-purple-900 to-slate-900" : "bg-[#6970f0]"
+      isHome ? "bg-gradient-to-br from-emerald-600 via-purple-600 to-indigo-900" : "bg-[#6970f0]"
     )}>
       {/* Background Gradients (Softer for light theme) */}
       <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] rounded-full bg-white/10 blur-[80px] pointer-events-none" />

@@ -1,15 +1,5 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, Suspense, lazy } from 'react';
 import { MobileLayout } from './components/MobileLayout';
-import { HomePage } from './components/Pages/HomePage';
-import { PlanPage } from './components/Pages/PlanPage';
-import { AIPage } from './components/Pages/AIPage';
-import { OverviewPage } from './components/Pages/OverviewPage';
-import { AnalyticsPage } from './components/Pages/AnalyticsPage';
-import { RankingPage } from './components/Pages/RankingPage';
-import { ProductionPage } from './components/Pages/ProductionPage';
-import { RecapPage } from './components/Pages/RecapPage';
-import { DowntimePage } from './components/Pages/DowntimePage';
-import { HistoryPage } from './components/Pages/HistoryPage';
 import { 
   fetchProductionData, 
   fetchSupplierData,
@@ -19,6 +9,18 @@ import {
   normalizeMachineName
 } from './services/dataService';
 import { MonthlyLogData, ProductionData, SupplierData } from './types';
+
+// Lazy loading pages for a lightweight initial load
+const HomePage = lazy(() => import('./components/Pages/HomePage').then(module => ({ default: module.HomePage })));
+const PlanPage = lazy(() => import('./components/Pages/PlanPage').then(module => ({ default: module.PlanPage })));
+const AIPage = lazy(() => import('./components/Pages/AIPage').then(module => ({ default: module.AIPage })));
+const OverviewPage = lazy(() => import('./components/Pages/OverviewPage').then(module => ({ default: module.OverviewPage })));
+const AnalyticsPage = lazy(() => import('./components/Pages/AnalyticsPage').then(module => ({ default: module.AnalyticsPage })));
+const RankingPage = lazy(() => import('./components/Pages/RankingPage').then(module => ({ default: module.RankingPage })));
+const ProductionPage = lazy(() => import('./components/Pages/ProductionPage').then(module => ({ default: module.ProductionPage })));
+const RecapPage = lazy(() => import('./components/Pages/RecapPage').then(module => ({ default: module.RecapPage })));
+const DowntimePage = lazy(() => import('./components/Pages/DowntimePage').then(module => ({ default: module.DowntimePage })));
+const HistoryPage = lazy(() => import('./components/Pages/HistoryPage').then(module => ({ default: module.HistoryPage })));
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('Home');
@@ -70,8 +72,8 @@ export default function App() {
   const monthPerformance = useMemo(() => {
     const validData = data.filter(d => {
       if (!d.tanggal || d.input <= 0 || !d.mesin) return false;
-      const lowerMesin = normalizeMachineName(d.mesin).toLowerCase().trim();
-      return lowerMesin.replace(/\s+/g, '').match(/^bs[1-8]$/);
+      const name = normalizeMachineName(d.mesin);
+      return name.match(/^BS [1-8]$/);
     });
     if (validData.length === 0) return null;
     
@@ -134,16 +136,22 @@ export default function App() {
 
   return (
     <MobileLayout activeTab={activeTab} setActiveTab={handleTabChange} title={activeTab}>
-      {activeTab === 'Home' && <HomePage setActiveTab={handleTabChange} />}
-      {activeTab === 'Overview' && <OverviewPage stats={stats} todayStats={todayStats} monthPerformance={monthPerformance} monthlyLogData={monthlyLogData} />}
-      {activeTab === 'Analytics' && <AnalyticsPage data={data} />}
-      {activeTab === 'Ranking' && <RankingPage data={data} />}
-      {activeTab === 'Production' && <ProductionPage todayStats={todayStats} />}
-      {activeTab === 'Recap' && <RecapPage data={data} supplierData={supplierData} />}
-      {activeTab === 'Downtime' && <DowntimePage data={data} />}
-      {activeTab === 'History' && <HistoryPage data={data} />}
-      {activeTab === 'Plan' && <PlanPage todayStats={todayStats} data={data} />}
-      {activeTab === 'AI' && <AIPage data={data} />}
+      <Suspense fallback={
+        <div className="flex h-64 items-center justify-center">
+          <div className="w-8 h-8 rounded-full border-4 border-indigo-200 border-t-indigo-600 animate-spin" />
+        </div>
+      }>
+        {activeTab === 'Home' && <HomePage setActiveTab={handleTabChange} />}
+        {activeTab === 'Overview' && <OverviewPage stats={stats} todayStats={todayStats} monthPerformance={monthPerformance} monthlyLogData={monthlyLogData} />}
+        {activeTab === 'Analytics' && <AnalyticsPage data={data} />}
+        {activeTab === 'Ranking' && <RankingPage data={data} />}
+        {activeTab === 'Production' && <ProductionPage todayStats={todayStats} />}
+        {activeTab === 'Recap' && <RecapPage data={data} supplierData={supplierData} />}
+        {activeTab === 'Downtime' && <DowntimePage data={data} />}
+        {activeTab === 'History' && <HistoryPage data={data} />}
+        {activeTab === 'Plan' && <PlanPage todayStats={todayStats} data={data} />}
+        {activeTab === 'AI' && <AIPage data={data} />}
+      </Suspense>
     </MobileLayout>
   );
 }

@@ -212,8 +212,8 @@ export function normalizeMachineName(mesin: string): string {
 export function getSummaryStats(data: ProductionData[]): SummaryStats {
   const filteredBsOnly = data.filter(d => {
     if (!d.mesin || d.input <= 0) return false;
-    const lowerMesin = normalizeMachineName(d.mesin).toLowerCase().trim();
-    return lowerMesin.replace(/\s+/g, '').match(/^bs[1-8]$/);
+    const name = normalizeMachineName(d.mesin);
+    return name.match(/^BS [1-8]$/);
   });
   
   const totalInput = filteredBsOnly.reduce((sum, d) => sum + d.input, 0);
@@ -268,12 +268,11 @@ export function getPerformanceByMachine(data: ProductionData[]) {
   
   data.forEach(d => {
     if (d.mesin) {
-      const lowerMesin = normalizeMachineName(d.mesin).toLowerCase().trim();
-      if (lowerMesin.replace(/\s+/g, '').match(/^bs[1-8]$/)) {
-        const normalizedMesin = normalizeMachineName(d.mesin);
-        if (machines[normalizedMesin] !== undefined) {
-          machines[normalizedMesin].totalUtama += d.utama;
-          machines[normalizedMesin].count += 1;
+      const name = normalizeMachineName(d.mesin);
+      if (name.match(/^BS [1-8]$/)) {
+        if (machines[name] !== undefined) {
+          machines[name].totalUtama += d.utama;
+          machines[name].count += 1;
         }
       }
     }
@@ -332,10 +331,9 @@ export function getAvailablePeriods(data: ProductionData[]) {
 export function getTodayMachineStats(data: ProductionData[]): { date: string, stats: MachineRanking[] } {
   const validData = data.filter(d => {
     if (!d.mesin || d.input <= 0) return false;
-    const lowerMesin = normalizeMachineName(d.mesin).toLowerCase().trim();
-    return lowerMesin.replace(/\s+/g, '').match(/^bs[1-8]$/) || 
-           lowerMesin === 'pony a' || lowerMesin === 'pony b' || lowerMesin === 'breakdown' ||
-           lowerMesin === 'poni a' || lowerMesin === 'poni b';
+    const name = normalizeMachineName(d.mesin);
+    return name.match(/^BS [1-8]$/) || 
+           name === 'Pony A' || name === 'Pony B' || name === 'Breakdown';
   });
   if (validData.length === 0) return { date: '', stats: [] };
   
@@ -416,8 +414,8 @@ export function getTodayMachineStats(data: ProductionData[]): { date: string, st
 export function getMachineRankings(data: ProductionData[], periodType: 'weekly' | 'monthly', periodValue: number): MachineRanking[] {
   const filtered = data.filter(d => {
     if (!d.mesin || d.input <= 0) return false;
-    const lowerMesin = normalizeMachineName(d.mesin).toLowerCase().trim();
-    if (!lowerMesin.replace(/\s+/g, '').match(/^bs[1-8]$/)) return false;
+    const name = normalizeMachineName(d.mesin);
+    if (!name.match(/^BS [1-8]$/)) return false;
 
     return (periodType === 'weekly' && d.week === periodValue) || 
            (periodType === 'monthly' && d.month === periodValue);
@@ -471,8 +469,8 @@ export function getMachineRankings(data: ProductionData[], periodType: 'weekly' 
 export function getPerformanceByTimeframe(data: ProductionData[], type: 'daily' | 'weekly' | 'monthly' | 'quarterly'): TimeframePerformance[] {
   const filtered = data.filter(d => {
     if (!d.mesin || d.input <= 0) return false;
-    const lowerMesin = normalizeMachineName(d.mesin).toLowerCase().trim();
-    return lowerMesin.replace(/\s+/g, '').match(/^bs[1-8]$/);
+    const name = normalizeMachineName(d.mesin);
+    return name.match(/^BS [1-8]$/);
   });
   const groups: Record<string, { input: number; utama: number }> = {};
 
