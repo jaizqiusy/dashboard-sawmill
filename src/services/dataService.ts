@@ -1,5 +1,5 @@
 import { RAW_CSV_DATA } from '../data/raw_data';
-import { ProductionData, SummaryStats, SupplierData } from '../types';
+import { ProductionData, SummaryStats, SupplierData, MonthlyLogData } from '../types';
 
 const SPREADSHEET_ID = '1G7x3dtE2KFF338w6qdd4jrMkz-yrbThlzx5Vi0I8AqQ';
 
@@ -72,6 +72,64 @@ function parseSupplierCSV(csv: string): SupplierData[] {
       yieldTotalLokal: parseFloat(values[14]) || 0,
       total: parseFloat(values[15]) || 0,
       yieldTotal: parseFloat(values[16]) || 0,
+    };
+  }).filter(row => row.kode && row.kode.trim() !== '' && row.supplier.toLowerCase() !== 'total');
+}
+
+export async function fetchMonthlyLogData(): Promise<MonthlyLogData[]> {
+  const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=log%20per%20bulan`;
+  
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Failed to fetch data');
+    const csvData = await response.text();
+    return parseMonthlyLogCSV(csvData);
+  } catch (error) {
+    console.error('Error fetching monthly log data:', error);
+    return [];
+  }
+}
+
+function parseMonthlyLogCSV(csv: string): MonthlyLogData[] {
+  const lines = csv.trim().split('\n');
+  if (lines.length <= 1) return [];
+
+  const parseLine = (line: string) => {
+    const result = [];
+    let start = 0;
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+        if (line[i] === '"') inQuotes = !inQuotes;
+        if (line[i] === ',' && !inQuotes) {
+            result.push(line.substring(start, i));
+            start = i + 1;
+        }
+    }
+    result.push(line.substring(start));
+    return result.map(v => v.replace(/^"|"$/g, '').trim());
+  };
+
+  return lines.slice(1).map(line => {
+    const values = parseLine(line);
+    return {
+      bulan: parseInt(values[0]) || 0,
+      kode: values[1] || '',
+      supplier: values[2] || '',
+      input: parseFloat(values[3]) || 0,
+      utama: parseFloat(values[4]) || 0,
+      yieldUtama: parseFloat(values[5]) || 0,
+      turunan: parseFloat(values[6]) || 0,
+      yieldTurunan: parseFloat(values[7]) || 0,
+      export: parseFloat(values[8]) || 0,
+      yieldExport: parseFloat(values[9]) || 0,
+      lokalSuper: parseFloat(values[10]) || 0,
+      yieldLokalSuper: parseFloat(values[11]) || 0,
+      lokal: parseFloat(values[12]) || 0,
+      yieldLokal: parseFloat(values[13]) || 0,
+      totalLokal: parseFloat(values[14]) || 0,
+      yieldTotalLokal: parseFloat(values[15]) || 0,
+      total: parseFloat(values[16]) || 0,
+      yieldTotal: parseFloat(values[17]) || 0,
     };
   }).filter(row => row.kode && row.kode.trim() !== '' && row.supplier.toLowerCase() !== 'total');
 }

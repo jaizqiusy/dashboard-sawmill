@@ -13,16 +13,18 @@ import { HistoryPage } from './components/Pages/HistoryPage';
 import { 
   fetchProductionData, 
   fetchSupplierData,
+  fetchMonthlyLogData,
   getSummaryStats,
   getTodayMachineStats,
   normalizeMachineName
 } from './services/dataService';
-import { ProductionData, SupplierData } from './types';
+import { MonthlyLogData, ProductionData, SupplierData } from './types';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('Home');
   const [data, setData] = useState<ProductionData[]>([]);
   const [supplierData, setSupplierData] = useState<SupplierData[]>([]);
+  const [monthlyLogData, setMonthlyLogData] = useState<MonthlyLogData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Handle back button natively
@@ -51,10 +53,12 @@ export default function App() {
   useEffect(() => {
     Promise.all([
       fetchProductionData(),
-      fetchSupplierData()
-    ]).then(([prodData, suppData]) => {
+      fetchSupplierData(),
+      fetchMonthlyLogData()
+    ]).then(([prodData, suppData, monthlyLog]) => {
       setData(prodData);
       setSupplierData(suppData);
+      setMonthlyLogData(monthlyLog);
       setIsLoading(false);
     });
   }, []);
@@ -131,7 +135,7 @@ export default function App() {
   return (
     <MobileLayout activeTab={activeTab} setActiveTab={handleTabChange} title={activeTab}>
       {activeTab === 'Home' && <HomePage setActiveTab={handleTabChange} />}
-      {activeTab === 'Overview' && <OverviewPage stats={stats} todayStats={todayStats} monthPerformance={monthPerformance} />}
+      {activeTab === 'Overview' && <OverviewPage stats={stats} todayStats={todayStats} monthPerformance={monthPerformance} monthlyLogData={monthlyLogData} />}
       {activeTab === 'Analytics' && <AnalyticsPage data={data} />}
       {activeTab === 'Ranking' && <RankingPage data={data} />}
       {activeTab === 'Production' && <ProductionPage todayStats={todayStats} />}
