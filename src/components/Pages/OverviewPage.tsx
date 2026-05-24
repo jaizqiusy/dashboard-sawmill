@@ -274,16 +274,16 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[800px]">
               <thead>
-                <tr className="border-b-2 border-slate-100 text-xs text-slate-400 font-black uppercase tracking-wider">
-                  <th className="pb-3 px-2">Kategori</th>
-                  <th className="pb-3 px-2 text-right">Input (m³)</th>
-                  <th className="pb-3 px-2 text-right text-sky-600">Utama</th>
-                  <th className="pb-3 px-2 text-right">Yield Utama</th>
-                  <th className="pb-3 px-2 text-right text-orange-500">Turunan</th>
-                  <th className="pb-3 px-2 text-right">Yield Turunan</th>
-                  <th className="pb-3 px-2 text-right text-amber-500">Lokal</th>
-                  <th className="pb-3 px-2 text-right text-emerald-600">Total Output</th>
-                  <th className="pb-3 px-2 text-right">Yield Total</th>
+                <tr className="border-b-2 border-slate-100 text-xs text-slate-900 font-black uppercase tracking-widest">
+                  <th className="pb-4 px-4">Kategori</th>
+                  <th className="pb-4 px-4 text-right">Input (m³)</th>
+                  <th className="pb-4 px-4 text-right">Utama</th>
+                  <th className="pb-4 px-4 text-right">Yield Utama</th>
+                  <th className="pb-4 px-4 text-right">Turunan</th>
+                  <th className="pb-4 px-4 text-right">Yield Turunan</th>
+                  <th className="pb-4 px-4 text-right">Lokal</th>
+                  <th className="pb-4 px-4 text-right">Total Output</th>
+                  <th className="pb-4 px-4 text-right">Yield Total</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 text-sm">
@@ -293,24 +293,24 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
                   const yieldTurunan = cat.input > 0 ? (cat.turunan / cat.input) * 100 : 0;
                   return (
                     <tr key={cat.kategori} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="py-3 px-2 font-bold text-slate-700">{cat.kategori}</td>
-                      <td className="py-3 px-2 text-right font-medium text-slate-600">{cat.input.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
-                      <td className="py-3 px-2 text-right font-bold text-sky-600">{cat.utama.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
-                      <td className="py-3 px-2 text-right">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-sky-50 text-sky-600">
+                      <td className="py-4 px-4 font-black text-slate-900">{cat.kategori}</td>
+                      <td className="py-4 px-4 text-right font-black text-slate-900">{cat.input.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                      <td className="py-4 px-4 text-right font-black text-slate-900">{cat.utama.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                      <td className="py-4 px-4 text-right">
+                        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-black bg-slate-100 text-slate-900">
                           {yieldUtama.toFixed(1)}%
                         </span>
                       </td>
-                      <td className="py-3 px-2 text-right font-bold text-orange-500">{cat.turunan.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
-                      <td className="py-3 px-2 text-right">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-orange-50 text-orange-600">
+                      <td className="py-4 px-4 text-right font-black text-slate-900">{cat.turunan.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                      <td className="py-4 px-4 text-right">
+                        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-black bg-slate-100 text-slate-900">
                           {yieldTurunan.toFixed(1)}%
                         </span>
                       </td>
-                      <td className="py-3 px-2 text-right font-bold text-amber-500">{cat.lokal.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
-                      <td className="py-3 px-2 text-right font-bold text-emerald-600">{cat.total.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
-                      <td className="py-3 px-2 text-right">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-emerald-50 text-emerald-600">
+                      <td className="py-4 px-4 text-right font-black text-slate-900">{cat.lokal.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                      <td className="py-4 px-4 text-right font-black text-slate-900">{cat.total.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                      <td className="py-4 px-4 text-right">
+                        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-black bg-slate-100 text-slate-900">
                           {yieldTotal.toFixed(1)}%
                         </span>
                       </td>
@@ -330,24 +330,24 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
                   
                   return (
                     <tr className="bg-slate-50 font-black border-t-2 border-slate-200">
-                      <td className="py-4 px-2 text-slate-800 uppercase tracking-widest text-xs">TOTAL</td>
-                      <td className="py-4 px-2 text-right text-slate-800 text-base">{totalInput.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
-                      <td className="py-4 px-2 text-right text-sky-700 text-base">{totalUtama.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
-                      <td className="py-4 px-2 text-right">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-black bg-sky-100 text-sky-700">
+                      <td className="py-4 px-4 text-slate-900 uppercase tracking-widest text-xs">TOTAL</td>
+                      <td className="py-4 px-4 text-right text-slate-900 text-base">{totalInput.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                      <td className="py-4 px-4 text-right text-slate-900 text-base">{totalUtama.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                      <td className="py-4 px-4 text-right">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-black bg-slate-200 text-slate-900">
                           {yieldTotalUtama.toFixed(1)}%
                         </span>
                       </td>
-                      <td className="py-4 px-2 text-right text-orange-600 text-base">{totalTurunan.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
-                      <td className="py-4 px-2 text-right">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-black bg-orange-100 text-orange-700">
+                      <td className="py-4 px-4 text-right text-slate-900 text-base">{totalTurunan.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                      <td className="py-4 px-4 text-right">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-black bg-slate-200 text-slate-900">
                           {yieldTotalTurunan.toFixed(1)}%
                         </span>
                       </td>
-                      <td className="py-4 px-2 text-right text-amber-600 text-base">{totalLokal.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
-                      <td className="py-4 px-2 text-right text-emerald-700 text-base">{totalAll.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
-                      <td className="py-4 px-2 text-right">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-black bg-emerald-100 text-emerald-700">
+                      <td className="py-4 px-4 text-right text-slate-900 text-base">{totalLokal.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                      <td className="py-4 px-4 text-right text-slate-900 text-base">{totalAll.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                      <td className="py-4 px-4 text-right">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-black bg-slate-200 text-slate-900">
                           {yieldTotalAll.toFixed(1)}%
                         </span>
                       </td>
