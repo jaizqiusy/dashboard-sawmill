@@ -235,36 +235,36 @@ export function BsAchievementUpdate() {
   }, [data, periodType, selectedMonth, selectedWeek]);
 
   return (
-    <div className="bg-gradient-to-br from-indigo-700 to-slate-900 rounded-2xl p-5 border border-indigo-800 shadow-sm relative overflow-hidden mt-6">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500 rounded-full blur-[60px] -mr-16 -mt-16 opacity-40 pointer-events-none" />
+    <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm relative overflow-hidden mt-6">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full blur-[60px] -mr-16 -mt-16 pointer-events-none" />
         
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5 border-b border-indigo-500/30 pb-4 relative z-10">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5 border-b border-slate-100 pb-4 relative z-10">
             <div>
-                <h2 className="text-sm font-bold text-white flex items-center gap-2 tracking-tight">
-                <Target className="w-5 h-5 text-indigo-400" />
+                <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2 tracking-tight">
+                <Target className="w-5 h-5 text-indigo-500" />
                 Pencapaian BS 1 - 8 (Realtime)
                 </h2>
-                <p className="text-[10px] text-indigo-300 uppercase tracking-widest mt-1">Data sinkronisasi langsung dari Google Sheets</p>
+                <p className="text-[10px] text-slate-500 uppercase tracking-widest mt-1">Data sinkronisasi langsung dari Google Sheets</p>
             </div>
 
             <div className="flex items-center gap-2 w-full sm:w-auto">
                 <div className="flex gap-2">
-                    <div className="flex bg-indigo-900/40 border border-indigo-500/20 rounded-lg p-1">
+                    <div className="flex bg-slate-100 border border-slate-200 rounded-lg p-1">
                         <button 
                             onClick={() => setPeriodType('monthly')}
-                            className={cn("px-3 py-1 text-[10px] uppercase tracking-wider font-bold rounded-md transition-colors", periodType === 'monthly' ? "bg-indigo-500 text-white shadow-sm" : "text-indigo-300 hover:text-indigo-100")}
+                            className={cn("px-3 py-1 text-[10px] uppercase tracking-wider font-bold rounded-md transition-colors", periodType === 'monthly' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700")}
                         >
                             Bulan
                         </button>
                         <button 
                             onClick={() => setPeriodType('weekly')}
-                            className={cn("px-3 py-1 text-[10px] uppercase tracking-wider font-bold rounded-md transition-colors", periodType === 'weekly' ? "bg-indigo-500 text-white shadow-sm" : "text-indigo-300 hover:text-indigo-100")}
+                            className={cn("px-3 py-1 text-[10px] uppercase tracking-wider font-bold rounded-md transition-colors", periodType === 'weekly' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700")}
                         >
                             Minggu
                         </button>
                     </div>
                     <select 
-                        className="bg-indigo-900/40 border border-indigo-500/20 text-indigo-100 text-xs font-bold rounded-lg px-3 py-1 outline-none"
+                        className="bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-lg px-3 py-1 outline-none"
                         value={periodType === 'monthly' ? selectedMonth : selectedWeek}
                         onChange={(e) => {
                             const val = parseInt(e.target.value);
@@ -283,7 +283,7 @@ export function BsAchievementUpdate() {
                 <button 
                     disabled={loading}
                     onClick={syncData} 
-                    className="flex-shrink-0 flex items-center justify-center gap-2 bg-indigo-500 hover:bg-indigo-400 text-white px-3 py-1 rounded-lg text-[10px] font-bold uppercase transition-colors"
+                    className="flex-shrink-0 flex items-center justify-center gap-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 px-3 py-1 rounded-lg text-[10px] font-bold uppercase transition-colors border border-indigo-100"
                 >
                     <RefreshCw className={cn("w-3 h-3", loading ? 'animate-spin' : '')} />
                     <span>{loading ? 'Menarik...' : 'Sync'}</span>
@@ -292,105 +292,105 @@ export function BsAchievementUpdate() {
         </div>
 
         {error && (
-            <div className="mb-4 text-xs font-medium text-rose-200 bg-rose-900/40 p-2 rounded border border-rose-500/30 relative z-10">
+            <div className="mb-4 text-xs font-medium text-rose-600 bg-rose-50 p-2 rounded border border-rose-200 relative z-10">
                 {error}
             </div>
         )}
 
         {loading && data.length === 0 ? (
             <div className="py-12 flex flex-col items-center justify-center relative z-10">
-                <Loader2 className="w-8 h-8 text-indigo-400 animate-spin mb-3" />
-                <p className="text-sm font-medium text-indigo-200">Menarik data realtime...</p>
+                <Loader2 className="w-8 h-8 text-indigo-500 animate-spin mb-3" />
+                <p className="text-sm font-medium text-slate-500">Menarik data realtime...</p>
             </div>
         ) : (
             <div className="relative z-10">
                 <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
-                    <div className="bg-white/5 rounded-xl p-4 border border-white/10 backdrop-blur-sm hover:bg-white/10 transition-colors flex flex-col justify-between">
-                        <p className="text-[10px] text-indigo-300 font-black uppercase tracking-widest mb-2">Input</p>
-                        <p className="text-2xl font-black text-white">{statsBS.summary.input.toLocaleString('id-ID', { maximumFractionDigits: 1 })} <span className="text-xs text-indigo-200 font-bold">M³</span></p>
+                    <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 hover:bg-slate-100/50 transition-colors flex flex-col justify-between">
+                        <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-2">Input</p>
+                        <p className="text-2xl font-black text-slate-800">{statsBS.summary.input.toLocaleString('id-ID', { maximumFractionDigits: 1 })} <span className="text-xs text-slate-400 font-bold">M³</span></p>
                     </div>
                     
-                    <div className="bg-white/5 rounded-xl p-4 border border-white/10 backdrop-blur-sm hover:bg-white/10 transition-colors flex flex-col justify-between relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-16 h-16 bg-sky-500/10 rounded-full blur-xl -mr-8 -mt-8" />
+                    <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 hover:bg-slate-100/50 transition-colors flex flex-col justify-between relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-16 h-16 bg-sky-50 rounded-full blur-xl -mr-8 -mt-8" />
                         <div className="flex justify-between items-start mb-2 relative z-10">
-                           <p className="text-[10px] text-indigo-300 font-black uppercase tracking-widest">Utama</p>
-                           <span className="text-[10px] font-black text-sky-300 bg-sky-900/40 px-1.5 py-0.5 rounded border border-sky-500/20">{statsBS.summary.yieldUtama.toFixed(1)}%</span>
+                           <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Utama</p>
+                           <span className="text-[10px] font-black text-sky-600 bg-sky-50 px-1.5 py-0.5 rounded border border-sky-100">{statsBS.summary.yieldUtama.toFixed(1)}%</span>
                         </div>
-                        <p className="text-2xl font-black text-sky-100 relative z-10">{statsBS.summary.utama.toLocaleString('id-ID', { maximumFractionDigits: 1 })} <span className="text-xs text-sky-200/50 font-bold">M³</span></p>
+                        <p className="text-2xl font-black text-slate-800 relative z-10">{statsBS.summary.utama.toLocaleString('id-ID', { maximumFractionDigits: 1 })} <span className="text-xs text-slate-400 font-bold">M³</span></p>
                     </div>
                 
-                    <div className="bg-white/5 rounded-xl p-4 border border-white/10 backdrop-blur-sm hover:bg-white/10 transition-colors flex flex-col justify-between relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-16 h-16 bg-orange-500/10 rounded-full blur-xl -mr-8 -mt-8" />
+                    <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 hover:bg-slate-100/50 transition-colors flex flex-col justify-between relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-16 h-16 bg-orange-50 rounded-full blur-xl -mr-8 -mt-8" />
                         <div className="flex justify-between items-start mb-2 relative z-10">
-                           <p className="text-[10px] text-indigo-300 font-black uppercase tracking-widest">Turunan</p>
-                           <span className="text-[10px] font-black text-orange-300 bg-orange-900/40 px-1.5 py-0.5 rounded border border-orange-500/20">{statsBS.summary.yieldTurunan.toFixed(1)}%</span>
+                           <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Turunan</p>
+                           <span className="text-[10px] font-black text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-100">{statsBS.summary.yieldTurunan.toFixed(1)}%</span>
                         </div>
-                        <p className="text-2xl font-black text-orange-100 relative z-10">{statsBS.summary.turunan.toLocaleString('id-ID', { maximumFractionDigits: 1 })} <span className="text-xs text-orange-200/50 font-bold">M³</span></p>
+                        <p className="text-2xl font-black text-slate-800 relative z-10">{statsBS.summary.turunan.toLocaleString('id-ID', { maximumFractionDigits: 1 })} <span className="text-xs text-slate-400 font-bold">M³</span></p>
                     </div>
 
-                    <div className="bg-white/5 rounded-xl p-4 border border-white/10 backdrop-blur-sm hover:bg-white/10 transition-colors flex flex-col justify-between">
-                        <p className="text-[10px] text-indigo-300 font-black uppercase tracking-widest mb-2">Lokal</p>
-                        <p className="text-2xl font-black text-amber-100">{statsBS.summary.lokal.toLocaleString('id-ID', { maximumFractionDigits: 1 })} <span className="text-xs text-amber-200/50 font-bold">M³</span></p>
+                    <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 hover:bg-slate-100/50 transition-colors flex flex-col justify-between">
+                        <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-2">Lokal</p>
+                        <p className="text-2xl font-black text-slate-800">{statsBS.summary.lokal.toLocaleString('id-ID', { maximumFractionDigits: 1 })} <span className="text-xs text-slate-400 font-bold">M³</span></p>
                     </div>
                 
-                    <div className="bg-gradient-to-br from-emerald-900/60 to-emerald-800/40 rounded-xl p-4 border border-emerald-500/40 backdrop-blur-sm col-span-2 lg:col-span-1 flex flex-col justify-between relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/20 rounded-full blur-xl -mr-10 -mt-10" />
+                    <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100 col-span-2 lg:col-span-1 flex flex-col justify-between relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-100 rounded-full blur-xl -mr-10 -mt-10" />
                         <div className="relative z-10">
                             <div className="flex justify-between items-start mb-1">
-                                <p className="text-[10px] text-emerald-300 font-black uppercase tracking-widest">Total Output</p>
-                                <span className="text-[10px] font-black text-emerald-100 bg-emerald-600/80 px-1.5 py-0.5 rounded shadow-sm">{statsBS.summary.yieldTotal.toFixed(1)}%</span>
+                                <p className="text-[10px] text-emerald-600 font-black uppercase tracking-widest">Total Output</p>
+                                <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded shadow-sm">{statsBS.summary.yieldTotal.toFixed(1)}%</span>
                             </div>
-                            <p className="text-3xl font-black text-white">{statsBS.summary.totalOutput.toLocaleString('id-ID', { maximumFractionDigits: 1 })} <span className="text-sm font-bold text-emerald-200/70">M³</span></p>
+                            <p className="text-3xl font-black text-emerald-950">{statsBS.summary.totalOutput.toLocaleString('id-ID', { maximumFractionDigits: 1 })} <span className="text-sm font-bold text-emerald-600/70">M³</span></p>
                         </div>
-                        <div className="mt-3 pt-2 border-t border-emerald-500/30 flex justify-between items-center relative z-10">
-                           <p className="text-[9px] text-emerald-300/80 font-bold uppercase">Avg/Mesin</p>
-                           <p className="text-[11px] font-black text-emerald-100">{statsBS.summary.averageOutput.toLocaleString('id-ID', { maximumFractionDigits: 1 })} M³</p>
+                        <div className="mt-3 pt-2 border-t border-emerald-200/50 flex justify-between items-center relative z-10">
+                           <p className="text-[9px] text-emerald-600/80 font-bold uppercase">Avg/Mesin</p>
+                           <p className="text-[11px] font-black text-emerald-700">{statsBS.summary.averageOutput.toLocaleString('id-ID', { maximumFractionDigits: 1 })} M³</p>
                         </div>
                     </div>
                 </div>
 
-                <div className="flex justify-between items-center mb-4 border-b border-indigo-500/30 pb-3">
-                    <h2 className="text-sm font-bold text-white flex items-center gap-2 tracking-tight">
-                        <Target className="w-4 h-4 text-indigo-400" />
+                <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
+                    <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2 tracking-tight">
+                        <Target className="w-4 h-4 text-indigo-500" />
                         Detail Per Mesin
                     </h2>
-                    <span className="text-[9px] text-indigo-300 font-medium bg-indigo-900/50 px-2 py-1 rounded border border-indigo-500/20">
+                    <span className="text-[9px] text-slate-500 font-medium bg-slate-50 px-2 py-1 rounded border border-slate-100">
                         Update: {lastUpdate}
                     </span>
                 </div>
 
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
                 {statsBS.details.map((m: any, idx: number) => (
-                    <div key={idx} className="bg-white/5 rounded-xl border border-white/10 p-4 hover:bg-white/10 transition-colors flex flex-col">
-                        <div className="flex justify-between items-center border-b border-white/10 pb-2 mb-3">
-                            <h3 className="font-bold text-white text-sm">{m.name}</h3>
-                            <span className="text-[10px] font-black bg-indigo-500/30 text-indigo-200 px-2 py-1 rounded border border-indigo-500/20">Rendemen: {m.yieldTotal.toFixed(1)}%</span>
+                    <div key={idx} className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-md transition-all flex flex-col">
+                        <div className="flex justify-between items-center border-b border-slate-100 pb-2 mb-3">
+                            <h3 className="font-bold text-slate-800 text-sm">{m.name}</h3>
+                            <span className="text-[10px] font-black bg-indigo-50 text-indigo-600 px-2 py-1 rounded border border-indigo-100">Rendemen: {m.yieldTotal.toFixed(1)}%</span>
                         </div>
                         
                         <div className="grid grid-cols-3 sm:grid-cols-6 gap-x-2 gap-y-3">
                             <div>
-                                <p className="text-[9px] text-indigo-300 font-black uppercase tracking-widest mb-0.5">Input</p>
-                                <p className="text-xs font-bold text-white">{m.input.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</p>
+                                <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-0.5">Input</p>
+                                <p className="text-xs font-bold text-slate-800">{m.input.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</p>
                             </div>
                             <div>
-                                <p className="text-[9px] text-indigo-300 font-black uppercase tracking-widest mb-0.5 flex gap-1">Utama <span className="text-sky-300/70">({m.yieldUtama.toFixed(0)}%)</span></p>
-                                <p className="text-xs font-bold text-sky-200">{m.utama.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</p>
+                                <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-0.5 flex gap-1">Utama <span className="text-sky-500">({m.yieldUtama.toFixed(0)}%)</span></p>
+                                <p className="text-xs font-bold text-slate-800">{m.utama.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</p>
                             </div>
                             <div>
-                                <p className="text-[9px] text-indigo-300 font-black uppercase tracking-widest mb-0.5 flex gap-1">Turunan <span className="text-orange-300/70">({m.yieldTurunan.toFixed(0)}%)</span></p>
-                                <p className="text-xs font-bold text-orange-200">{m.turunan.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</p>
+                                <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-0.5 flex gap-1">Turunan <span className="text-orange-500">({m.yieldTurunan.toFixed(0)}%)</span></p>
+                                <p className="text-xs font-bold text-slate-800">{m.turunan.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</p>
                             </div>
                             <div>
-                                <p className="text-[9px] text-indigo-300 font-black uppercase tracking-widest mb-0.5">Lokal</p>
-                                <p className="text-xs font-bold text-amber-200">{m.lokal.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</p>
+                                <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-0.5">Lokal</p>
+                                <p className="text-xs font-bold text-slate-800">{m.lokal.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</p>
                             </div>
                             <div>
-                                <p className="text-[9px] text-emerald-400 font-black uppercase tracking-widest mb-0.5">Total Out</p>
-                                <p className="text-xs font-bold text-emerald-300">{m.totalOutput.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</p>
+                                <p className="text-[9px] text-emerald-600 font-black uppercase tracking-widest mb-0.5">Total Out</p>
+                                <p className="text-xs font-bold text-emerald-600">{m.totalOutput.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</p>
                             </div>
                             <div>
-                                <p className="text-[9px] text-indigo-300 font-black uppercase tracking-widest mb-0.5">Avg Out</p>
-                                <p className="text-xs font-bold text-indigo-200">{m.averageOutput.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</p>
+                                <p className="text-[9px] text-indigo-500 font-black uppercase tracking-widest mb-0.5">Avg Out</p>
+                                <p className="text-xs font-bold text-indigo-600">{m.averageOutput.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</p>
                             </div>
                         </div>
                     </div>
