@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { Trophy, Medal, Star } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Trophy, Medal, Star, Target } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { getAvailablePeriods, getMachineRankings } from '../../services/dataService';
+import { BsAchievementUpdate } from './BsAchievementUpdate';
 
 export function RankingPage({ data }) {
   const [periodType, setPeriodType] = useState('monthly');
@@ -101,6 +102,8 @@ export function RankingPage({ data }) {
           </div>
         )}
       </div>
+
+      <BsAchievementUpdate />
     </div>
   );
 }

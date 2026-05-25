@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Calendar, ClipboardList, Target, TrendingUp, Activity, Box, BarChart2 } from 'lucide-react';
 import { ProductionData } from '../../types';
 import { WosSawmillUpdate } from './WosSawmillUpdate';
+import { OrderUrgentUpdate } from './OrderUrgentUpdate';
 
 interface PlanPageProps {
   todayStats: any;
@@ -138,31 +139,7 @@ export function PlanPage({ todayStats, data }: PlanPageProps) {
         </div>
 
         <WosSawmillUpdate />
-
-        {/* Schedule List */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-slate-100 rounded-lg">
-              <ClipboardList className="w-5 h-5 text-slate-600" />
-            </div>
-            <h3 className="font-bold text-slate-800">Jadwal Maintenance</h3>
-          </div>
-          
-          <div className="space-y-3">
-            {[
-              { unit: 'BS 3', task: 'Ganti Mata Gergaji', time: '12:00', status: 'Pending' },
-              { unit: 'Pony 1', task: 'Pelumasan Bearing', time: '14:30', status: 'Upcoming' },
-            ].map((item, idx) => (
-              <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <div>
-                  <h4 className="text-xs font-bold text-slate-800">{item.unit}: {item.task}</h4>
-                  <p className="text-[10px] text-slate-500 font-medium">{item.time}</p>
-                </div>
-                <span className="text-[9px] font-black text-amber-600 uppercase tracking-widest bg-amber-100 px-2 py-1 rounded-sm">{item.status}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <OrderUrgentUpdate />
 
       </div>
     </div>
