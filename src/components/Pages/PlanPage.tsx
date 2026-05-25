@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Calendar, ClipboardList, Target, TrendingUp, Activity, Box, BarChart2 } from 'lucide-react';
 import { ProductionData } from '../../types';
+import { WosSawmillUpdate } from './WosSawmillUpdate';
 
 interface PlanPageProps {
   todayStats: any;
@@ -135,6 +136,8 @@ export function PlanPage({ todayStats, data }: PlanPageProps) {
               </div>
            </div>
         </div>
+
+        <WosSawmillUpdate />
 
         {/* Schedule List */}
         <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
