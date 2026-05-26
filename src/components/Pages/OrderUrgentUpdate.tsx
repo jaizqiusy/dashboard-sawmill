@@ -7,6 +7,7 @@ interface OrderData {
   panjang: string;
   jo: string;
   kebutuhan: string;
+  kemarin: string;
   hariIni: string;
   total: string;
   kekurangan: string;
@@ -21,6 +22,7 @@ export function OrderUrgentUpdate() {
   const [showTodayOnly, setShowTodayOnly] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [todayColName, setTodayColName] = useState('Hari Ini');
+  const [yesterdayColName, setYesterdayColName] = useState('Kemarin');
 
   const sheetUrl = "https://docs.google.com/spreadsheets/d/1G7x3dtE2KFF338w6qdd4jrMkz-yrbThlzx5Vi0I8AqQ/edit?gid=1352797868#gid=1352797868";
 
@@ -65,12 +67,28 @@ export function OrderUrgentUpdate() {
     
     // Find today's date column
     const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
     const monthsId = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
     const todayStr = `${today.getDate().toString().padStart(2, '0')} ${monthsId[today.getMonth()]} ${today.getFullYear().toString().substring(2)}`;
+    const yesterdayStr = `${yesterday.getDate().toString().padStart(2, '0')} ${monthsId[yesterday.getMonth()]} ${yesterday.getFullYear().toString().substring(2)}`;
     
     let todayIdx = headers.findIndex(h => h === todayStr);
+    let yesterdayIdx = -1;
+
     if (todayIdx !== -1) {
         setTodayColName(todayStr);
+        yesterdayIdx = headers.findIndex(h => h === yesterdayStr);
+        if (yesterdayIdx !== -1) {
+            setYesterdayColName(yesterdayStr);
+        } else {
+            // fallback for yesterday to the previous column
+            yesterdayIdx = todayIdx - 1;
+            if (yesterdayIdx > 5 && headers[yesterdayIdx]) {
+                setYesterdayColName(headers[yesterdayIdx]);
+            }
+        }
     } else {
         // Fallback: look for exactly matching date or just generic 'Hari Ini' column if not found
         // By user requirement, matching existing dates
@@ -80,6 +98,10 @@ export function OrderUrgentUpdate() {
             todayIdx = totalIdx - 1; // get the last date column if today not found
             if (headers[todayIdx]) {
                 setTodayColName(headers[todayIdx]);
+            }
+            yesterdayIdx = todayIdx - 1;
+            if (yesterdayIdx > 5 && headers[yesterdayIdx]) {
+                setYesterdayColName(headers[yesterdayIdx]);
             }
         }
     }
@@ -105,6 +127,7 @@ export function OrderUrgentUpdate() {
         const jo = colJO !== -1 ? (row[colJO] || '').toString().trim() : '';
         const kebutuhan = colKebutuhan !== -1 ? (row[colKebutuhan] || '').toString().trim() : '';
         const hariIni = todayIdx !== -1 && todayIdx < row.length ? (row[todayIdx] || '').toString().trim() : '';
+        const kemarin = yesterdayIdx !== -1 && yesterdayIdx < row.length ? (row[yesterdayIdx] || '').toString().trim() : '';
         const total = colTotal !== -1 ? (row[colTotal] || '').toString().trim() : '';
         const kekurangan = colKekurangan !== -1 ? (row[colKekurangan] || '').toString().trim() : '';
         const satuan = colSatuan !== -1 ? (row[colSatuan] || '').toString().trim() : '';
@@ -117,6 +140,7 @@ export function OrderUrgentUpdate() {
             panjang,
             jo,
             kebutuhan,
+            kemarin,
             hariIni,
             total,
             kekurangan,
@@ -129,8 +153,8 @@ export function OrderUrgentUpdate() {
 
   const loadFallback = () => {
     const fallbackData = [
-        { ukuran: "52X52", panjang: "", jo: "S-SW", kebutuhan: "928", hariIni: "0", total: "1131", kekurangan: "1131", satuan: "BTG" },
-        { ukuran: "47x215", panjang: "3150-3760", jo: "S-WBI008603", kebutuhan: "200", hariIni: "0", total: "81", kekurangan: "-119", satuan: "BTG" }
+        { ukuran: "52X52", panjang: "", jo: "S-SW", kebutuhan: "928", kemarin: "0", hariIni: "0", total: "1131", kekurangan: "1131", satuan: "BTG" },
+        { ukuran: "47x215", panjang: "3150-3760", jo: "S-WBI008603", kebutuhan: "200", kemarin: "50", hariIni: "0", total: "81", kekurangan: "-119", satuan: "BTG" }
     ];
     setData(fallbackData);
     const now = new Date();
@@ -186,8 +210,9 @@ export function OrderUrgentUpdate() {
              row.jo.toLowerCase().includes(sTerm);
 
       if (showTodayOnly) {
-         const hasUpdate = row.hariIni && row.hariIni.trim() !== '' && row.hariIni.trim() !== '0';
-         return matchesSearch && hasUpdate;
+         const hasHariIni = row.hariIni && row.hariIni.trim() !== '' && row.hariIni.trim() !== '0' && row.hariIni.trim() !== '-';
+         const hasKemarin = row.kemarin && row.kemarin.trim() !== '' && row.kemarin.trim() !== '0' && row.kemarin.trim() !== '-';
+         return matchesSearch && (hasHariIni || hasKemarin);
       }
       return matchesSearch;
     });
@@ -240,7 +265,7 @@ export function OrderUrgentUpdate() {
               onChange={(e) => setShowTodayOnly(e.target.checked)}
               className="rounded text-rose-600 focus:ring-rose-500 accent-rose-600 w-4 h-4"
             />
-            <span>Hanya Update Hari Ini</span>
+            <span>Hanya Update Terbaru</span>
           </label>
         </div>
       </div>
@@ -254,7 +279,8 @@ export function OrderUrgentUpdate() {
                 <th className="px-4 py-3 bg-slate-50">Panjang</th>
                 <th className="px-4 py-3 bg-slate-50">JO</th>
                 <th className="px-4 py-3 text-right bg-slate-50">Kebutuhan</th>
-                <th className="px-4 py-3 text-right text-rose-600 bg-slate-50 border-x border-slate-200">Hr Ini ({todayColName})</th>
+                <th className="px-4 py-3 text-right text-rose-600 bg-slate-50 border-l border-slate-200">1 Hr Lalu ({yesterdayColName})</th>
+                <th className="px-4 py-3 text-right text-rose-600 bg-slate-50 border-r border-slate-200">Hr Ini ({todayColName})</th>
                 <th className="px-4 py-3 text-right bg-slate-50">Total</th>
                 <th className="px-4 py-3 text-right bg-slate-50">Kekurangan</th>
                 <th className="px-4 py-3 bg-slate-50">Sat</th>
@@ -263,7 +289,7 @@ export function OrderUrgentUpdate() {
             <tbody className="divide-y divide-slate-100 text-sm">
               {loading && data.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
+                  <td colSpan={9} className="px-4 py-8 text-center text-slate-500">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <Loader2 className="w-5 h-5 animate-spin text-rose-500" />
                       <p className="text-xs">Memuat data "Order Urgent"...</p>
@@ -272,7 +298,7 @@ export function OrderUrgentUpdate() {
                 </tr>
               ) : filteredData.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
+                  <td colSpan={9} className="px-4 py-8 text-center text-slate-500">
                     <div className="flex flex-col items-center gap-2">
                       <FileSearch className="w-6 h-6 text-slate-300" />
                       <p className="text-xs">Tidak ada data ditemukan.</p>
@@ -288,7 +314,8 @@ export function OrderUrgentUpdate() {
                       <td className="px-4 py-2 text-slate-600 font-mono text-[11px] align-top whitespace-nowrap">{row.panjang || '-'}</td>
                       <td className="px-4 py-2 font-medium text-slate-700 align-top whitespace-nowrap">{row.jo || '-'}</td>
                       <td className="px-4 py-2 text-right font-medium text-slate-600 align-top">{row.kebutuhan || '0'}</td>
-                      <td className="px-4 py-2 text-right font-black text-rose-600 align-top bg-rose-50/30 border-x border-slate-200">{row.hariIni || '-'}</td>
+                      <td className="px-4 py-2 text-right font-black text-rose-500 align-top bg-rose-50/10 border-l border-slate-200">{row.kemarin || '-'}</td>
+                      <td className="px-4 py-2 text-right font-black text-rose-600 align-top bg-rose-50/40 border-r border-slate-200">{row.hariIni || '-'}</td>
                       <td className="px-4 py-2 text-right font-bold text-slate-700 align-top">{row.total || '0'}</td>
                       <td className="px-4 py-2 text-right align-top">
                         <span className={`inline-flex px-1.5 py-0.5 rounded text-xs font-bold ${isNegative ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
