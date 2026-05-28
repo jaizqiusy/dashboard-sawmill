@@ -15,13 +15,18 @@ export function AIPage({ data }: { data: ProductionData[] }) {
 
     // Sort data to find the latest date
     const sortedData = [...validData].sort((a, b) => b.tanggal.localeCompare(a.tanggal));
-    const latestDate = sortedData[0].tanggal;
+    const latestDate = sortedData[0]?.tanggal;
     
     // Today's stats
     const todayData = validData.filter(d => d.tanggal === latestDate);
     const todayInput = todayData.reduce((sum, d) => sum + d.input, 0);
     const todayUtama = todayData.reduce((sum, d) => sum + d.utama, 0);
+    const todayTotal = todayData.reduce((sum, d) => sum + d.total, 0);
     const todayYield = todayInput > 0 ? (todayUtama / todayInput) * 100 : 0;
+    const todayYieldTotal = todayInput > 0 ? (todayTotal / todayInput) * 100 : 0;
+    
+    const todayAchivementArr = todayData.filter(d => d.achievement > 0).map(d => d.achievement);
+    const todayAvgAchievement = todayAchivementArr.length > 0 ? todayAchivementArr.reduce((a,b)=>a+b, 0) / todayAchivementArr.length : 0;
     
     // Past data stats
     const pastData = validData.filter(d => d.tanggal !== latestDate);
@@ -32,59 +37,88 @@ export function AIPage({ data }: { data: ProductionData[] }) {
     const yieldDiff = todayYield - pastYield;
     const isIncreased = yieldDiff >= 0;
     
-    // Best machine today
-    const machineGroups: Record<string, { input: number, utama: number }> = {};
+    // Machine level stats
+    const machineStats: Record<string, { input: number, utama: number, total: number, downtime: number, achievement: number[], count: number }> = {};
     todayData.forEach(d => {
-       if (!machineGroups[d.mesin]) machineGroups[d.mesin] = { input: 0, utama: 0 };
-       machineGroups[d.mesin].input += d.input;
-       machineGroups[d.mesin].utama += d.utama;
+       if (!machineStats[d.mesin]) machineStats[d.mesin] = { input: 0, utama: 0, total: 0, downtime: 0, achievement: [], count: 0 };
+       machineStats[d.mesin].input += d.input;
+       machineStats[d.mesin].utama += d.utama;
+       machineStats[d.mesin].total += d.total;
+       machineStats[d.mesin].count++;
+       if(d.achievement > 0) machineStats[d.mesin].achievement.push(d.achievement);
+       
+       if (d.downtime && d.mesin) {
+         const parts = d.downtime.split(/[;,]/);
+         parts.forEach(part => {
+           const match = part.match(/=(\d+)mnt/);
+           if (match && match[1]) {
+             machineStats[d.mesin].downtime += parseInt(match[1]);
+           }
+         });
+       }
     });
     
     let bestMachine = '-';
-    let maxMachineYield = 0;
-    for (const [m, s] of Object.entries(machineGroups)) {
+    let worstYieldMachine = '-';
+    let maxMachineYield = -1;
+    let minMachineYield = 101;
+    
+    let bestAchMachine = '-';
+    let worstAchMachine = '-';
+    let maxAch = -1;
+    let minAch = 101;
+
+    let worstMachineDowntime = '-';
+    let maxDowntime = 0;
+    let totalDowntime = 0;
+    
+    for (const [m, s] of Object.entries(machineStats)) {
        const mYield = s.input > 0 ? (s.utama / s.input) * 100 : 0;
+       
        if (mYield > maxMachineYield) {
            maxMachineYield = mYield;
            bestMachine = m;
        }
-    }
-    
-    // Worst machine by downtime overall today
-    const downtimeMap: Record<string, number> = {};
-    todayData.forEach(d => {
-       if (d.downtime && d.mesin) {
-         const parts = d.downtime.split(/[;,]/);
-         let dtMins = 0;
-         parts.forEach(part => {
-           const match = part.match(/=(\d+)mnt/);
-           if (match && match[1]) {
-             dtMins += parseInt(match[1]);
-           }
-         });
-         if (dtMins > 0) {
-            downtimeMap[d.mesin] = (downtimeMap[d.mesin] || 0) + dtMins;
-         }
+       if (mYield < minMachineYield && s.input > 0) {
+           minMachineYield = mYield;
+           worstYieldMachine = m;
        }
-    });
-    
-    let worstMachine = '';
-    let maxDowntime = 0;
-    for (const [m, dt] of Object.entries(downtimeMap)) {
-       if (dt > maxDowntime) {
-          maxDowntime = dt;
-          worstMachine = m;
+       
+       if (s.downtime > maxDowntime) {
+          maxDowntime = s.downtime;
+          worstMachineDowntime = m;
+       }
+       totalDowntime += s.downtime;
+       
+       const avgAch = s.achievement.length > 0 ? s.achievement.reduce((a,b)=>a+b, 0) / s.achievement.length : 0;
+       if (avgAch > maxAch && avgAch > 0) {
+          maxAch = avgAch;
+          bestAchMachine = m;
+       }
+       if (avgAch < minAch && avgAch > 0) {
+          minAch = avgAch;
+          worstAchMachine = m;
        }
     }
     
     return {
+      todayDate: latestDate,
       todayYield: todayYield.toFixed(1),
+      todayYieldTotal: todayYieldTotal.toFixed(1),
+      todayAvgAchievement: todayAvgAchievement.toFixed(1),
       yieldDiff: Math.abs(yieldDiff).toFixed(1),
       isIncreased,
       bestMachine,
       maxMachineYield: maxMachineYield.toFixed(1),
-      worstMachine,
-      maxDowntime
+      worstYieldMachine,
+      minMachineYield: minMachineYield.toFixed(1),
+      bestAchMachine,
+      maxAch: maxAch.toFixed(1),
+      worstAchMachine,
+      minAch: minAch.toFixed(1),
+      worstMachineDowntime,
+      maxDowntime,
+      totalDowntime
     };
   }, [data]);
 
@@ -150,11 +184,22 @@ export function AIPage({ data }: { data: ProductionData[] }) {
             <h3 className="font-bold text-slate-800">Ringkasan Efisiensi</h3>
           </div>
           {insights ? (
-            <p className="text-sm text-slate-600 leading-relaxed">
-              Berdasarkan data hari ini, rata-rata rendemen utama Anda mencapai <span className="font-bold text-slate-900">{insights.todayYield}%</span>. 
-              Ini menunjukkan {insights.isIncreased ? 'peningkatan' : 'penurunan'} <span className={`${insights.isIncreased ? 'text-emerald-500' : 'text-rose-500'} font-bold`}>{insights.isIncreased ? '+' : '-'}{insights.yieldDiff}%</span> dibandingkan rata-rata riwayat sebelumnya. 
-              Mesin <span className="font-bold">{insights.bestMachine}</span> menunjukkan performa tertinggi dengan rendemen {insights.maxMachineYield}%.
-            </p>
+            <div className="space-y-3 text-sm text-slate-600 leading-relaxed">
+              <p>
+                Berdasarkan data hari ini ({insights.todayDate}), rata-rata rendemen utama Anda mencapai <span className="font-bold text-slate-900">{insights.todayYield}%</span> dengan yield total (termasuk turunan/lokal) di angka <span className="font-bold text-slate-900">{insights.todayYieldTotal}%</span>.
+                Ini menunjukkan {insights.isIncreased ? 'peningkatan' : 'penurunan'} rendemen utama <span className={`${insights.isIncreased ? 'text-emerald-500' : 'text-rose-500'} font-bold`}>{insights.isIncreased ? '+' : '-'}{insights.yieldDiff}%</span> dibandingkan rata-rata riwayat sebelumnya. 
+              </p>
+              <p>
+                Analisis per Mesin:<br/>
+                • 🏆 <span className="font-bold">Yield Tertinggi:</span> Mesin <span className="font-bold text-emerald-600">{insights.bestMachine}</span> ({insights.maxMachineYield}%)<br/>
+                • ⚠️ <span className="font-bold">Yield Terendah:</span> Mesin <span className="font-bold text-rose-600">{insights.worstYieldMachine}</span> ({insights.minMachineYield}%)<br/>
+                • 🎯 <span className="font-bold">Pencapaian (Ach) Tertinggi:</span> Mesin <span className="font-bold text-emerald-600">{insights.bestAchMachine}</span> ({insights.maxAch}%)<br/>
+                • 📉 <span className="font-bold">Pencapaian (Ach) Terendah:</span> Mesin <span className="font-bold text-rose-600">{insights.worstAchMachine}</span> ({insights.minAch}%)
+              </p>
+              <p>
+                Total pencapaian produksi rata-rata berada pada angka <span className="font-bold">{insights.todayAvgAchievement}%</span>. Total downtime tercatat mencapai <span className="font-bold">{insights.totalDowntime} menit</span>.
+              </p>
+            </div>
           ) : (
             <p className="text-sm text-slate-400 italic">Menganalisa data performa...</p>
           )}
@@ -167,23 +212,43 @@ export function AIPage({ data }: { data: ProductionData[] }) {
             </div>
             <h3 className="font-bold text-slate-800">Rekomendasi AI</h3>
           </div>
-          <ul className="space-y-3">
-            {insights && insights.maxDowntime > 0 ? (
+          <ul className="space-y-4">
+            {insights && insights.totalDowntime > 0 ? (
               <li className="flex gap-3 text-sm text-slate-600">
-                <div className="w-1.5 h-1.5 rounded-full bg-rose-400 mt-1.5 shrink-0" />
-                <span>Perhatikan downtime tinggi pada <span className="font-bold">{insights.worstMachine}</span>, total mencapai <span className="font-bold">{insights.maxDowntime} menit</span>. Pastikan pengecekan maintenance rutin.</span>
+                <div className="w-1.5 h-1.5 rounded-full bg-rose-400 mt-2 shrink-0" />
+                <div>
+                  <span className="font-bold text-slate-800 block mb-0.5">Penanganan Downtime Mesin</span>
+                  Terdapat downtime yang harus diminimalisir. Mesin penyumbang terbesar adalah <span className="font-bold">{insights.worstMachineDowntime}</span> dengan <span className="font-bold text-rose-500">{insights.maxDowntime} menit</span>. 
+                  Lakukan inspeksi root-cause analysis (misal: pisau patah, rantai seret, motor panas) dan buat Preventive Maintenance terjadwal.
+                </div>
               </li>
             ) : insights ? (
               <li className="flex gap-3 text-sm text-slate-600">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 shrink-0" />
-                <span>Bagus sekali, tidak ada kendala downtime signifikan yang dilaporkan pada semua lini hari ini. Pertahankan!</span>
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-2 shrink-0" />
+                <div>
+                  <span className="font-bold text-slate-800 block mb-0.5">Downtime Sangat Baik</span>
+                  Bagus sekali, tidak ada kendala downtime signifikan yang dilaporkan pada semua lini hari ini. Pertahankan maintenance rutin.
+                </div>
               </li>
             ) : null}
+            
             {insights && (
-              <li className="flex gap-3 text-sm text-slate-600">
-                <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1.5 shrink-0" />
-                <span>Fokuskan porsi raw material yang lebih optimal pada lini yang stabil seperti mesin {insights.bestMachine} untuk memaksimalkan yield keseluruhan.</span>
-              </li>
+              <>
+                <li className="flex gap-3 text-sm text-slate-600">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-2 shrink-0" />
+                  <div>
+                    <span className="font-bold text-slate-800 block mb-0.5">Optimasi Yield Material</span>
+                    Mesin <span className="font-bold">{insights.worstYieldMachine}</span> memiliki rendemen terendah ({insights.minMachineYield}%). Cek kembali apakah karena grade kayu yang disupply kurang baik atau settingan ukuran pisau kurang presisi (toleransi speling terlalu besar). Prioritaskan log ukuran bagus untuk mesin ini, sementara potong kayu dengan bentuk kurang beraturan di mesin <span className="font-bold">{insights.bestMachine}</span> yang terbukti paling stabil (Rendemen {insights.maxMachineYield}%).
+                  </div>
+                </li>
+                <li className="flex gap-3 text-sm text-slate-600">
+                  <div className="w-1.5 h-1.5 rounded-full bg-amber-400 mt-2 shrink-0" />
+                  <div>
+                    <span className="font-bold text-slate-800 block mb-0.5">Peningkatan Target Produksi (Speed)</span>
+                    Mesin <span className="font-bold">{insights.worstAchMachine}</span> underperform dengan achievement harian rata-rata hanya {insights.minAch}%. Evaluasi kinerja operator dan kecepatan (feed rate) mesin tersebut. Pertimbangkan merotasi operator berpengalaman dari <span className="font-bold">{insights.bestAchMachine}</span> ({insights.maxAch}%) untuk melatih/mendampingi operator di <span className="font-bold">{insights.worstAchMachine}</span>.
+                  </div>
+                </li>
+              </>
             )}
           </ul>
         </div>
