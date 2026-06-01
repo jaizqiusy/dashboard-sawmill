@@ -131,7 +131,7 @@ function parseMonthlyLogCSV(csv: string): MonthlyLogData[] {
       total: parseFloat(values[16]) || 0,
       yieldTotal: parseFloat(values[17]) || 0,
     };
-  }).filter(row => row.kode && row.kode.trim() !== '' && row.supplier.toLowerCase() !== 'total');
+  }).filter(row => row.supplier && row.supplier.trim() !== '' && row.supplier.toLowerCase() !== 'total');
 }
 
 export function getMockSupplierData(): SupplierData[] {

@@ -36,16 +36,20 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
 
   const currentMonthLogsByCategory = React.useMemo(() => {
     if (!monthlyLogData || monthlyLogData.length === 0) return [];
-    const currentMonth = new Date().getMonth() + 1; // getMonth() is 0-indexed
     
-    const categories = {
+    // Find the latest available month in the data
+    const availableMonths = [...new Set(monthlyLogData.map((d: any) => d.bulan))].filter((b: any) => !isNaN(b) && b > 0);
+    const latestMonth = availableMonths.length > 0 ? Math.max(...availableMonths) : new Date().getMonth() + 1;
+    
+    const categories: Record<string, { kategori: string, input: number, utama: number, turunan: number, lokal: number, total: number, monthName: number }> = {
       'Log Panjang': {
         kategori: 'Log Panjang',
         input: 0,
         utama: 0,
         turunan: 0,
         lokal: 0,
-        total: 0
+        total: 0,
+        monthName: latestMonth
       },
       'Log End': {
         kategori: 'Log End',
@@ -53,23 +57,30 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
         utama: 0,
         turunan: 0,
         lokal: 0,
-        total: 0
+        total: 0,
+        monthName: latestMonth
       }
     };
     
     monthlyLogData.forEach((row: any) => {
-      if (row.bulan === currentMonth) {
-        const isLogEnd = row.supplier.toLowerCase().includes('log end');
+      if (row.bulan === latestMonth) {
+        const supplierName = (row.supplier || '').toLowerCase();
+        // Check for "(end)" or "(log end)"
+        const isLogEnd = supplierName.includes('(end)') || supplierName.includes('(log end)');
         const cat = isLogEnd ? 'Log End' : 'Log Panjang';
         categories[cat].input += row.input || 0;
         categories[cat].utama += row.utama || 0;
         categories[cat].turunan += row.turunan || 0;
-        categories[cat].lokal += row.totalLokal || 0;
+        categories[cat].lokal += row.totalLokal || 0; // Using totalLokal from row
         categories[cat].total += row.total || 0;
       }
     });
 
-    return [categories['Log Panjang'], categories['Log End']].filter(c => c.input > 0);
+    const result = [categories['Log Panjang'], categories['Log End']].filter(c => c.input > 0);
+    if (result.length === 0) {
+       return [categories['Log Panjang'], categories['Log End']];
+    }
+    return result;
   }, [monthlyLogData]);
 
   const kpiCards = [
@@ -261,56 +272,58 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
 
       {/* Monthly Log Database Section */}
       {currentMonthLogsByCategory.length > 0 && (
-        <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm space-y-5 overflow-hidden">
+        <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm space-y-5 overflow-hidden mt-6">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h3 className="text-lg font-black text-slate-900 tracking-wide uppercase">
-              Data Log Bulan Ini
+            <h3 className="text-lg font-black text-slate-900 tracking-wide uppercase flex items-center gap-2">
+              <Package className="w-5 h-5 text-emerald-600" />
+              Data Log Bulan {currentMonthLogsByCategory[0]?.monthName || 'Ini'}
             </h3>
-            <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-wider rounded border border-emerald-100">
+            <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-wider rounded border border-emerald-100 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
               Realtime
             </span>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[800px]">
+            <table className="w-full text-left border-collapse min-w-[900px]">
               <thead>
-                <tr className="border-b-2 border-slate-100 text-xs text-slate-900 font-black uppercase tracking-widest">
-                  <th className="pb-4 px-4">Kategori</th>
-                  <th className="pb-4 px-4 text-right">Input (m³)</th>
-                  <th className="pb-4 px-4 text-right">Utama</th>
-                  <th className="pb-4 px-4 text-right">Yield Utama</th>
-                  <th className="pb-4 px-4 text-right">Turunan</th>
-                  <th className="pb-4 px-4 text-right">Yield Turunan</th>
-                  <th className="pb-4 px-4 text-right">Lokal</th>
-                  <th className="pb-4 px-4 text-right">Total Output</th>
-                  <th className="pb-4 px-4 text-right">Yield Total</th>
+                <tr className="border-b-[3px] border-slate-200 text-[11px] text-slate-800 font-black uppercase tracking-widest bg-slate-50">
+                  <th className="py-4 px-4 sticky left-0 bg-slate-50">Kategori</th>
+                  <th className="py-4 px-4 text-right">Input (m³)</th>
+                  <th className="py-4 px-4 text-right">Utama (m³)</th>
+                  <th className="py-4 px-4 text-center">Rendemen Utama (%)</th>
+                  <th className="py-4 px-4 text-right">Turunan (m³)</th>
+                  <th className="py-4 px-4 text-center">Rendemen Turunan (%)</th>
+                  <th className="py-4 px-4 text-right">Lokal (m³)</th>
+                  <th className="py-4 px-4 text-right">Total Output (m³)</th>
+                  <th className="py-4 px-4 text-center">Rendemen Total (%)</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50 text-sm">
+              <tbody className="divide-y divide-slate-100 text-sm">
                 {currentMonthLogsByCategory.map((cat: any) => {
                   const yieldTotal = cat.input > 0 ? (cat.total / cat.input) * 100 : 0;
                   const yieldUtama = cat.input > 0 ? (cat.utama / cat.input) * 100 : 0;
                   const yieldTurunan = cat.input > 0 ? (cat.turunan / cat.input) * 100 : 0;
                   return (
                     <tr key={cat.kategori} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="py-4 px-4 font-black text-slate-900">{cat.kategori}</td>
-                      <td className="py-4 px-4 text-right font-black text-slate-900">{cat.input.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
-                      <td className="py-4 px-4 text-right font-black text-slate-900">{cat.utama.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
-                      <td className="py-4 px-4 text-right">
-                        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-black bg-slate-100 text-slate-900">
+                      <td className="py-4 px-4 font-black text-slate-900 sticky left-0 bg-white group-hover:bg-slate-50/50">{cat.kategori}</td>
+                      <td className="py-4 px-4 text-right font-bold text-slate-700">{cat.input.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                      <td className="py-4 px-4 text-right font-black text-sky-700">{cat.utama.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                      <td className="py-4 px-4 text-center">
+                        <span className="inline-flex items-center justify-center min-w-[60px] px-2 py-1 rounded text-xs font-black bg-sky-50 text-sky-700 border border-sky-100">
                           {yieldUtama.toFixed(1)}%
                         </span>
                       </td>
-                      <td className="py-4 px-4 text-right font-black text-slate-900">{cat.turunan.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
-                      <td className="py-4 px-4 text-right">
-                        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-black bg-slate-100 text-slate-900">
+                      <td className="py-4 px-4 text-right font-black text-orange-700">{cat.turunan.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                      <td className="py-4 px-4 text-center">
+                        <span className="inline-flex items-center justify-center min-w-[60px] px-2 py-1 rounded text-xs font-black bg-orange-50 text-orange-700 border border-orange-100">
                           {yieldTurunan.toFixed(1)}%
                         </span>
                       </td>
-                      <td className="py-4 px-4 text-right font-black text-slate-900">{cat.lokal.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
-                      <td className="py-4 px-4 text-right font-black text-slate-900">{cat.total.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
-                      <td className="py-4 px-4 text-right">
-                        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-black bg-slate-100 text-slate-900">
+                      <td className="py-4 px-4 text-right font-black text-amber-700">{cat.lokal.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                      <td className="py-4 px-4 text-right font-black text-emerald-700">{cat.total.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                      <td className="py-4 px-4 text-center">
+                        <span className="inline-flex items-center justify-center min-w-[60px] px-2 py-1 rounded text-xs font-black bg-emerald-50 text-emerald-700 border border-emerald-100">
                           {yieldTotal.toFixed(1)}%
                         </span>
                       </td>
@@ -329,25 +342,25 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
                   const yieldTotalAll = totalInput > 0 ? (totalAll / totalInput) * 100 : 0;
                   
                   return (
-                    <tr className="bg-slate-50 font-black border-t-2 border-slate-200">
-                      <td className="py-4 px-4 text-slate-900 uppercase tracking-widest text-xs">TOTAL</td>
-                      <td className="py-4 px-4 text-right text-slate-900 text-base">{totalInput.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
-                      <td className="py-4 px-4 text-right text-slate-900 text-base">{totalUtama.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
-                      <td className="py-4 px-4 text-right">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-black bg-slate-200 text-slate-900">
+                    <tr className="bg-slate-100/50 font-black border-t-[3px] border-slate-200 shadow-sm">
+                      <td className="py-5 px-4 text-slate-900 uppercase tracking-widest text-sm sticky left-0 bg-slate-100/50">TOTAL</td>
+                      <td className="py-5 px-4 text-right text-slate-900 text-base">{totalInput.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                      <td className="py-5 px-4 text-right text-sky-700 text-base">{totalUtama.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                      <td className="py-5 px-4 text-center">
+                        <span className="inline-flex items-center justify-center min-w-[70px] px-3 py-1.5 rounded-md text-sm font-black bg-sky-100 text-sky-800 shadow-sm">
                           {yieldTotalUtama.toFixed(1)}%
                         </span>
                       </td>
-                      <td className="py-4 px-4 text-right text-slate-900 text-base">{totalTurunan.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
-                      <td className="py-4 px-4 text-right">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-black bg-slate-200 text-slate-900">
+                      <td className="py-5 px-4 text-right text-orange-700 text-base">{totalTurunan.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                      <td className="py-5 px-4 text-center">
+                        <span className="inline-flex items-center justify-center min-w-[70px] px-3 py-1.5 rounded-md text-sm font-black bg-orange-100 text-orange-800 shadow-sm">
                           {yieldTotalTurunan.toFixed(1)}%
                         </span>
                       </td>
-                      <td className="py-4 px-4 text-right text-slate-900 text-base">{totalLokal.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
-                      <td className="py-4 px-4 text-right text-slate-900 text-base">{totalAll.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
-                      <td className="py-4 px-4 text-right">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-black bg-slate-200 text-slate-900">
+                      <td className="py-5 px-4 text-right text-amber-700 text-base">{totalLokal.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                      <td className="py-5 px-4 text-right text-emerald-700 text-base">{totalAll.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                      <td className="py-5 px-4 text-center">
+                        <span className="inline-flex items-center justify-center min-w-[70px] px-3 py-1.5 rounded-md text-sm font-black bg-emerald-100 text-emerald-800 shadow-sm">
                           {yieldTotalAll.toFixed(1)}%
                         </span>
                       </td>
