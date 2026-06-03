@@ -65,23 +65,44 @@ export function OrderUrgentUpdate() {
 
     const headers = csvData[headerRowIdx].map((h: any) => (h || '').toString().trim());
     
+    const formatVariants = (dateObj: Date) => {
+      const getMonthNames = (m: number) => {
+         return [
+            ['Jan', 'Januari'], ['Feb', 'Februari'], ['Mar', 'Maret'],
+            ['Apr', 'April'], ['Mei', 'Mei'], ['Jun', 'Juni'],
+            ['Jul', 'Juli'], ['Agt', 'Agustus'], ['Sep', 'September'],
+            ['Okt', 'Oktober'], ['Nov', 'November'], ['Des', 'Desember']
+         ][m];
+      };
+      
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      const d = pad(dateObj.getDate());
+      const dNoPad = dateObj.getDate().toString();
+      const y2 = dateObj.getFullYear().toString().substring(2);
+      
+      const vars: string[] = [];
+      for (const m of getMonthNames(dateObj.getMonth())) {
+         vars.push(`${d} ${m} ${y2}`);
+         vars.push(`${dNoPad} ${m} ${y2}`);
+      }
+      return vars;
+    };
+    
     // Find today's date column
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
     
-    const monthsId = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
-    const todayStr = `${today.getDate().toString().padStart(2, '0')} ${monthsId[today.getMonth()]} ${today.getFullYear().toString().substring(2)}`;
-    const yesterdayStr = `${yesterday.getDate().toString().padStart(2, '0')} ${monthsId[yesterday.getMonth()]} ${yesterday.getFullYear().toString().substring(2)}`;
+    const todayVars = formatVariants(today);
+    const yesterdayVars = formatVariants(yesterday);
     
-    let todayIdx = headers.findIndex(h => h === todayStr);
-    let yesterdayIdx = -1;
+    let todayIdx = headers.findIndex(h => todayVars.some(v => v.toLowerCase() === h.trim().toLowerCase()));
+    let yesterdayIdx = headers.findIndex(h => yesterdayVars.some(v => v.toLowerCase() === h.trim().toLowerCase()));
 
     if (todayIdx !== -1) {
-        setTodayColName(todayStr);
-        yesterdayIdx = headers.findIndex(h => h === yesterdayStr);
+        setTodayColName(headers[todayIdx]);
         if (yesterdayIdx !== -1) {
-            setYesterdayColName(yesterdayStr);
+            setYesterdayColName(headers[yesterdayIdx]);
         } else {
             // fallback for yesterday to the previous column
             yesterdayIdx = todayIdx - 1;
