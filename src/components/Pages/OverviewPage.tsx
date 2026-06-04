@@ -4,7 +4,8 @@ import {
   BarChart3, 
   Clock, 
   Package, 
-  Activity
+  Activity,
+  Calendar
 } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
@@ -362,6 +363,131 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
                       <td className="py-5 px-4 text-center">
                         <span className="inline-flex items-center justify-center min-w-[70px] px-3 py-1.5 rounded-md text-sm font-black bg-emerald-100 text-emerald-800 shadow-sm">
                           {yieldTotalAll.toFixed(1)}%
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })()}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Rekap Data Perbulan Section */}
+      {aggregatedLogsByMonth.length > 0 && (
+        <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm space-y-5 overflow-hidden mt-6">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h3 className="text-lg font-black text-slate-900 tracking-wide uppercase flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-indigo-600" />
+              Rekap Data Perbulan
+            </h3>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse min-w-[1000px]">
+              <thead>
+                <tr className="border-b-[3px] border-slate-200 text-[11px] text-slate-800 font-black uppercase tracking-widest bg-slate-50">
+                  <th className="py-4 px-4 sticky left-0 bg-slate-50">Bulan</th>
+                  <th className="py-4 px-4 text-right">Input (m³)</th>
+                  <th className="py-4 px-4 text-right">Utama (m³)</th>
+                  <th className="py-4 px-4 text-center">Rendemen Utama (%)</th>
+                  <th className="py-4 px-4 text-right">Turunan (m³)</th>
+                  <th className="py-4 px-4 text-center">Rendemen Turunan (%)</th>
+                  <th className="py-4 px-4 text-right">Lokal (m³)</th>
+                  <th className="py-4 px-4 text-center">Rendemen Lokal (%)</th>
+                  <th className="py-4 px-4 text-right">Output Total (m³)</th>
+                  <th className="py-4 px-4 text-center">Rendemen Total (%)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-sm">
+                {aggregatedLogsByMonth.map((monthData: any) => {
+                  const monthNames = ['-', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+                  const monthName = monthNames[Math.min(12, Math.max(1, parseInt(monthData.bulan)))] || monthData.bulan;
+                  const yieldUtama = monthData.input > 0 ? (monthData.utama / monthData.input) * 100 : 0;
+                  const yieldTurunan = monthData.input > 0 ? (monthData.turunan / monthData.input) * 100 : 0;
+                  const yieldLokal = monthData.input > 0 ? (monthData.lokal / monthData.input) * 100 : 0;
+                  const yieldTotal = monthData.input > 0 ? (monthData.total / monthData.input) * 100 : 0;
+                  
+                  return (
+                    <tr key={`month-${monthData.bulan}`} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="py-4 px-4 font-black text-slate-900 sticky left-0 bg-white group-hover:bg-slate-50/50">{monthName}</td>
+                      <td className="py-4 px-4 text-right font-bold text-slate-700">{monthData.input.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                      <td className="py-4 px-4 text-right font-black text-sky-700">{monthData.utama.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                      <td className="py-4 px-4 text-center">
+                        <span className="inline-flex items-center justify-center min-w-[60px] px-2 py-1 rounded text-xs font-black bg-sky-50 text-sky-700 border border-sky-100">
+                          {yieldUtama.toFixed(1)}%
+                        </span>
+                      </td>
+                      <td className="py-4 px-4 text-right font-black text-orange-700">{monthData.turunan.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                      <td className="py-4 px-4 text-center">
+                        <span className="inline-flex items-center justify-center min-w-[60px] px-2 py-1 rounded text-xs font-black bg-orange-50 text-orange-700 border border-orange-100">
+                          {yieldTurunan.toFixed(1)}%
+                        </span>
+                      </td>
+                      <td className="py-4 px-4 text-right font-black text-amber-700">{monthData.lokal.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                      <td className="py-4 px-4 text-center">
+                        <span className="inline-flex items-center justify-center min-w-[60px] px-2 py-1 rounded text-xs font-black bg-amber-50 text-amber-700 border border-amber-100">
+                          {yieldLokal.toFixed(1)}%
+                        </span>
+                      </td>
+                      <td className="py-4 px-4 text-right font-black text-emerald-700">{monthData.total.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                      <td className="py-4 px-4 text-center">
+                        <span className="inline-flex items-center justify-center min-w-[60px] px-2 py-1 rounded text-xs font-black bg-emerald-50 text-emerald-700 border border-emerald-100">
+                          {yieldTotal.toFixed(1)}%
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {(() => {
+                  const numMonths = aggregatedLogsByMonth.length;
+                  if (numMonths === 0) return null;
+                  
+                  const totalInput = aggregatedLogsByMonth.reduce((sum: number, m: any) => sum + m.input, 0);
+                  const totalUtama = aggregatedLogsByMonth.reduce((sum: number, m: any) => sum + m.utama, 0);
+                  const totalTurunan = aggregatedLogsByMonth.reduce((sum: number, m: any) => sum + m.turunan, 0);
+                  const totalLokal = aggregatedLogsByMonth.reduce((sum: number, m: any) => sum + m.lokal, 0);
+                  const totalAll = aggregatedLogsByMonth.reduce((sum: number, m: any) => sum + m.total, 0);
+                  
+                  const avgInput = totalInput / numMonths;
+                  const avgUtama = totalUtama / numMonths;
+                  const avgTurunan = totalTurunan / numMonths;
+                  const avgLokal = totalLokal / numMonths;
+                  const avgAll = totalAll / numMonths;
+                  
+                  // Rendemen dari total keseluruhan (Total output / Total input)
+                  const avgYieldUtama = totalInput > 0 ? (totalUtama / totalInput) * 100 : 0;
+                  const avgYieldTurunan = totalInput > 0 ? (totalTurunan / totalInput) * 100 : 0;
+                  const avgYieldLokal = totalInput > 0 ? (totalLokal / totalInput) * 100 : 0;
+                  const avgYieldAll = totalInput > 0 ? (totalAll / totalInput) * 100 : 0;
+                  
+                  return (
+                    <tr className="bg-slate-100/50 font-black border-t-[3px] border-slate-200 shadow-sm">
+                      <td className="py-5 px-4 text-slate-900 uppercase tracking-widest text-sm sticky left-0 bg-slate-100/50">AVERAGE</td>
+                      <td className="py-5 px-4 text-right text-slate-900 text-base">{avgInput.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                      <td className="py-5 px-4 text-right text-sky-700 text-base">{avgUtama.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                      <td className="py-5 px-4 text-center">
+                        <span className="inline-flex items-center justify-center min-w-[70px] px-3 py-1.5 rounded-md text-sm font-black bg-sky-100 text-sky-800 shadow-sm">
+                          {avgYieldUtama.toFixed(1)}%
+                        </span>
+                      </td>
+                      <td className="py-5 px-4 text-right text-orange-700 text-base">{avgTurunan.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                      <td className="py-5 px-4 text-center">
+                        <span className="inline-flex items-center justify-center min-w-[70px] px-3 py-1.5 rounded-md text-sm font-black bg-orange-100 text-orange-800 shadow-sm">
+                          {avgYieldTurunan.toFixed(1)}%
+                        </span>
+                      </td>
+                      <td className="py-5 px-4 text-right text-amber-700 text-base">{avgLokal.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                      <td className="py-5 px-4 text-center">
+                        <span className="inline-flex items-center justify-center min-w-[70px] px-3 py-1.5 rounded-md text-sm font-black bg-amber-100 text-amber-800 shadow-sm">
+                          {avgYieldLokal.toFixed(1)}%
+                        </span>
+                      </td>
+                      <td className="py-5 px-4 text-right text-emerald-700 text-base">{avgAll.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                      <td className="py-5 px-4 text-center">
+                        <span className="inline-flex items-center justify-center min-w-[70px] px-3 py-1.5 rounded-md text-sm font-black bg-emerald-100 text-emerald-800 shadow-sm">
+                          {avgYieldAll.toFixed(1)}%
                         </span>
                       </td>
                     </tr>
