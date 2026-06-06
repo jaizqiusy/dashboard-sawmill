@@ -19,29 +19,22 @@ export function RankingPage({ data }: any) {
   const [periodValue, setPeriodValue] = useState(periods.months[0] || 0);
   const [selectedOperator, setSelectedOperator] = useState<any>(null);
 
-  const [customAvatars, setCustomAvatars] = useState<Record<string, string>>({});
-
-  React.useEffect(() => {
-    fetch('/api/avatars')
-      .then(res => res.json())
-      .then(data => {
-        if (data && typeof data === 'object') {
-          setCustomAvatars(data);
-        }
-      })
-      .catch(err => console.error("Error loading avatars:", err));
-  }, []);
+  const [customAvatars, setCustomAvatars] = useState<Record<string, string>>(() => {
+    try {
+      const saved = localStorage.getItem('operator_avatars');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
 
   const handleAvatarUpload = (mesin: string, file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const base64 = e.target?.result as string;
-      setCustomAvatars(prev => ({ ...prev, [mesin]: base64 }));
-      fetch('/api/avatars', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mesin, imageBase64: base64 })
-      }).catch(err => console.error("Error saving avatar:", err));
+      const updated = { ...customAvatars, [mesin]: base64 };
+      setCustomAvatars(updated);
+      localStorage.setItem('operator_avatars', JSON.stringify(updated));
     };
     reader.readAsDataURL(file);
   };

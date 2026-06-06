@@ -1,44 +1,13 @@
 import express from "express";
 import path from "path";
-import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
-
-const AVATARS_FILE = path.join(process.cwd(), "operator_avatars.json");
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
   app.use(express.json({ limit: '50mb' }));
-
-  app.get("/api/avatars", (req, res) => {
-    try {
-      if (fs.existsSync(AVATARS_FILE)) {
-        const data = fs.readFileSync(AVATARS_FILE, "utf-8");
-        res.json(JSON.parse(data));
-      } else {
-        res.json({});
-      }
-    } catch (error) {
-      res.status(500).json({ error: "Failed to read avatars" });
-    }
-  });
-
-  app.post("/api/avatars", (req, res) => {
-    try {
-      const { mesin, imageBase64 } = req.body;
-      let avatars: Record<string, string> = {};
-      if (fs.existsSync(AVATARS_FILE)) {
-        avatars = JSON.parse(fs.readFileSync(AVATARS_FILE, "utf-8"));
-      }
-      avatars[mesin] = imageBase64;
-      fs.writeFileSync(AVATARS_FILE, JSON.stringify(avatars));
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to save avatar" });
-    }
-  });
 
   // API Route for Gemini
   app.post("/api/chat", async (req, res) => {
