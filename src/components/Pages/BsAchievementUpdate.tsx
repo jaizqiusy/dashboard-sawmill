@@ -140,8 +140,8 @@ export function BsAchievementUpdate() {
 
   const periods = useMemo(() => {
       const validData = data.filter(d => d.input > 0 || d.total > 0);
-      const months = [...new Set(validData.map(d => d.month).filter(m => m > 0))].sort((a, b) => b - a);
-      const weeks = [...new Set(validData.map(d => d.week).filter(w => w > 0))].sort((a, b) => b - a);
+      const months = [...new Set(validData.map(d => d.month).filter(m => m > 0))].sort((a: any, b: any) => b - a);
+      const weeks = [...new Set(validData.map(d => d.week).filter(w => w > 0))].sort((a: any, b: any) => b - a);
       return { months, weeks };
   }, [data]);
 

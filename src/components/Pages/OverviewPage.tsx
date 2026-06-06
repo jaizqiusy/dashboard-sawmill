@@ -39,7 +39,7 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
     if (!monthlyLogData || monthlyLogData.length === 0) return [];
     
     // Find the latest available month in the data
-    const availableMonths = [...new Set(monthlyLogData.map((d: any) => d.bulan))].filter((b: any) => !isNaN(b) && b > 0);
+    const availableMonths = [...new Set(monthlyLogData.map((d: any) => d.bulan))].filter((b: any) => !isNaN(b) && b > 0) as number[];
     const latestMonth = availableMonths.length > 0 ? Math.max(...availableMonths) : new Date().getMonth() + 1;
     
     const categories: Record<string, { kategori: string, input: number, utama: number, turunan: number, lokal: number, total: number, monthName: number }> = {
