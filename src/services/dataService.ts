@@ -37,19 +37,27 @@ function parseOperatorCSV(csv: string): OperatorData[] {
 
   return lines.slice(1).map(line => {
     const values = parseLine(line);
-    return {
-      id_operator: values[0] || '',
-      nama_lengkap: values[1] || '',
-      inisial: values[2] || '',
-      kode_bs: values[3] || '',
-      tanggal_mulai: values[4] || '',
-      masa_kerja_tahun: values[5] || '',
-      status_aktif: values[6] === 'TRUE',
-      url_foto: (values[7] || '').replace('export=view', 'export=download'),
-      status_upload: values[8] === 'TRUE',
-      avg_yield_alltime: values[9] ? parseFloat(values[9]) : null,
-      volume_alltime: values[10] ? parseFloat(values[10]) : null,
-    };
+      let urlFoto = values[7] || '';
+      if (urlFoto.includes('drive.google.com')) {
+        const idMatch = urlFoto.match(/id=([a-zA-Z0-9_-]+)/);
+        if (idMatch) {
+          urlFoto = `https://lh3.googleusercontent.com/d/${idMatch[1]}`;
+        }
+      }
+
+      return {
+        id_operator: values[0] || '',
+        nama_lengkap: values[1] || '',
+        inisial: values[2] || '',
+        kode_bs: values[3] || '',
+        tanggal_mulai: values[4] || '',
+        masa_kerja_tahun: values[5] || '',
+        status_aktif: values[6] === 'TRUE',
+        url_foto: urlFoto,
+        status_upload: values[8] === 'TRUE',
+        avg_yield_alltime: values[9] ? parseFloat(values[9]) : null,
+        volume_alltime: values[10] ? parseFloat(values[10]) : null,
+      };
   }).filter(row => row.id_operator);
 }
 
