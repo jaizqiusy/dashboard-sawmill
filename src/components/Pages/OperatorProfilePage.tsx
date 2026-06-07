@@ -76,14 +76,33 @@ const getDefaultSvgAvatar = (mesin: string, name: string) => {
 
 export function OperatorProfilePage({ data }: { data: any[] }) {
   const [selectedOperator, setSelectedOperator] = useState<string | null>(null);
-  const [customAvatars, setCustomAvatars] = useState<Record<string, string>>({});
-  const [avatarLocks, setAvatarLocks] = useState<Record<string, boolean>>({});
+  const [customAvatars, setCustomAvatars] = useState<Record<string, string>>(() => {
+    try {
+      const saved = localStorage.getItem('operator_avatars');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const [avatarLocks, setAvatarLocks] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem('operator_avatar_locks');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
 
   // Sync state with server database on mount
   useEffect(() => {
-    // 1. Subscribe to real-time Firestore updates
+    let loadedFromFirestore = false;
+
+    // 1. Subscribe to real-time Firestore updates first
     const unsubscribe = onSnapshot(collection(db, 'operators'), (snapshot) => {
+      loadedFromFirestore = true;
       const serverAvatars: Record<string, string> = {};
       const serverLocks: Record<string, boolean> = {};
       
@@ -119,29 +138,58 @@ export function OperatorProfilePage({ data }: { data: any[] }) {
         });
       }
     }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'operators');
+      console.warn("Firestore collection onSnapshot error, running fallback:", error);
+      fetchFallbackREST();
     });
 
-    // 2. Local fallback fetch REST API endpoints
-    fetch(getApiUrl('/api/avatars'))
-      .then(res => res.json())
-      .then(serverAvatars => {
-        if (serverAvatars && typeof serverAvatars === 'object') {
-          setCustomAvatars(prev => ({ ...prev, ...serverAvatars }));
-        }
-      })
-      .catch(err => console.error("Fallback profiles fetch error:", err));
+    const fetchFallbackREST = () => {
+      // 2. Fetch local backup endpoints as fallback
+      fetch(getApiUrl('/api/avatars'))
+        .then(res => res.json())
+        .then(serverAvatars => {
+          if (serverAvatars && typeof serverAvatars === 'object') {
+            setCustomAvatars(prev => {
+              const combined = { ...prev, ...serverAvatars };
+              try {
+                localStorage.setItem('operator_avatars', JSON.stringify(combined));
+              } catch (e) {
+                console.warn("Storage quota full", e);
+              }
+              return combined;
+            });
+          }
+        })
+        .catch(err => console.error("Fallback profiles fetch error:", err));
 
-    fetch(getApiUrl('/api/avatar-locks'))
-      .then(res => res.json())
-      .then(serverLocks => {
-        if (serverLocks && typeof serverLocks === 'object') {
-          setAvatarLocks(prev => ({ ...prev, ...serverLocks }));
-        }
-      })
-      .catch(err => console.error("Fallback locks fetch error:", err));
+      fetch(getApiUrl('/api/avatar-locks'))
+        .then(res => res.json())
+        .then(serverLocks => {
+          if (serverLocks && typeof serverLocks === 'object') {
+            setAvatarLocks(prev => {
+              const combined = { ...prev, ...serverLocks };
+              try {
+                localStorage.setItem('operator_avatar_locks', JSON.stringify(combined));
+              } catch (e) {
+                console.warn("Storage quota full", e);
+              }
+              return combined;
+            });
+          }
+        })
+        .catch(err => console.error("Fallback locks fetch error:", err));
+    };
 
-    return () => unsubscribe();
+    // Delay checking the REST backups so we save server request traffic when firestore syncs immediately
+    const fallbackTimeout = setTimeout(() => {
+      if (!loadedFromFirestore) {
+        fetchFallbackREST();
+      }
+    }, 1200);
+
+    return () => {
+      unsubscribe();
+      clearTimeout(fallbackTimeout);
+    };
   }, []);
 
   // Handle Photo Upload with Auto-Lock (kunci setelah di unggah foto nya)
@@ -151,7 +199,7 @@ export function OperatorProfilePage({ data }: { data: any[] }) {
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        const maxDim = 250; 
+        const maxDim = 200; // Efficient resolution for lighter payload
         let width = img.width;
         let height = img.height;
         
@@ -172,7 +220,7 @@ export function OperatorProfilePage({ data }: { data: any[] }) {
         const ctx = canvas.getContext('2d');
         if (ctx) {
           ctx.drawImage(img, 0, 0, width, height);
-          const base64 = canvas.toDataURL('image/jpeg', 0.85);
+          const base64 = canvas.toDataURL('image/jpeg', 0.75); // High-efficiency compression ratio
           
           // Save locally
           const updatedAvatars = { ...customAvatars, [mesin]: base64 };
@@ -544,32 +592,32 @@ export function OperatorProfilePage({ data }: { data: any[] }) {
             onClick={() => setSelectedOperator(null)}
           >
             <div 
-              className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden transform scale-100 opacity-100 transition-all duration-300 border border-slate-100"
+              className="bg-white rounded-3xl shadow-2xl max-w-sm sm:max-w-lg w-full overflow-hidden transform scale-100 opacity-100 transition-all duration-300 border border-slate-100"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Banner Header */}
-              <div className="flex justify-between items-center px-6 py-4.5 bg-slate-50 border-b border-slate-100 relative">
+              <div className="flex justify-between items-center px-4 py-3.5 sm:px-6 sm:py-4.5 bg-slate-50 border-b border-slate-100 relative">
                 <div className="flex items-center gap-2">
                   <Award className="w-5 h-5 text-indigo-600" />
-                  <h2 className="font-extrabold text-[#0f172a] text-md">Bento Analisis Operator ({selectedOperator})</h2>
+                  <h2 className="font-extrabold text-[#0f172a] text-xs sm:text-md">Bento Analisis Operator ({selectedOperator})</h2>
                 </div>
                 <button 
                   onClick={() => setSelectedOperator(null)}
-                  className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                  className="p-1.5 sm:p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors focus:outline-none"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
               {/* Bento Content */}
-              <div className="p-6 space-y-5">
+              <div className="p-4 sm:p-6 space-y-4 sm:space-y-5">
                 {/* Visual Avatar Card bento */}
-                <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 flex flex-col items-center text-center relative overflow-hidden">
+                <div className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-100 flex flex-col items-center text-center relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl" />
                   
                   {/* Photo frame */}
                   <div className="relative">
-                    <div className="w-24 h-24 rounded-full overflow-hidden shadow-md ring-4 ring-indigo-500/10 border border-white">
+                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden shadow-md ring-4 ring-indigo-500/10 border border-white">
                       <img 
                         src={getAvatarImage(selectedOperator)} 
                         alt={profile.name} 
@@ -579,86 +627,86 @@ export function OperatorProfilePage({ data }: { data: any[] }) {
                     </div>
                     {/* Visual Padlock lock */}
                     {isPhotoLocked && (
-                      <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-slate-900 text-amber-400 flex items-center justify-center shadow-md">
-                        <Lock className="w-4 h-4" />
+                      <div className="absolute -bottom-1 -right-1 w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-slate-900 text-amber-400 flex items-center justify-center shadow-md">
+                        <Lock className="w-3.5 h-3.5" />
                       </div>
                     )}
                   </div>
 
-                  <h3 className="text-xl font-black text-slate-900 mt-4 leading-tight">{profile.name}</h3>
-                  <p className="text-xs text-indigo-600 font-bold bg-indigo-50 px-3 py-1 rounded-full mt-1 border border-indigo-150">
+                  <h3 className="text-lg sm:text-xl font-black text-slate-900 mt-3 sm:mt-4 leading-tight">{profile.name}</h3>
+                  <p className="text-[10px] sm:text-xs text-indigo-600 font-bold bg-indigo-50 px-3 py-1 rounded-full mt-1 border border-indigo-150">
                     Masa Kerja: {profile.tenure} ({profile.joinDate})
                   </p>
                 </div>
 
                 {/* Grid metrics blocks */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-150 flex flex-col justify-between">
-                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1">
-                      <Percent className="w-3.5 h-3.5 text-indigo-500" /> Rendemen
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  <div className="bg-slate-50 p-3 sm:p-4 rounded-2xl border border-slate-150 flex flex-col justify-between">
+                    <span className="text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                      <Percent className="w-3 sm:w-3.5 h-3 sm:h-3.5 text-indigo-500" /> Rendemen
                     </span>
-                    <div className="mt-2 text-lg font-black text-slate-800">
+                    <div className="mt-1 sm:mt-2 text-sm sm:text-lg font-black text-slate-800">
                       {stats.avgYield > 0 ? `${stats.avgYield.toFixed(1)}%` : '--'}
                     </div>
-                    <div className="text-[10px] text-slate-400 leading-none mt-1">Efisiensi output material</div>
+                    <div className="text-[9px] sm:text-[10px] text-slate-400 leading-none mt-1">Efisiensi output</div>
                   </div>
 
-                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-150 flex flex-col justify-between">
-                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1">
-                      <TrendingUp className="w-3.5 h-3.5 text-emerald-500" /> Volume
+                  <div className="bg-slate-50 p-3 sm:p-4 rounded-2xl border border-slate-150 flex flex-col justify-between">
+                    <span className="text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                      <TrendingUp className="w-3 sm:w-3.5 h-3 sm:h-3.5 text-emerald-500" /> Volume
                     </span>
-                    <div className="mt-2 text-lg font-black text-slate-800">
+                    <div className="mt-1 sm:mt-2 text-sm sm:text-lg font-black text-slate-800">
                       {stats.totalVolume > 0 ? `${stats.totalVolume.toLocaleString('id-ID', { maximumFractionDigits: 1 })} M³` : '0 M³'}
                     </div>
-                    <div className="text-[10px] text-slate-400 leading-none mt-1">Total produk bersih</div>
+                    <div className="text-[9px] sm:text-[10px] text-slate-400 leading-none mt-1">Total produk bersih</div>
                   </div>
 
-                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-150 flex flex-col justify-between">
-                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1">
-                      <Activity className="w-3.5 h-3.5 text-cyan-500" /> Hari Aktif
+                  <div className="bg-slate-50 p-3 sm:p-4 rounded-2xl border border-slate-150 flex flex-col justify-between">
+                    <span className="text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                      <Activity className="w-3 sm:w-3.5 h-3 sm:h-3.5 text-cyan-500" /> Hari Aktif
                     </span>
-                    <div className="mt-2 text-lg font-black text-slate-800">
+                    <div className="mt-1 sm:mt-2 text-sm sm:text-lg font-black text-slate-800">
                       {stats.activeDays} Hari
                     </div>
-                    <div className="text-[10px] text-slate-400 leading-none mt-1">Kehadiran operasional</div>
+                    <div className="text-[9px] sm:text-[10px] text-slate-400 leading-none mt-1">Kehadiran kerja</div>
                   </div>
 
-                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-150 flex flex-col justify-between">
-                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1">
-                      <Gauge className="w-3.5 h-3.5 text-orange-500" /> Entri Data
+                  <div className="bg-slate-50 p-3 sm:p-4 rounded-2xl border border-slate-150 flex flex-col justify-between">
+                    <span className="text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                      <Gauge className="w-3 sm:w-3.5 h-3 sm:h-3.5 text-orange-500" /> Entri Data
                     </span>
-                    <div className="mt-2 text-lg font-black text-slate-800">
+                    <div className="mt-1 sm:mt-2 text-sm sm:text-lg font-black text-slate-800">
                       {stats.orderCount} Entri
                     </div>
-                    <div className="text-[10px] text-slate-400 leading-none mt-1">Frekuensi input logs</div>
+                    <div className="text-[9px] sm:text-[10px] text-slate-400 leading-none mt-1">Frekuensi input</div>
                   </div>
                 </div>
 
                 {/* Signature specialty list */}
-                <div className="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100 flex items-start gap-3">
-                  <Award className="w-5 h-5 text-indigo-600 flex-shrink-0 mt-0.5" />
+                <div className="bg-indigo-50/50 p-3 sm:p-4 rounded-2xl border border-indigo-100 flex items-start gap-2.5 sm:gap-3">
+                  <Award className="w-4.5 sm:w-5 h-4.5 sm:h-5 text-indigo-600 flex-shrink-0 mt-0.5" />
                   <div>
-                    <h4 className="text-xs font-bold text-indigo-950 uppercase tracking-wide">Fokus & Spesialisasi</h4>
-                    <p className="text-xs text-indigo-800 leading-relaxed mt-1 font-semibold">{profile.specialty}</p>
+                    <h4 className="text-[10px] sm:text-xs font-bold text-indigo-950 uppercase tracking-wide">Fokus & Spesialisasi</h4>
+                    <p className="text-[11px] sm:text-xs text-indigo-800 leading-relaxed mt-1 font-semibold">{profile.specialty}</p>
                   </div>
                 </div>
 
                 {/* Locked info panel */}
-                <div className="flex gap-4 items-center justify-between border-t border-slate-100 pt-4.5">
-                  <div className="flex items-center gap-2">
+                <div className="flex gap-2 sm:gap-4 items-center justify-between border-t border-slate-100 pt-3.5 sm:pt-4.5">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
                     {isPhotoLocked ? (
-                      <div className="p-1.5 bg-amber-50 text-amber-700 rounded-lg border border-amber-200">
-                        <Lock className="w-4 h-4" />
+                      <div className="p-1 sm:p-1.5 bg-amber-50 text-amber-700 rounded-lg border border-amber-200">
+                        <Lock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                       </div>
                     ) : (
-                      <div className="p-1.5 bg-slate-100 text-slate-500 rounded-lg border border-slate-200">
-                        <Unlock className="w-4 h-4" />
+                      <div className="p-1 sm:p-1.5 bg-slate-100 text-slate-500 rounded-lg border border-slate-200">
+                        <Unlock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                       </div>
                     )}
                     <div>
-                      <h4 className="text-[11px] font-bold text-slate-800 uppercase tracking-wide leading-none">Keamanan Data Foto</h4>
-                      <p className="text-[10px] text-slate-500 mt-1">
-                        {isPhotoLocked ? "Modifikasi unggahan dikunci" : "Terbuka - siap diubah/unggah"}
+                      <h4 className="text-[10px] sm:text-[11px] font-bold text-slate-800 uppercase tracking-wide leading-none">Keamanan Data</h4>
+                      <p className="text-[9px] sm:text-[10px] text-slate-500 mt-1">
+                        {isPhotoLocked ? "Unggahan dikunci" : "Terbuka - siap diubah"}
                       </p>
                     </div>
                   </div>
@@ -666,10 +714,10 @@ export function OperatorProfilePage({ data }: { data: any[] }) {
                   <button
                     onClick={() => toggleLock(selectedOperator)}
                     className={cn(
-                      "flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-[10px] uppercase tracking-wider transition-all",
+                      "flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl font-bold text-[9px] sm:text-[10px] uppercase tracking-wider transition-all cursor-pointer active:scale-95",
                       isPhotoLocked 
-                        ? "bg-slate-900 text-white" 
-                        : "bg-amber-100 hover:bg-amber-100/80 text-amber-800 border border-amber-250"
+                        ? "bg-slate-900 text-white hover:bg-slate-800" 
+                        : "bg-amber-100 hover:bg-amber-150 text-amber-800 border border-amber-250"
                     )}
                   >
                     {isPhotoLocked ? "Buka Gembok" : "Kunci Sekarang"}

@@ -75,8 +75,11 @@ export function RankingPage({ data }: any) {
 
   // Load custom avatars and locks from server on mount for cross-device persistence
   React.useEffect(() => {
-    // 1. Subscribe to real-time Firestore database updates
+    let loadedFromFirestore = false;
+
+    // 1. Subscribe to real-time Firestore database updates first
     const unsubscribe = onSnapshot(collection(db, 'operators'), (snapshot) => {
+      loadedFromFirestore = true;
       const serverAvatars: Record<string, string> = {};
       const serverLocks: Record<string, boolean> = {};
       
@@ -112,30 +115,58 @@ export function RankingPage({ data }: any) {
         });
       }
     }, (error) => {
-      // Gracefully capture error using standardized handler
-      handleFirestoreError(error, OperationType.GET, 'operators');
+      console.warn("Firestore onSnapshot error, fallback active:", error);
+      fetchFallbackREST();
     });
 
-    // 2. Fetch local backup endpoints as fallback
-    fetch(getApiUrl('/api/avatars'))
-      .then(res => res.json())
-      .then(serverAvatars => {
-        if (serverAvatars && typeof serverAvatars === 'object') {
-          setCustomAvatars(prev => ({ ...prev, ...serverAvatars }));
-        }
-      })
-      .catch(err => console.error("Fallback avatars fetch error:", err));
+    const fetchFallbackREST = () => {
+      // 2. Fetch local backup endpoints as fallback
+      fetch(getApiUrl('/api/avatars'))
+        .then(res => res.json())
+        .then(serverAvatars => {
+          if (serverAvatars && typeof serverAvatars === 'object') {
+            setCustomAvatars(prev => {
+              const combined = { ...prev, ...serverAvatars };
+              try {
+                localStorage.setItem('operator_avatars', JSON.stringify(combined));
+              } catch (e) {
+                console.warn("Storage quota full", e);
+              }
+              return combined;
+            });
+          }
+        })
+        .catch(err => console.error("Fallback avatars fetch error:", err));
 
-    fetch(getApiUrl('/api/avatar-locks'))
-      .then(res => res.json())
-      .then(serverLocks => {
-        if (serverLocks && typeof serverLocks === 'object') {
-          setAvatarLocks(prev => ({ ...prev, ...serverLocks }));
-        }
-      })
-      .catch(err => console.error("Fallback locks fetch error:", err));
+      fetch(getApiUrl('/api/avatar-locks'))
+        .then(res => res.json())
+        .then(serverLocks => {
+          if (serverLocks && typeof serverLocks === 'object') {
+            setAvatarLocks(prev => {
+              const combined = { ...prev, ...serverLocks };
+              try {
+                localStorage.setItem('operator_avatar_locks', JSON.stringify(combined));
+              } catch (e) {
+                console.warn("Storage quota full", e);
+              }
+              return combined;
+            });
+          }
+        })
+        .catch(err => console.error("Fallback locks fetch error:", err));
+    };
 
-    return () => unsubscribe();
+    // Delay fallback REST API check to avoid dual-loading when Firestore is already online
+    const fallbackTimeout = setTimeout(() => {
+      if (!loadedFromFirestore) {
+        fetchFallbackREST();
+      }
+    }, 1200);
+
+    return () => {
+      unsubscribe();
+      clearTimeout(fallbackTimeout);
+    };
   }, []);
 
   const toggleLock = (mesin: string) => {
@@ -185,7 +216,7 @@ export function RankingPage({ data }: any) {
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        const maxDim = 250; // High-enough quality, very small size footprint
+        const maxDim = 200; // Ultra compact size for lightweight rendering
         let width = img.width;
         let height = img.height;
         
@@ -206,7 +237,7 @@ export function RankingPage({ data }: any) {
         const ctx = canvas.getContext('2d');
         if (ctx) {
           ctx.drawImage(img, 0, 0, width, height);
-          const base64 = canvas.toDataURL('image/jpeg', 0.82); // Compressed dynamically
+          const base64 = canvas.toDataURL('image/jpeg', 0.75); // High-performance compression
           
           // Save to local state
           const updated = { ...customAvatars, [mesin]: base64 };
@@ -317,19 +348,26 @@ export function RankingPage({ data }: any) {
       
       const borderColor = isFirst ? 'border-amber-400' : isSecond ? 'border-cyan-400' : 'border-[#00796b]';
       const badgeColor = isFirst ? 'bg-amber-400 text-amber-950' : isSecond ? 'bg-cyan-400 text-cyan-950' : 'bg-[#00796b] text-white';
-      const glow = isFirst ? 'shadow-[0_0_30px_rgba(251,191,36,0.3)]' : 
-                   isSecond ? 'shadow-[0_0_20px_rgba(34,211,238,0.2)]' : 
-                              'shadow-[0_0_20px_rgba(0,121,107,0.3)]';
+      const glow = isFirst ? 'shadow-[0_0_25px_rgba(251,191,36,0.25)]' : 
+                   isSecond ? 'shadow-[0_0_15px_rgba(34,211,238,0.15)]' : 
+                              'shadow-[0_0_15px_rgba(0,121,107,0.2)]';
       
       const yieldColor = isFirst ? 'text-amber-400' : isSecond ? 'text-cyan-400' : 'text-[#00796b]';
-      const size = isFirst ? 'w-24 h-24' : 'w-20 h-20';
+      const sizeClass = isFirst 
+        ? 'w-16 h-16 min-[385px]:w-20 min-[385px]:h-20 sm:w-24 sm:h-24' 
+        : 'w-12 h-12 min-[385px]:w-16 min-[385px]:h-16 sm:w-20 sm:h-20';
       
       return (
-          <div className={cn("flex flex-col items-center relative z-10 hover:-translate-y-1.5 transition-transform duration-300", isFirst ? "-mt-4" : "mt-8")}>
-              {isFirst && <Crown className="w-10 h-10 text-amber-400 absolute -top-8 drop-shadow-[0_0_10px_rgba(251,191,36,0.6)]" fill="currentColor" />}
+          <div className={cn("flex flex-col items-center relative z-10 hover:-translate-y-1 transition-transform duration-300", isFirst ? "-mt-4" : "mt-6 sm:mt-8")}>
+              {isFirst && (
+                <Crown 
+                  className="w-6 h-6 min-[385px]:w-8 min-[385px]:h-8 sm:w-10 sm:h-10 text-amber-400 absolute -top-5 min-[385px]:-top-7 sm:-top-8 drop-shadow-[0_0_10px_rgba(251,191,36,0.5)] z-20" 
+                  fill="currentColor" 
+                />
+              )}
               <div className="relative cursor-pointer group" onClick={() => setSelectedOperator(rankItem)}>
-                  <div className={cn("rounded-full border-[3px] flex items-center justify-center bg-slate-800 text-slate-300 font-bold overflow-hidden p-1 relative", borderColor, glow, size)}>
-                      <div className="w-full h-full rounded-full bg-slate-900 border border-slate-700/50 flex items-center justify-center overflow-hidden relative">
+                  <div className={cn("rounded-full border-[3px] flex items-center justify-center bg-slate-800 text-slate-300 font-bold overflow-hidden p-0.5 relative", borderColor, glow, sizeClass)}>
+                      <div className="w-full h-full rounded-full bg-slate-900 border border-slate-700/30 flex items-center justify-center overflow-hidden relative">
                         <img 
                           src={getAvatarImage(rankItem.mesin)} 
                           alt={rankItem.mesin} 
@@ -337,55 +375,59 @@ export function RankingPage({ data }: any) {
                           onError={handleImageError}
                         />
                         <User 
-                          size={32} 
+                          size={24} 
                           className="text-slate-500 absolute fallback-icon" 
                           style={{ display: 'none' }}
                         />
                         <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                          <ZoomIn size={24} className="text-white drop-shadow-md" />
+                          <ZoomIn className="w-4 h-4 sm:w-6 sm:h-6 text-white drop-shadow-md" />
                         </div>
                       </div>
                   </div>
-                  <div className={cn("absolute -bottom-3 left-1/2 -translate-x-1/2 w-7 h-7 rounded-full flex items-center justify-center text-sm font-black ring-4 ring-[#0f172a] z-10", badgeColor)}>
+                  <div className={cn(
+                    "absolute left-1/2 -translate-x-1/2 rounded-full flex items-center justify-center font-black ring-2 sm:ring-4 ring-[#0f172a] z-10 transition-all",
+                    isFirst ? "-bottom-2 sm:-bottom-3 w-6 h-6 sm:w-7 sm:h-7 text-[10px] sm:text-sm" : "-bottom-1.5 sm:-bottom-3 w-5 h-5 sm:w-7 sm:h-7 text-[9px] sm:text-sm",
+                    badgeColor
+                  )}>
                       {rank}
                   </div>
               </div>
-              <div className="mt-5 text-center">
-                  <p className="text-white font-bold text-sm tracking-wide">{avatars[rankItem.mesin]?.name || rankItem.mesin}</p>
-                  <p className="text-slate-400 text-[10px] font-bold mt-0.5 uppercase tracking-wider">{rankItem.mesin}</p>
-                  <p className={cn("font-black text-xl mt-1 tracking-tight", yieldColor)}>{(rankItem.yield * 100).toFixed(1)}%</p>
-                  <p className="text-slate-400 text-xs mt-0.5 font-medium">{rankItem.total.toLocaleString('id-ID', { maximumFractionDigits: 1 })} M³</p>
+              <div className="mt-4 sm:mt-5 text-center px-0.5 max-w-[85px] min-[385px]:max-w-[110px] sm:max-w-none">
+                  <p className="text-white font-bold text-[10px] min-[385px]:text-xs sm:text-sm tracking-wide truncate">{avatars[rankItem.mesin]?.name || rankItem.mesin}</p>
+                  <p className="text-slate-400 text-[8px] sm:text-[10px] font-bold mt-0.5 uppercase tracking-wider">{rankItem.mesin}</p>
+                  <p className={cn("font-black text-xs min-[385px]:text-base sm:text-xl mt-0.5 sm:mt-1 tracking-tight", yieldColor)}>{(rankItem.yield * 100).toFixed(1)}%</p>
+                  <p className="text-slate-400 text-[9px] sm:text-xs mt-0.5 font-medium">{rankItem.total.toLocaleString('id-ID', { maximumFractionDigits: 1 })} M³</p>
               </div>
           </div>
       )
   };
 
   return (
-    <div className="p-5 space-y-6">
-      <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm relative overflow-hidden">
+    <div className="p-4 sm:p-5 space-y-6">
+      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-100 shadow-sm relative overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-amber-100 rounded-full blur-3xl -mr-16 -mt-16" />
-        <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2 tracking-tight relative z-10">
+        <h2 className="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2 tracking-tight relative z-10">
           <Trophy className="w-5 h-5 text-amber-500" />
           Filter Leaderboard
         </h2>
         
-        <div className="flex gap-2 mt-4 relative z-10">
+        <div className="flex flex-wrap gap-2.5 mt-4 relative z-10">
           <div className="flex bg-slate-50 border border-slate-200 rounded-lg p-1">
              <button 
                 onClick={() => { setPeriodType('weekly'); setPeriodValue(periods.weeks[0] || 0); }}
-                className={cn("px-4 py-1.5 text-[11px] uppercase tracking-wider font-bold rounded-md transition-colors", periodType === 'weekly' ? "bg-amber-100 text-amber-700" : "text-slate-500 hover:bg-slate-100")}
+                className={cn("px-3 sm:px-4 py-1.5 text-[10px] sm:text-[11px] uppercase tracking-wider font-bold rounded-md transition-colors", periodType === 'weekly' ? "bg-amber-100 text-amber-700" : "text-slate-500 hover:bg-slate-100")}
              >
                 Mingguan
              </button>
              <button 
                 onClick={() => { setPeriodType('monthly'); setPeriodValue(periods.months[0] || 0); }}
-                className={cn("px-4 py-1.5 text-[11px] uppercase tracking-wider font-bold rounded-md transition-colors", periodType === 'monthly' ? "bg-amber-100 text-amber-700" : "text-slate-500 hover:bg-slate-100")}
+                className={cn("px-3 sm:px-4 py-1.5 text-[10px] sm:text-[11px] uppercase tracking-wider font-bold rounded-md transition-colors", periodType === 'monthly' ? "bg-amber-100 text-amber-700" : "text-slate-500 hover:bg-slate-100")}
              >
                 Bulanan
              </button>
           </div>
           <select 
-            className="bg-slate-50 border border-slate-200 text-slate-700 text-sm font-bold rounded-lg px-3 py-1.5 outline-none"
+            className="bg-slate-50 border border-slate-200 text-slate-700 text-xs sm:text-sm font-bold rounded-lg px-2.5 py-1.5 outline-none cursor-pointer"
             value={periodValue}
             onChange={(e) => setPeriodValue(parseInt(e.target.value))}
           >
@@ -398,27 +440,27 @@ export function RankingPage({ data }: any) {
         </div>
       </div>
 
-      <div className="bg-[#0f172a] rounded-3xl p-6 md:p-8 shadow-xl relative overflow-hidden ring-1 ring-slate-800">
-        <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-sky-900/20 to-transparent pointer-events-none" />
+      <div className="bg-[#0f172a] rounded-3xl p-4 sm:p-6 md:p-8 shadow-xl relative overflow-hidden ring-1 ring-slate-800">
+        <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-sky-900/15 to-transparent pointer-events-none" />
         
         {rankings.length > 0 ? (
           <>
-            <div className="flex justify-center items-end gap-6 sm:gap-10 mb-12 pt-6">
+            <div className="flex justify-center items-end gap-2 min-[385px]:gap-4 sm:gap-10 mb-10 pt-4">
                 {top3[1] && <PodiumItem rankItem={top3[1]} rank={2} />}
                 {top3[0] && <PodiumItem rankItem={top3[0]} rank={1} />}
                 {top3[2] && <PodiumItem rankItem={top3[2]} rank={3} />}
             </div>
 
-            <div className="space-y-4 max-w-2xl mx-auto relative z-10">
+            <div className="space-y-3 sm:space-y-4 max-w-2xl mx-auto relative z-10">
                 {rest.map((rankItem, i) => {
                     const rank = i + 4;
                     return (
-                        <div key={rank} className="bg-[#1e293b] rounded-[1.25rem] p-4 flex items-center gap-4 sm:gap-6 border border-slate-800/50 hover:bg-[#253247] transition-colors relative overflow-hidden group">
-                            <div className="w-6 sm:w-8 flex justify-center flex-shrink-0">
-                              <span className="text-slate-500 font-bold text-xl sm:text-2xl group-hover:text-slate-400 transition-colors">{rank}</span>
+                        <div key={rank} className="bg-[#1e293b] rounded-[1.25rem] p-3 sm:p-4 flex items-center gap-3 sm:gap-6 border border-slate-800/40 hover:bg-[#253247] transition-colors relative overflow-hidden group">
+                            <div className="w-5 sm:w-8 flex justify-center flex-shrink-0">
+                              <span className="text-slate-500 font-bold text-lg sm:text-2xl group-hover:text-slate-400 transition-colors">{rank}</span>
                             </div>
                             <div 
-                                className="w-14 h-14 rounded-full overflow-hidden bg-slate-800 flex-shrink-0 ring-[3px] ring-[#00796b] p-0.5 shadow-[0_0_8px_rgba(0,121,107,0.3)] cursor-pointer group/avatar relative"
+                                className="w-10 h-10 sm:w-14 sm:h-14 rounded-full overflow-hidden bg-slate-800 flex-shrink-0 ring-2 sm:ring-[3px] ring-[#00796b] p-0.5 shadow-[0_0_8px_rgba(0,121,107,0.25)] cursor-pointer group/avatar relative"
                                 onClick={() => setSelectedOperator(rankItem)}
                             >
                                 <div className="w-full h-full bg-slate-900 rounded-full flex items-center justify-center overflow-hidden relative">
@@ -429,22 +471,22 @@ export function RankingPage({ data }: any) {
                                     onError={handleImageError}
                                   />
                                   <User 
-                                    size={24} 
+                                    size={20} 
                                     className="text-slate-500 absolute fallback-icon" 
                                     style={{ display: 'none' }}
                                   />
                                   <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover/avatar:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                                    <ZoomIn size={16} className="text-white drop-shadow-md" />
+                                    <ZoomIn className="w-4 h-4 text-white drop-shadow-md" />
                                   </div>
                                 </div>
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-white font-bold text-base sm:text-lg tracking-tight truncate">{avatars[rankItem.mesin]?.name || rankItem.mesin}</p>
-                                <p className="text-sky-400 text-xs sm:text-sm font-medium mt-0.5 truncate">{rankItem.mesin}</p>
+                                <p className="text-white font-bold text-sm sm:text-lg tracking-tight truncate">{avatars[rankItem.mesin]?.name || rankItem.mesin}</p>
+                                <p className="text-sky-400 text-[10px] sm:text-sm font-medium mt-0.5 truncate">{rankItem.mesin}</p>
                             </div>
                             <div className="text-right flex-shrink-0">
-                                <p className="text-white font-black text-lg sm:text-xl tracking-tight">{(rankItem.yield * 100).toFixed(1)}%</p>
-                                <p className="text-slate-400 text-xs sm:text-sm font-medium mt-0.5">{rankItem.total.toLocaleString('id-ID', { maximumFractionDigits: 1 })} M³</p>
+                                <p className="text-white font-black text-sm sm:text-xl tracking-tight">{(rankItem.yield * 100).toFixed(1)}%</p>
+                                <p className="text-slate-400 text-[10px] sm:text-sm font-medium mt-0.5">{rankItem.total.toLocaleString('id-ID', { maximumFractionDigits: 1 })} M³</p>
                             </div>
                         </div>
                     );
@@ -466,24 +508,24 @@ export function RankingPage({ data }: any) {
           onClick={closeProfile}
         >
           <div 
-            className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden transform scale-100 opacity-100 transition-all duration-300"
+            className="bg-white rounded-3xl shadow-2xl max-w-sm sm:max-w-md w-full overflow-hidden transform scale-100 opacity-100 transition-all duration-300 border border-slate-100"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex justify-between items-center p-5 border-b border-slate-100 bg-slate-50/50">
-              <h2 className="font-bold text-slate-800 text-lg">Detail Operator</h2>
+            <div className="flex justify-between items-center p-4 sm:p-5 border-b border-slate-100 bg-slate-50/50">
+              <h2 className="font-bold text-slate-800 text-sm sm:text-lg">Detail Operator</h2>
               <button 
                 onClick={closeProfile}
-                className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-red-200"
+                className="p-1.5 sm:p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-red-200"
               >
-                <X size={24} />
+                <X className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
             </div>
             
-            <div className="p-8 flex flex-col items-center">
-              <div className="relative mb-6 flex flex-col items-center">
+            <div className="p-5 sm:p-8 flex flex-col items-center">
+              <div className="relative mb-5 sm:mb-6 flex flex-col items-center">
                 <label 
-                  className="w-56 h-56 md:w-64 md:h-64 rounded-full overflow-hidden shadow-xl border-8 border-slate-50 bg-slate-100 flex items-center justify-center relative cursor-pointer group"
-                  title={avatarLocks[selectedOperator.mesin] ? "Foto Terkunci. Klik gembok gembok di bawah untuk Membuka." : "Klik untuk mengubah foto"}
+                  className="w-40 h-40 sm:w-56 sm:h-56 md:w-64 md:h-64 rounded-full overflow-hidden shadow-xl border-4 sm:border-8 border-slate-50 bg-slate-100 flex items-center justify-center relative cursor-pointer group"
+                  title={avatarLocks[selectedOperator.mesin] ? "Foto Terkunci. Klik gembok di bawah untuk Membuka." : "Klik untuk mengubah foto"}
                 >
                     <img
                       src={getAvatarImage(selectedOperator.mesin)}
@@ -492,19 +534,19 @@ export function RankingPage({ data }: any) {
                       onError={handleImageError}
                     />
                     <User 
-                      size={100} 
+                      size={60} 
                       className="text-slate-300 absolute fallback-icon" 
                       style={{ display: 'none' }}
                     />
                     {!avatarLocks[selectedOperator.mesin] ? (
                       <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center">
-                        <span className="text-white font-bold text-lg drop-shadow-md">Ganti Foto</span>
-                        <span className="text-slate-200 text-sm mt-1">Klik untuk unggah</span>
+                        <span className="text-white font-bold text-base sm:text-lg drop-shadow-md">Ganti Foto</span>
+                        <span className="text-slate-200 text-xs sm:text-sm mt-1">Klik untuk unggah</span>
                       </div>
                     ) : (
                       <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center">
-                        <Lock className="text-amber-400 w-8 h-8" />
-                        <span className="text-white font-bold text-xs mt-1">Foto Terkunci</span>
+                        <Lock className="text-amber-400 w-6 h-6 sm:w-8 sm:h-8" />
+                        <span className="text-white font-bold text-[10px] sm:text-xs mt-1">Foto Terkunci</span>
                       </div>
                     )}
                     <input 
@@ -532,25 +574,25 @@ export function RankingPage({ data }: any) {
                   type="button"
                   onClick={(e) => { e.stopPropagation(); toggleLock(selectedOperator.mesin); }}
                   className={cn(
-                    "absolute bottom-2 right-2 w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-95 border",
+                    "absolute bottom-1 sm:bottom-2 right-1 sm:right-2 w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-95 border",
                     avatarLocks[selectedOperator.mesin] 
                       ? "bg-slate-900 border-slate-700 text-amber-400" 
                       : "bg-white border-slate-200 text-slate-500 hover:text-slate-900"
                   )}
                   title={avatarLocks[selectedOperator.mesin] ? "Foto terkunci. Klik untuk Buka Kunci" : "Klik untuk Mengunci Foto"}
                 >
-                  {avatarLocks[selectedOperator.mesin] ? <Lock size={18} /> : <Unlock size={18} />}
+                  {avatarLocks[selectedOperator.mesin] ? <Lock className="w-4 h-4 sm:w-4.5 sm:h-4.5" /> : <Unlock className="w-4 h-4 sm:w-4.5 sm:h-4.5" />}
                 </button>
               </div>
 
-              <div className="mt-1 mb-4 flex flex-col items-center gap-1.5">
+              <div className="mt-1 mb-4 flex flex-col items-center gap-1.5 w-full">
                 <label className={cn(
-                  "px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-wider cursor-pointer shadow-xs border transition-colors flex items-center gap-1.5",
+                  "px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl font-bold text-[10px] sm:text-xs uppercase tracking-wider cursor-pointer shadow-xs border transition-colors flex items-center gap-1.5",
                   avatarLocks[selectedOperator.mesin]
                     ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
                     : "bg-blue-600 hover:bg-blue-700 text-white border-blue-500"
                 )}>
-                  {avatarLocks[selectedOperator.mesin] ? <Lock size={14} /> : <Upload size={14} /* wait, we didn't import Upload, so we don't put it to keep things compilation-ready */ />}
+                  {avatarLocks[selectedOperator.mesin] ? <Lock className="w-3.5 h-3.5" /> : <Upload className="w-3.5 h-3.5" />}
                   {avatarLocks[selectedOperator.mesin] ? 'Foto Terkunci' : 'Unggah Foto Operator'}
                   <input 
                     type="file" 
@@ -571,26 +613,26 @@ export function RankingPage({ data }: any) {
                     }} 
                   />
                 </label>
-                <p className="text-[10px] text-slate-500 font-semibold leading-none">
+                <p className="text-[9px] sm:text-[10px] text-slate-500 font-semibold leading-none text-center">
                   {avatarLocks[selectedOperator.mesin] ? 'Keamanan Aktif (Buka gembok untuk mengubah)' : 'Foto otomatis dikunci setelah Anda unggah'}
                 </p>
               </div>
               
-              <h3 className="text-3xl font-extrabold text-slate-900 mb-2 text-center">
+              <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 mb-2 text-center">
                 {avatars[selectedOperator.mesin]?.name || selectedOperator.mesin}
               </h3>
-              <p className="text-md font-semibold text-blue-700 bg-blue-50 px-5 py-2 rounded-xl mb-6 text-center">
+              <p className="text-xs sm:text-sm font-semibold text-blue-700 bg-blue-50 px-4 py-1.5 rounded-xl mb-5 sm:mb-6 text-center leading-none">
                 Operator Produksi ({selectedOperator.mesin})
               </p>
               
-              <div className="flex flex-col gap-3 w-full bg-slate-50 p-4 rounded-2xl border border-slate-100">
+              <div className="flex flex-col gap-2.5 w-full bg-slate-50 p-3.5 sm:p-4 rounded-2xl border border-slate-100">
                 <div className="flex justify-between items-center">
-                    <span className="text-slate-500 font-medium">Pencapaian Yield</span>
-                    <span className="font-bold text-slate-800 text-lg">{(selectedOperator.yield * 100).toFixed(1)}%</span>
+                    <span className="text-slate-500 text-xs sm:text-sm font-medium">Pencapaian Yield</span>
+                    <span className="font-bold text-slate-800 text-sm sm:text-lg">{(selectedOperator.yield * 100).toFixed(1)}%</span>
                 </div>
                 <div className="flex justify-between items-center">
-                    <span className="text-slate-500 font-medium">Total Produksi</span>
-                    <span className="font-bold text-slate-800 text-lg">{selectedOperator.total.toLocaleString('id-ID', { maximumFractionDigits: 1 })} M³</span>
+                    <span className="text-slate-500 text-xs sm:text-sm font-medium">Total Produksi</span>
+                    <span className="font-bold text-slate-800 text-sm sm:text-lg">{selectedOperator.total.toLocaleString('id-ID', { maximumFractionDigits: 1 })} M³</span>
                 </div>
               </div>
             </div>
