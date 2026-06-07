@@ -7,11 +7,12 @@ import {
   fetchProductionData, 
   fetchSupplierData,
   fetchMonthlyLogData,
+  fetchOperatorData,
   getSummaryStats,
   getTodayMachineStats,
   normalizeMachineName
 } from './services/dataService';
-import { MonthlyLogData, ProductionData, SupplierData } from './types';
+import { MonthlyLogData, ProductionData, SupplierData, OperatorData } from './types';
 
 // Lazy loading pages for a lightweight initial load
 const HomePage = lazy(() => import('./components/Pages/HomePage').then(module => ({ default: module.HomePage })));
@@ -31,6 +32,7 @@ export default function App() {
   const [data, setData] = useState<ProductionData[]>([]);
   const [supplierData, setSupplierData] = useState<SupplierData[]>([]);
   const [monthlyLogData, setMonthlyLogData] = useState<MonthlyLogData[]>([]);
+  const [operatorData, setOperatorData] = useState<OperatorData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Firebase state
@@ -102,11 +104,13 @@ export default function App() {
     Promise.all([
       fetchProductionData(),
       fetchSupplierData(),
-      fetchMonthlyLogData()
-    ]).then(([prodData, suppData, monthlyLog]) => {
+      fetchMonthlyLogData(),
+      fetchOperatorData()
+    ]).then(([prodData, suppData, monthlyLog, opData]) => {
       setData(prodData);
       setSupplierData(suppData);
       setMonthlyLogData(monthlyLog);
+      setOperatorData(opData);
       setIsLoading(false);
     });
   }, []);
@@ -198,8 +202,8 @@ export default function App() {
         {activeTab === 'Home' && <HomePage setActiveTab={handleTabChange} />}
         {activeTab === 'Overview' && <OverviewPage stats={stats} todayStats={todayStats} monthPerformance={monthPerformance} monthlyLogData={monthlyLogData} />}
         {activeTab === 'Analytics' && <AnalyticsPage data={data} />}
-        {activeTab === 'Ranking' && <RankingPage data={data} />}
-        {activeTab === 'OperatorProfile' && <OperatorProfilePage data={data} />}
+        {activeTab === 'Ranking' && <RankingPage data={data} operatorData={operatorData} />}
+        {activeTab === 'OperatorProfile' && <OperatorProfilePage data={data} operatorData={operatorData} />}
         {activeTab === 'Production' && <ProductionPage todayStats={todayStats} />}
         {activeTab === 'Recap' && <RecapPage data={data} supplierData={supplierData} />}
         {activeTab === 'Downtime' && <DowntimePage data={data} />}

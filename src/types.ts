@@ -71,3 +71,18 @@ export interface MonthlyLogData {
   total: number;
   yieldTotal: number;
 }
+
+export interface OperatorData {
+  id_operator: string;
+  nama_lengkap: string;
+  inisial: string;
+  kode_bs: string;
+  tanggal_mulai: string;
+  masa_kerja_tahun: string;
+  status_aktif: boolean;
+  url_foto: string;
+  status_upload: boolean;
+  avg_yield_alltime: number | null;
+  volume_alltime: number | null;
+}
+

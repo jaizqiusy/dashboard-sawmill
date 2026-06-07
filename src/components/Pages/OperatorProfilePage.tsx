@@ -23,16 +23,7 @@ import { normalizeMachineName } from '../../services/dataService';
 import { collection, onSnapshot, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../../firebase';
 
-export const OPERATOR_DETAILS: Record<string, { name: string; tenure: string; joinDate: string; specialty: string }> = {
-  'BS 1': { name: 'Ahmad Khudlori', tenure: '8 Tahun', joinDate: '12 Mei 2018', specialty: 'Rendemen Optimal & Log Lokal' },
-  'BS 2': { name: 'Marjono', tenure: '6 Tahun', joinDate: '04 Agustus 2020', specialty: 'Presisi Ukuran & Log Utama' },
-  'BS 3': { name: 'Hartono', tenure: '7 Tahun', joinDate: '19 September 2019', specialty: 'Sawmill Kecepatan Tinggi & Log Turunan' },
-  'BS 4': { name: 'Saenurrodin', tenure: '5 Tahun', joinDate: '02 Februari 2021', specialty: 'Sortasi Efisien & Bebas Downtime' },
-  'BS 5': { name: 'Subur', tenure: '4 Tahun', joinDate: '11 November 2022', specialty: 'Volume Output Konsisten' },
-  'BS 6': { name: 'Supardi', tenure: '9 Tahun', joinDate: '15 Maret 2017', specialty: 'Spesialis Log Diameter Besar (Utama)' },
-  'BS 7': { name: 'Supariyo', tenure: '3 Tahun', joinDate: '08 Oktober 2023', specialty: 'Penanganan Aliran Kerja & Log Lokal' },
-  'BS 8': { name: 'Sukono', tenure: '5 Tahun', joinDate: '30 Juni 2021', specialty: 'Pemulihan Serat & Optimasi Turunan' }
-};
+
 
 // Premium SVG avatar generator for fallback display
 const getDefaultSvgAvatar = (mesin: string, name: string) => {
@@ -74,7 +65,34 @@ const getDefaultSvgAvatar = (mesin: string, name: string) => {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 };
 
-export function OperatorProfilePage({ data }: { data: any[] }) {
+export function OperatorProfilePage({ data, operatorData }: { data: any[], operatorData?: any[] }) {
+  const OPERATOR_DETAILS: Record<string, { name: string; tenure: string; joinDate: string; specialty: string; photoUrl?: string }> = React.useMemo(() => {
+    const details: Record<string, any> = {
+      'BS 1': { name: 'Ahmad Khudlori', tenure: '8 Tahun', joinDate: '12 Mei 2018', specialty: 'Rendemen Optimal & Log Lokal' },
+      'BS 2': { name: 'Marjono', tenure: '6 Tahun', joinDate: '04 Agustus 2020', specialty: 'Presisi Ukuran & Log Utama' },
+      'BS 3': { name: 'Hartono', tenure: '7 Tahun', joinDate: '19 September 2019', specialty: 'Sawmill Kecepatan Tinggi & Log Turunan' },
+      'BS 4': { name: 'Saenurrodin', tenure: '5 Tahun', joinDate: '02 Februari 2021', specialty: 'Sortasi Efisien & Bebas Downtime' },
+      'BS 5': { name: 'Subur', tenure: '4 Tahun', joinDate: '11 November 2022', specialty: 'Volume Output Konsisten' },
+      'BS 6': { name: 'Supardi', tenure: '9 Tahun', joinDate: '15 Maret 2017', specialty: 'Spesialis Log Diameter Besar (Utama)' },
+      'BS 7': { name: 'Supariyo', tenure: '3 Tahun', joinDate: '08 Oktober 2023', specialty: 'Penanganan Aliran Kerja & Log Lokal' },
+      'BS 8': { name: 'Sukono', tenure: '5 Tahun', joinDate: '30 Juni 2021', specialty: 'Pemulihan Serat & Optimasi Turunan' }
+    };
+    if (operatorData && operatorData.length > 0) {
+      operatorData.forEach(op => {
+        if (op.kode_bs && op.status_aktif) {
+          details[op.kode_bs] = {
+            ...details[op.kode_bs],
+            name: op.nama_lengkap || details[op.kode_bs]?.name,
+            tenure: op.masa_kerja_tahun ? `${op.masa_kerja_tahun} Tahun` : details[op.kode_bs]?.tenure,
+            joinDate: op.tanggal_mulai || details[op.kode_bs]?.joinDate,
+            photoUrl: op.url_foto || undefined
+          };
+        }
+      });
+    }
+    return details;
+  }, [operatorData]);
+
   const [selectedOperator, setSelectedOperator] = useState<string | null>(null);
   const [customAvatars, setCustomAvatars] = useState<Record<string, string>>(() => {
     try {
@@ -347,6 +365,7 @@ export function OperatorProfilePage({ data }: { data: any[] }) {
 
   const getAvatarImage = (mesin: string) => {
     if (customAvatars[mesin]) return customAvatars[mesin];
+    if (OPERATOR_DETAILS[mesin]?.photoUrl) return OPERATOR_DETAILS[mesin].photoUrl;
     const name = OPERATOR_DETAILS[mesin]?.name || mesin;
     return getDefaultSvgAvatar(mesin, name);
   };

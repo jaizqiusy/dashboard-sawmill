@@ -49,7 +49,7 @@ const getDefaultSvgAvatar = (mesin: string, name: string) => {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 };
 
-export function RankingPage({ data }: any) {
+export function RankingPage({ data, operatorData }: { data: any[], operatorData?: any[] }) {
   const [activeSubTab, setActiveSubTab] = useState<'ranks' | 'realtime'>('ranks');
   const [periodType, setPeriodType] = useState('monthly');
   const periods = getAvailablePeriods(data);
@@ -325,19 +325,33 @@ export function RankingPage({ data }: any) {
   const top3 = rankings.slice(0, 3);
   const rest = rankings.slice(3, 8); // top 8
 
-  const avatars: Record<string, { name: string }> = {
-    'BS 1': { name: 'Ahmad Khudlori' },
-    'BS 2': { name: 'Marjono' },
-    'BS 3': { name: 'Hartono' },
-    'BS 4': { name: 'Saenurrodin' },
-    'BS 5': { name: 'Subur' },
-    'BS 6': { name: 'Supardi' },
-    'BS 7': { name: 'Supariyo' },
-    'BS 8': { name: 'Sukono' }
-  };
+  const avatars: Record<string, { name: string; photoUrl?: string }> = React.useMemo(() => {
+    const base: Record<string, { name: string; photoUrl?: string }> = {
+      'BS 1': { name: 'Ahmad Khudlori' },
+      'BS 2': { name: 'Marjono' },
+      'BS 3': { name: 'Hartono' },
+      'BS 4': { name: 'Saenurrodin' },
+      'BS 5': { name: 'Subur' },
+      'BS 6': { name: 'Supardi' },
+      'BS 7': { name: 'Supariyo' },
+      'BS 8': { name: 'Sukono' }
+    };
+    if (operatorData && operatorData.length > 0) {
+      operatorData.forEach(op => {
+        if (op.kode_bs && op.status_aktif) {
+          base[op.kode_bs] = {
+            name: op.nama_lengkap || base[op.kode_bs]?.name,
+            photoUrl: op.url_foto || undefined
+          };
+        }
+      });
+    }
+    return base;
+  }, [operatorData]);
 
   const getAvatarImage = (mesin: string) => {
     if (customAvatars[mesin]) return customAvatars[mesin];
+    if (avatars[mesin]?.photoUrl) return avatars[mesin].photoUrl;
     const name = avatars[mesin]?.name || mesin;
     return getDefaultSvgAvatar(mesin, name);
   };

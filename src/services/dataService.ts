@@ -1,7 +1,57 @@
 import { RAW_CSV_DATA } from '../data/raw_data';
-import { ProductionData, SummaryStats, SupplierData, MonthlyLogData } from '../types';
+import { ProductionData, SummaryStats, SupplierData, MonthlyLogData, OperatorData } from '../types';
 
 const SPREADSHEET_ID = '1G7x3dtE2KFF338w6qdd4jrMkz-yrbThlzx5Vi0I8AqQ';
+
+export async function fetchOperatorData(): Promise<OperatorData[]> {
+  const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=Operator%20bs`;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Failed to fetch data');
+    const csvData = await response.text();
+    return parseOperatorCSV(csvData);
+  } catch (error) {
+    console.error('Error fetching operator data:', error);
+    return [];
+  }
+}
+
+function parseOperatorCSV(csv: string): OperatorData[] {
+  const lines = csv.trim().split('\n');
+  if (lines.length <= 1) return [];
+
+  const parseLine = (line: string) => {
+    const result = [];
+    let start = 0;
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+        if (line[i] === '"') inQuotes = !inQuotes;
+        if (line[i] === ',' && !inQuotes) {
+            result.push(line.substring(start, i));
+            start = i + 1;
+        }
+    }
+    result.push(line.substring(start));
+    return result.map(v => v.replace(/^"|"$/g, '').trim());
+  };
+
+  return lines.slice(1).map(line => {
+    const values = parseLine(line);
+    return {
+      id_operator: values[0] || '',
+      nama_lengkap: values[1] || '',
+      inisial: values[2] || '',
+      kode_bs: values[3] || '',
+      tanggal_mulai: values[4] || '',
+      masa_kerja_tahun: values[5] || '',
+      status_aktif: values[6] === 'TRUE',
+      url_foto: values[7] || '',
+      status_upload: values[8] === 'TRUE',
+      avg_yield_alltime: values[9] ? parseFloat(values[9]) : null,
+      volume_alltime: values[10] ? parseFloat(values[10]) : null,
+    };
+  }).filter(row => row.id_operator);
+}
 
 export async function fetchProductionData(): Promise<ProductionData[]> {
   const GID = '0'; // Assuming first sheet, or you can specify GID
