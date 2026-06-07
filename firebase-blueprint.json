@@ -1,0 +1,35 @@
+{
+  "entities": {
+    "Operator": {
+      "title": "Operator",
+      "description": "Operator profile containing normalized machine name, profile photo, lock status and last update timestamp",
+      "type": "object",
+      "properties": {
+        "mesin": {
+          "type": "string",
+          "description": "Normalized machine ID (e.g. BS 1, BS 2, Pony A)"
+        },
+        "avatar": {
+          "type": "string",
+          "description": "Base64 encoded avatar image"
+        },
+        "locked": {
+          "type": "boolean",
+          "description": "Lock status of the operator's photo to prevent overwrite"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The exact date and time the profile was last synchronized"
+        }
+      },
+      "required": ["mesin", "avatar", "locked", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/operators/{operatorId}": {
+      "schema": "Operator",
+      "description": "Stores operator public profiles, avatars, and custom photo-locking status"
+    }
+  }
+}

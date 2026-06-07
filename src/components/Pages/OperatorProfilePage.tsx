@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import { cn, getApiUrl } from '../../lib/utils';
 import { normalizeMachineName } from '../../services/dataService';
+import { collection, onSnapshot, doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db, handleFirestoreError, OperationType } from '../../firebase';
 
 export const OPERATOR_DETAILS: Record<string, { name: string; tenure: string; joinDate: string; specialty: string }> = {
   'BS 1': { name: 'Ahmad Khudlori', tenure: '8 Tahun', joinDate: '12 Mei 2018', specialty: 'Rendemen Optimal & Log Lokal' },
@@ -80,41 +82,66 @@ export function OperatorProfilePage({ data }: { data: any[] }) {
 
   // Sync state with server database on mount
   useEffect(() => {
-    // 1. Fetch images
+    // 1. Subscribe to real-time Firestore updates
+    const unsubscribe = onSnapshot(collection(db, 'operators'), (snapshot) => {
+      const serverAvatars: Record<string, string> = {};
+      const serverLocks: Record<string, boolean> = {};
+      
+      snapshot.forEach((docSnapshot) => {
+        const item = docSnapshot.data();
+        if (item.mesin) {
+          if (item.avatar) serverAvatars[item.mesin] = item.avatar;
+          serverLocks[item.mesin] = !!item.locked;
+        }
+      });
+      
+      if (Object.keys(serverAvatars).length > 0) {
+        setCustomAvatars(prev => {
+          const combined = { ...prev, ...serverAvatars };
+          try {
+            localStorage.setItem('operator_avatars', JSON.stringify(combined));
+          } catch (e) {
+            console.warn("Storage quota full", e);
+          }
+          return combined;
+        });
+      }
+      
+      if (Object.keys(serverLocks).length > 0) {
+        setAvatarLocks(prev => {
+          const combined = { ...prev, ...serverLocks };
+          try {
+            localStorage.setItem('operator_avatar_locks', JSON.stringify(combined));
+          } catch (e) {
+            console.warn("Storage quota full", e);
+          }
+          return combined;
+        });
+      }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'operators');
+    });
+
+    // 2. Local fallback fetch REST API endpoints
     fetch(getApiUrl('/api/avatars'))
       .then(res => res.json())
       .then(serverAvatars => {
         if (serverAvatars && typeof serverAvatars === 'object') {
-          setCustomAvatars(prev => {
-            const combined = { ...prev, ...serverAvatars };
-            try {
-              localStorage.setItem('operator_avatars', JSON.stringify(combined));
-            } catch (e) {
-              console.warn("Storage quota full, keeping in-memory", e);
-            }
-            return combined;
-          });
+          setCustomAvatars(prev => ({ ...prev, ...serverAvatars }));
         }
       })
-      .catch(err => console.error("Error loading custom avatars:", err));
+      .catch(err => console.error("Fallback profiles fetch error:", err));
 
-    // 2. Fetch locks
     fetch(getApiUrl('/api/avatar-locks'))
       .then(res => res.json())
       .then(serverLocks => {
         if (serverLocks && typeof serverLocks === 'object') {
-          setAvatarLocks(prev => {
-            const combined = { ...prev, ...serverLocks };
-            try {
-              localStorage.setItem('operator_avatar_locks', JSON.stringify(combined));
-            } catch (e) {
-              console.warn("Storage quota full, locking in-memory", e);
-            }
-            return combined;
-          });
+          setAvatarLocks(prev => ({ ...prev, ...serverLocks }));
         }
       })
-      .catch(err => console.error("Error loading photo locks:", err));
+      .catch(err => console.error("Fallback locks fetch error:", err));
+
+    return () => unsubscribe();
   }, []);
 
   // Handle Photo Upload with Auto-Lock (kunci setelah di unggah foto nya)
@@ -190,6 +217,23 @@ export function OperatorProfilePage({ data }: { data: any[] }) {
             setTimeout(() => setSaveSuccessMsg(null), 4000);
           })
           .catch(err => console.error("Error saving to server:", err));
+
+          // Real-time synchronization to Firestore
+          const opDocId = mesin.replace(/\s+/g, '_');
+          setDoc(doc(db, 'operators', opDocId), {
+            mesin,
+            avatar: base64,
+            locked: true,
+            updatedAt: serverTimestamp()
+          })
+          .then(() => console.log(`Profile synced to Firestore for ${mesin}`))
+          .catch(err => {
+            try {
+              handleFirestoreError(err, OperationType.WRITE, `operators/${opDocId}`);
+            } catch (e) {
+              console.warn("Firestore sync skipped:", e);
+            }
+          });
         }
       };
       img.src = e.target?.result as string;
@@ -223,6 +267,23 @@ export function OperatorProfilePage({ data }: { data: any[] }) {
       }
     })
     .catch(err => console.error("Server synchronization error for lock status:", err));
+
+    // Real-time synchronization to Firestore
+    const opDocId = mesin.replace(/\s+/g, '_');
+    setDoc(doc(db, 'operators', opDocId), {
+      mesin,
+      avatar: customAvatars[mesin] || '',
+      locked: newLockedState,
+      updatedAt: serverTimestamp()
+    })
+    .then(() => console.log(`Lock marker synced to Firestore for ${mesin}`))
+    .catch(err => {
+      try {
+        handleFirestoreError(err, OperationType.WRITE, `operators/${opDocId}`);
+      } catch (e) {
+        console.warn("Firestore sync skipped:", e);
+      }
+    });
   };
 
   // Helper to fallback to standard illustration

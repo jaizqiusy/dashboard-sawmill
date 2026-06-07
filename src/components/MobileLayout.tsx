@@ -10,9 +10,22 @@ interface MobileLayoutProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   title: string;
+  user: any;
+  firebaseConnected: boolean;
+  onLogin: () => void;
+  onLogout: () => void;
 }
 
-export function MobileLayout({ children, activeTab, setActiveTab, title }: MobileLayoutProps) {
+export function MobileLayout({ 
+  children, 
+  activeTab, 
+  setActiveTab, 
+  title,
+  user,
+  firebaseConnected,
+  onLogin,
+  onLogout
+}: MobileLayoutProps) {
   const isHome = activeTab === 'Home';
   
   return (
@@ -39,10 +52,31 @@ export function MobileLayout({ children, activeTab, setActiveTab, title }: Mobil
           <div className="flex flex-col">
             <h1 className="text-lg font-black tracking-tight text-white flex items-center gap-1.5 leading-none">
               SAWMILL <span className="text-blue-500 italic text-[14px]">PERFORMANCE</span>
+              <span 
+                className={cn(
+                  "w-2 h-2 rounded-full inline-block",
+                  firebaseConnected ? "bg-emerald-500 animate-pulse" : "bg-rose-500"
+                )} 
+                title={firebaseConnected ? "Firebase Cloud Terhubung" : "Firebase Cloud Terputus"} 
+              />
             </h1>
-            <p className="text-[9px] text-white font-bold tracking-widest mt-1 uppercase">
-              {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })}
-            </p>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-[9px] text-white/60 font-bold tracking-widest uppercase">
+                {new Date().toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' })}
+              </p>
+              <div className="w-1 h-1 bg-white/20 rounded-full" />
+              {user ? (
+                <div className="flex items-center gap-1.5 bg-white/5 px-2 py-0.5 rounded-lg border border-white/10">
+                  {user.photoURL && <img src={user.photoURL} alt={user.displayName || 'User'} className="w-3.5 h-3.5 rounded-full border border-white/20" referrerpolicy="no-referrer" />}
+                  <span className="text-[9px] text-white/80 font-bold max-w-[60px] truncate">{user.displayName?.split(' ')[0]}</span>
+                  <button onClick={onLogout} className="text-[8px] text-rose-400 hover:text-rose-300 font-extrabold uppercase ml-1">Keluar</button>
+                </div>
+              ) : (
+                <button onClick={onLogin} className="text-[9px] bg-indigo-600/50 hover:bg-indigo-600/70 text-white/90 border border-indigo-500/30 px-2 py-0.5 rounded-lg font-bold flex items-center gap-1 transition-all">
+                  Sign In
+                </button>
+              )}
+            </div>
           </div>
         </div>
         

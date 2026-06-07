@@ -3,6 +3,8 @@ import { Trophy, Crown, X, ZoomIn, User, Lock, Unlock, Upload } from 'lucide-rea
 import { cn, getApiUrl } from '../../lib/utils';
 import { getAvailablePeriods, getMachineRankings } from '../../services/dataService';
 import { BsAchievementUpdate } from './BsAchievementUpdate';
+import { collection, onSnapshot, doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db, handleFirestoreError, OperationType } from '../../firebase';
 
 // Premium SVG avatar generator for operators
 const getDefaultSvgAvatar = (mesin: string, name: string) => {
@@ -73,39 +75,67 @@ export function RankingPage({ data }: any) {
 
   // Load custom avatars and locks from server on mount for cross-device persistence
   React.useEffect(() => {
+    // 1. Subscribe to real-time Firestore database updates
+    const unsubscribe = onSnapshot(collection(db, 'operators'), (snapshot) => {
+      const serverAvatars: Record<string, string> = {};
+      const serverLocks: Record<string, boolean> = {};
+      
+      snapshot.forEach((docSnapshot) => {
+        const item = docSnapshot.data();
+        if (item.mesin) {
+          if (item.avatar) serverAvatars[item.mesin] = item.avatar;
+          serverLocks[item.mesin] = !!item.locked;
+        }
+      });
+      
+      if (Object.keys(serverAvatars).length > 0) {
+        setCustomAvatars(prev => {
+          const combined = { ...prev, ...serverAvatars };
+          try {
+            localStorage.setItem('operator_avatars', JSON.stringify(combined));
+          } catch (e) {
+            console.warn("Storage quota full", e);
+          }
+          return combined;
+        });
+      }
+      
+      if (Object.keys(serverLocks).length > 0) {
+        setAvatarLocks(prev => {
+          const combined = { ...prev, ...serverLocks };
+          try {
+            localStorage.setItem('operator_avatar_locks', JSON.stringify(combined));
+          } catch (e) {
+            console.warn("Storage quota full", e);
+          }
+          return combined;
+        });
+      }
+    }, (error) => {
+      // Gracefully capture error using standardized handler
+      handleFirestoreError(error, OperationType.GET, 'operators');
+    });
+
+    // 2. Fetch local backup endpoints as fallback
     fetch(getApiUrl('/api/avatars'))
       .then(res => res.json())
       .then(serverAvatars => {
         if (serverAvatars && typeof serverAvatars === 'object') {
-          setCustomAvatars(prev => {
-            const combined = { ...prev, ...serverAvatars };
-            try {
-              localStorage.setItem('operator_avatars', JSON.stringify(combined));
-            } catch (e) {
-              console.warn("Storage quota full, using in-memory state only", e);
-            }
-            return combined;
-          });
+          setCustomAvatars(prev => ({ ...prev, ...serverAvatars }));
         }
       })
-      .catch(err => console.error("Error fetching operator avatars from server:", err));
+      .catch(err => console.error("Fallback avatars fetch error:", err));
 
     fetch(getApiUrl('/api/avatar-locks'))
       .then(res => res.json())
       .then(serverLocks => {
         if (serverLocks && typeof serverLocks === 'object') {
-          setAvatarLocks(prev => {
-            const combined = { ...prev, ...serverLocks };
-            try {
-              localStorage.setItem('operator_avatar_locks', JSON.stringify(combined));
-            } catch (e) {
-              console.warn("Storage quota full, using in-memory locks only", e);
-            }
-            return combined;
-          });
+          setAvatarLocks(prev => ({ ...prev, ...serverLocks }));
         }
       })
-      .catch(err => console.error("Error fetching locks from server:", err));
+      .catch(err => console.error("Fallback locks fetch error:", err));
+
+    return () => unsubscribe();
   }, []);
 
   const toggleLock = (mesin: string) => {
@@ -130,6 +160,23 @@ export function RankingPage({ data }: any) {
       if (p.success) console.log(`Lock toggled successfully for ${mesin}`);
     })
     .catch(err => console.error("Error toggling lock:", err));
+
+    // Synchronize to Firestore
+    const opDocId = mesin.replace(/\s+/g, '_');
+    setDoc(doc(db, 'operators', opDocId), {
+      mesin,
+      avatar: customAvatars[mesin] || '',
+      locked: newLockedState,
+      updatedAt: serverTimestamp()
+    })
+    .then(() => console.log(`Synchronized lock state to Firestore for ${mesin}`))
+    .catch(err => {
+      try {
+        handleFirestoreError(err, OperationType.WRITE, `operators/${opDocId}`);
+      } catch (e) {
+        console.warn("Firestore lock sync skipped:", e);
+      }
+    });
   };
 
   const handleAvatarUpload = (mesin: string, file: File) => {
@@ -204,6 +251,23 @@ export function RankingPage({ data }: any) {
             console.log(`Otomatis mengunci foto operator ${mesin}`);
           })
           .catch(err => console.error("Server synchronization error for operator photo:", err));
+
+          // Synchronize to Firestore
+          const opDocId = mesin.replace(/\s+/g, '_');
+          setDoc(doc(db, 'operators', opDocId), {
+            mesin,
+            avatar: base64,
+            locked: true,
+            updatedAt: serverTimestamp()
+          })
+          .then(() => console.log(`Synchronized uploaded photo to Firestore for ${mesin}`))
+          .catch(err => {
+            try {
+              handleFirestoreError(err, OperationType.WRITE, `operators/${opDocId}`);
+            } catch (e) {
+              console.warn("Firestore photo sync skipped:", e);
+            }
+          });
         }
       };
       img.src = e.target?.result as string;

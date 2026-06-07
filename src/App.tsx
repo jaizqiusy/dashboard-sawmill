@@ -1,5 +1,8 @@
 import React, { useMemo, useState, useEffect, Suspense, lazy } from 'react';
 import { MobileLayout } from './components/MobileLayout';
+import { auth, db, googleProvider } from './firebase';
+import { onAuthStateChanged, signInWithPopup, signOut, User as FirebaseUser } from 'firebase/auth';
+import { doc, getDocFromServer } from 'firebase/firestore';
 import { 
   fetchProductionData, 
   fetchSupplierData,
@@ -29,6 +32,48 @@ export default function App() {
   const [supplierData, setSupplierData] = useState<SupplierData[]>([]);
   const [monthlyLogData, setMonthlyLogData] = useState<MonthlyLogData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Firebase state
+  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [firebaseConnected, setFirebaseConnected] = useState<boolean>(false);
+
+  // Listen to Auth changes & test Firestore connectivity
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (usr) => {
+      setUser(usr);
+    });
+
+    getDocFromServer(doc(db, 'test', 'connection'))
+      .then(() => {
+        setFirebaseConnected(true);
+      })
+      .catch((err) => {
+        if (err instanceof Error && err.message.includes('the client is offline')) {
+          setFirebaseConnected(false);
+        } else {
+          // Response came back, meaning we are online and firebase is accessible!
+          setFirebaseConnected(true);
+        }
+      });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleLogin = async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (err) {
+      console.error("Firebase Login error:", err);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (err) {
+      console.error("Firebase Logout error:", err);
+    }
+  };
 
   // Handle back button natively
   useEffect(() => {
@@ -136,7 +181,15 @@ export default function App() {
   }
 
   return (
-    <MobileLayout activeTab={activeTab} setActiveTab={handleTabChange} title={activeTab}>
+    <MobileLayout 
+      activeTab={activeTab} 
+      setActiveTab={handleTabChange} 
+      title={activeTab}
+      user={user}
+      firebaseConnected={firebaseConnected}
+      onLogin={handleLogin}
+      onLogout={handleLogout}
+    >
       <Suspense fallback={
         <div className="flex h-64 items-center justify-center">
           <div className="w-8 h-8 rounded-full border-4 border-indigo-200 border-t-indigo-600 animate-spin" />

@@ -1,0 +1,57 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny catch-all safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global Hardened Helpers
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-\\s]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Validation helper for Operator schema
+    function isValidOperator(data) {
+      return data.keys().hasAll(['mesin', 'avatar', 'locked', 'updatedAt'])
+        && data.keys().size() == 4
+        && data.mesin is string && data.mesin.size() > 0 && data.mesin.size() <= 50
+        && data.avatar is string && data.avatar.size() > 0 && data.avatar.size() <= 10000000
+        && data.locked is bool
+        && data.updatedAt is timestamp;
+    }
+
+    match /operators/{operatorId} {
+      // Anyone can view operator profiles on the sawmill leaderboard
+      allow read: if true;
+
+      // Only registered and signed-in operators/admins can publish updates
+      allow create: if isSignedIn()
+        && isValidId(operatorId)
+        && isValidOperator(incoming())
+        && incoming().updatedAt == request.time;
+
+      allow update: if isSignedIn()
+        && isValidId(operatorId)
+        && isValidOperator(incoming())
+        && (!existing().locked || incoming().locked == existing().locked)
+        && incoming().updatedAt == request.time;
+
+      allow delete: if isSignedIn()
+        && !existing().locked;
+    }
+  }
+}
