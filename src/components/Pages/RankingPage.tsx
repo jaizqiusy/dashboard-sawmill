@@ -369,14 +369,14 @@ export function RankingPage({ data, operatorData }: { data: any[], operatorData?
       
       const yieldColor = isFirst ? 'text-amber-400' : isSecond ? 'text-cyan-400' : 'text-[#00796b]';
       const sizeClass = isFirst 
-        ? 'w-14 h-14 min-[385px]:w-18 min-[385px]:h-18 sm:w-24 sm:h-24' 
-        : 'w-11 h-11 min-[385px]:w-14 min-[385px]:h-14 sm:w-20 sm:h-20';
+        ? 'w-20 h-20 min-[385px]:w-24 min-[385px]:h-24 sm:w-32 sm:h-32' 
+        : 'w-14 h-14 min-[385px]:w-16 min-[385px]:h-16 sm:w-24 sm:h-24';
       
       return (
-          <div className={cn("flex flex-col items-center relative z-10 hover:-translate-y-1 transition-transform duration-300", isFirst ? "-mt-4" : "mt-4 sm:mt-6")}>
+          <div className={cn("flex flex-col items-center relative z-10 hover:-translate-y-1 transition-transform duration-300", isFirst ? "-mt-8 sm:-mt-12" : "mt-2 sm:mt-6")}>
               {isFirst && (
                 <Crown 
-                  className="w-5 h-5 min-[385px]:w-7 min-[385px]:h-7 sm:w-10 sm:h-10 text-amber-400 absolute -top-4.5 min-[385px]:-top-6 sm:-top-8 drop-shadow-[0_0_10px_rgba(251,191,36,0.5)] z-20" 
+                  className="w-7 h-7 min-[385px]:w-9 min-[385px]:h-9 sm:w-14 sm:h-14 text-amber-400 absolute -top-5 min-[385px]:-top-7 sm:-top-10 drop-shadow-[0_0_15px_rgba(251,191,36,0.5)] z-20" 
                   fill="currentColor" 
                 />
               )}
@@ -402,17 +402,19 @@ export function RankingPage({ data, operatorData }: { data: any[], operatorData?
                   </div>
                   <div className={cn(
                     "absolute left-1/2 -translate-x-1/2 rounded-full flex items-center justify-center font-black ring-2 sm:ring-4 ring-[#0f172a] z-10 transition-all",
-                    isFirst ? "-bottom-2 sm:-bottom-3 w-5 h-5 sm:w-7 sm:h-7 text-[10px] sm:text-sm" : "-bottom-1.5 sm:-bottom-3 w-4 h-4 sm:w-6 sm:h-6 text-[9px] sm:text-xs",
+                    isFirst ? "-bottom-2 sm:-bottom-4 w-6 h-6 min-[385px]:w-7 min-[385px]:h-7 sm:w-9 sm:h-9 text-xs sm:text-base pointer-events-none" : "-bottom-1.5 sm:-bottom-3 w-5 h-5 min-[385px]:w-6 min-[385px]:h-6 sm:w-7 sm:h-7 text-[10px] sm:text-sm pointer-events-none",
                     badgeColor
                   )}>
                       {rank}
                   </div>
               </div>
-              <div className="mt-2.5 sm:mt-4 text-center px-0.5 max-w-[80px] min-[385px]:max-w-[100px] sm:max-w-none">
-                  <p className="text-white font-bold text-[10px] min-[385px]:text-xs sm:text-sm tracking-wide truncate leading-tight">{avatars[rankItem.mesin]?.name || rankItem.mesin}</p>
-                  <p className="text-slate-400 text-[7.5px] sm:text-[10px] font-bold mt-0.5 uppercase tracking-wider leading-none">{rankItem.mesin}</p>
-                  <p className={cn("font-black text-xs min-[385px]:text-sm sm:text-xl mt-0.5 tracking-tight", yieldColor)}>{(rankItem.yield * 100).toFixed(1)}%</p>
-                  <p className="text-slate-400 text-[8.5px] sm:text-xs mt-0.5 font-medium leading-none">{rankItem.total.toLocaleString('id-ID', { maximumFractionDigits: 1 })} M³</p>
+              <div className="mt-2.5 sm:mt-5 text-center px-0.5 max-w-[85px] min-[385px]:max-w-[110px] sm:max-w-[160px]">
+                  <p className={cn("text-white font-bold tracking-wide truncate leading-tight w-full pointer-events-auto cursor-help", isFirst ? "text-xs min-[385px]:text-sm sm:text-base" : "text-[10px] min-[385px]:text-xs sm:text-sm")} title={avatars[rankItem.mesin]?.name || rankItem.mesin}>
+                      {avatars[rankItem.mesin]?.name || rankItem.mesin}
+                  </p>
+                  <p className={cn("text-slate-400 font-bold mt-0.5 uppercase tracking-wider leading-none", isFirst ? "text-[8.5px] sm:text-xs" : "text-[7.5px] sm:text-[10px]")}>{rankItem.mesin}</p>
+                  <p className={cn("font-black mt-0.5 tracking-tight", yieldColor, isFirst ? "text-sm min-[385px]:text-base sm:text-2xl" : "text-xs min-[385px]:text-sm sm:text-xl")}>{(rankItem.yield * 100).toFixed(1)}%</p>
+                  <p className={cn("text-slate-400 font-medium leading-none", isFirst ? "text-[9.5px] sm:text-sm mt-1" : "text-[8.5px] sm:text-xs mt-0.5")}>{rankItem.total.toLocaleString('id-ID', { maximumFractionDigits: 1 })} M³</p>
               </div>
           </div>
       )
@@ -498,7 +500,7 @@ export function RankingPage({ data, operatorData }: { data: any[], operatorData?
           {rankings.length > 0 ? (
             <>
               {/* Podium display */}
-              <div className="flex justify-center items-end gap-1.5 min-[385px]:gap-3.5 sm:gap-10 mb-4 pt-1">
+              <div className="flex justify-center items-end gap-3 min-[385px]:gap-6 sm:gap-14 mb-4 pt-1">
                   {top3[1] && <PodiumItem rankItem={top3[1]} rank={2} />}
                   {top3[0] && <PodiumItem rankItem={top3[0]} rank={1} />}
                   {top3[2] && <PodiumItem rankItem={top3[2]} rank={3} />}
