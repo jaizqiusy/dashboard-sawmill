@@ -386,6 +386,7 @@ export function RankingPage({ data, operatorData }: { data: any[], operatorData?
                         <img 
                           src={getAvatarImage(rankItem.mesin)} 
                           alt={rankItem.mesin} 
+                          referrerPolicy="no-referrer"
                           className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-110" 
                           onError={handleImageError}
                         />
@@ -520,6 +521,7 @@ export function RankingPage({ data, operatorData }: { data: any[], operatorData?
                                     <img 
                                       src={getAvatarImage(rankItem.mesin)} 
                                       alt={rankItem.mesin} 
+                                      referrerPolicy="no-referrer"
                                       className="w-full h-full object-cover object-center transition-transform duration-500 group-hover/avatar:scale-110" 
                                       onError={handleImageError}
                                     />
@@ -584,6 +586,7 @@ export function RankingPage({ data, operatorData }: { data: any[], operatorData?
                     <img
                       src={getAvatarImage(selectedOperator.mesin)}
                       alt={selectedOperator.mesin}
+                      referrerPolicy="no-referrer"
                       className="w-full h-full object-cover object-center"
                       onError={handleImageError}
                     />

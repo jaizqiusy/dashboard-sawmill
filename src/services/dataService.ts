@@ -4,7 +4,7 @@ import { ProductionData, SummaryStats, SupplierData, MonthlyLogData, OperatorDat
 const SPREADSHEET_ID = '1G7x3dtE2KFF338w6qdd4jrMkz-yrbThlzx5Vi0I8AqQ';
 
 export async function fetchOperatorData(): Promise<OperatorData[]> {
-  const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=Operator%20bs`;
+  const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=Operstor%20bs`;
   try {
     const response = await fetch(url);
     if (!response.ok) throw new Error('Failed to fetch data');
@@ -45,7 +45,7 @@ function parseOperatorCSV(csv: string): OperatorData[] {
       tanggal_mulai: values[4] || '',
       masa_kerja_tahun: values[5] || '',
       status_aktif: values[6] === 'TRUE',
-      url_foto: values[7] || '',
+      url_foto: (values[7] || '').replace('export=view', 'export=download'),
       status_upload: values[8] === 'TRUE',
       avg_yield_alltime: values[9] ? parseFloat(values[9]) : null,
       volume_alltime: values[10] ? parseFloat(values[10]) : null,

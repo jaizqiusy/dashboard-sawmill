@@ -488,6 +488,7 @@ export function OperatorProfilePage({ data, operatorData }: { data: any[], opera
                     <img 
                       src={getAvatarImage(mesin)} 
                       alt={profile.name} 
+                      referrerPolicy="no-referrer"
                       className="w-full h-full object-cover object-center transition-transform group-hover:scale-105" 
                       onError={handleImageError}
                     />
@@ -640,6 +641,7 @@ export function OperatorProfilePage({ data, operatorData }: { data: any[], opera
                       <img 
                         src={getAvatarImage(selectedOperator)} 
                         alt={profile.name} 
+                        referrerPolicy="no-referrer"
                         className="w-full h-full object-cover object-center" 
                         onError={handleImageError}
                       />
