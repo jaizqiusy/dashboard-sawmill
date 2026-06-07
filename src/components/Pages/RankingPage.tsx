@@ -50,6 +50,7 @@ const getDefaultSvgAvatar = (mesin: string, name: string) => {
 };
 
 export function RankingPage({ data }: any) {
+  const [activeSubTab, setActiveSubTab] = useState<'ranks' | 'realtime'>('ranks');
   const [periodType, setPeriodType] = useState('monthly');
   const periods = getAvailablePeriods(data);
   const [periodValue, setPeriodValue] = useState(periods.months[0] || 0);
@@ -354,14 +355,14 @@ export function RankingPage({ data }: any) {
       
       const yieldColor = isFirst ? 'text-amber-400' : isSecond ? 'text-cyan-400' : 'text-[#00796b]';
       const sizeClass = isFirst 
-        ? 'w-16 h-16 min-[385px]:w-20 min-[385px]:h-20 sm:w-24 sm:h-24' 
-        : 'w-12 h-12 min-[385px]:w-16 min-[385px]:h-16 sm:w-20 sm:h-20';
+        ? 'w-14 h-14 min-[385px]:w-18 min-[385px]:h-18 sm:w-24 sm:h-24' 
+        : 'w-11 h-11 min-[385px]:w-14 min-[385px]:h-14 sm:w-20 sm:h-20';
       
       return (
-          <div className={cn("flex flex-col items-center relative z-10 hover:-translate-y-1 transition-transform duration-300", isFirst ? "-mt-4" : "mt-6 sm:mt-8")}>
+          <div className={cn("flex flex-col items-center relative z-10 hover:-translate-y-1 transition-transform duration-300", isFirst ? "-mt-4" : "mt-4 sm:mt-6")}>
               {isFirst && (
                 <Crown 
-                  className="w-6 h-6 min-[385px]:w-8 min-[385px]:h-8 sm:w-10 sm:h-10 text-amber-400 absolute -top-5 min-[385px]:-top-7 sm:-top-8 drop-shadow-[0_0_10px_rgba(251,191,36,0.5)] z-20" 
+                  className="w-5 h-5 min-[385px]:w-7 min-[385px]:h-7 sm:w-10 sm:h-10 text-amber-400 absolute -top-4.5 min-[385px]:-top-6 sm:-top-8 drop-shadow-[0_0_10px_rgba(251,191,36,0.5)] z-20" 
                   fill="currentColor" 
                 />
               )}
@@ -375,7 +376,7 @@ export function RankingPage({ data }: any) {
                           onError={handleImageError}
                         />
                         <User 
-                          size={24} 
+                          size={20} 
                           className="text-slate-500 absolute fallback-icon" 
                           style={{ display: 'none' }}
                         />
@@ -386,121 +387,160 @@ export function RankingPage({ data }: any) {
                   </div>
                   <div className={cn(
                     "absolute left-1/2 -translate-x-1/2 rounded-full flex items-center justify-center font-black ring-2 sm:ring-4 ring-[#0f172a] z-10 transition-all",
-                    isFirst ? "-bottom-2 sm:-bottom-3 w-6 h-6 sm:w-7 sm:h-7 text-[10px] sm:text-sm" : "-bottom-1.5 sm:-bottom-3 w-5 h-5 sm:w-7 sm:h-7 text-[9px] sm:text-sm",
+                    isFirst ? "-bottom-2 sm:-bottom-3 w-5 h-5 sm:w-7 sm:h-7 text-[10px] sm:text-sm" : "-bottom-1.5 sm:-bottom-3 w-4 h-4 sm:w-6 sm:h-6 text-[9px] sm:text-xs",
                     badgeColor
                   )}>
                       {rank}
                   </div>
               </div>
-              <div className="mt-4 sm:mt-5 text-center px-0.5 max-w-[85px] min-[385px]:max-w-[110px] sm:max-w-none">
-                  <p className="text-white font-bold text-[10px] min-[385px]:text-xs sm:text-sm tracking-wide truncate">{avatars[rankItem.mesin]?.name || rankItem.mesin}</p>
-                  <p className="text-slate-400 text-[8px] sm:text-[10px] font-bold mt-0.5 uppercase tracking-wider">{rankItem.mesin}</p>
-                  <p className={cn("font-black text-xs min-[385px]:text-base sm:text-xl mt-0.5 sm:mt-1 tracking-tight", yieldColor)}>{(rankItem.yield * 100).toFixed(1)}%</p>
-                  <p className="text-slate-400 text-[9px] sm:text-xs mt-0.5 font-medium">{rankItem.total.toLocaleString('id-ID', { maximumFractionDigits: 1 })} M³</p>
+              <div className="mt-2.5 sm:mt-4 text-center px-0.5 max-w-[80px] min-[385px]:max-w-[100px] sm:max-w-none">
+                  <p className="text-white font-bold text-[10px] min-[385px]:text-xs sm:text-sm tracking-wide truncate leading-tight">{avatars[rankItem.mesin]?.name || rankItem.mesin}</p>
+                  <p className="text-slate-400 text-[7.5px] sm:text-[10px] font-bold mt-0.5 uppercase tracking-wider leading-none">{rankItem.mesin}</p>
+                  <p className={cn("font-black text-xs min-[385px]:text-sm sm:text-xl mt-0.5 tracking-tight", yieldColor)}>{(rankItem.yield * 100).toFixed(1)}%</p>
+                  <p className="text-slate-400 text-[8.5px] sm:text-xs mt-0.5 font-medium leading-none">{rankItem.total.toLocaleString('id-ID', { maximumFractionDigits: 1 })} M³</p>
               </div>
           </div>
       )
   };
 
   return (
-    <div className="p-4 sm:p-5 space-y-6">
-      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-100 shadow-sm relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-amber-100 rounded-full blur-3xl -mr-16 -mt-16" />
-        <h2 className="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2 tracking-tight relative z-10">
-          <Trophy className="w-5 h-5 text-amber-500" />
-          Filter Leaderboard
-        </h2>
-        
-        <div className="flex flex-wrap gap-2.5 mt-4 relative z-10">
-          <div className="flex bg-slate-50 border border-slate-200 rounded-lg p-1">
-             <button 
-                onClick={() => { setPeriodType('weekly'); setPeriodValue(periods.weeks[0] || 0); }}
-                className={cn("px-3 sm:px-4 py-1.5 text-[10px] sm:text-[11px] uppercase tracking-wider font-bold rounded-md transition-colors", periodType === 'weekly' ? "bg-amber-100 text-amber-700" : "text-slate-500 hover:bg-slate-100")}
-             >
-                Mingguan
-             </button>
-             <button 
-                onClick={() => { setPeriodType('monthly'); setPeriodValue(periods.months[0] || 0); }}
-                className={cn("px-3 sm:px-4 py-1.5 text-[10px] sm:text-[11px] uppercase tracking-wider font-bold rounded-md transition-colors", periodType === 'monthly' ? "bg-amber-100 text-amber-700" : "text-slate-500 hover:bg-slate-100")}
-             >
-                Bulanan
-             </button>
-          </div>
-          <select 
-            className="bg-slate-50 border border-slate-200 text-slate-700 text-xs sm:text-sm font-bold rounded-lg px-2.5 py-1.5 outline-none cursor-pointer"
-            value={periodValue}
-            onChange={(e) => setPeriodValue(parseInt(e.target.value))}
-          >
-            {periodType === 'monthly' ? periods.months.map(m => (
-              <option key={m} value={m}>Bulan {m}</option>
-            )) : periods.weeks.map(w => (
-              <option key={w} value={w}>Minggu {w}</option>
-            ))}
-          </select>
-        </div>
+    <div className="p-2 sm:p-5 space-y-4">
+      {/* Sub-tab selection capsules for 1-screen views */}
+      <div className="flex bg-slate-900/40 backdrop-blur-md p-1 rounded-2xl border border-white/5 max-w-md mx-auto relative z-10 shadow-lg relative overflow-hidden">
+        <button
+          onClick={() => setActiveSubTab('ranks')}
+          className={cn(
+            "flex-1 py-1.5 sm:py-2 text-[11px] sm:text-xs font-extrabold uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer",
+            activeSubTab === 'ranks' 
+              ? "bg-[#00796b] text-white shadow-md font-black" 
+              : "text-slate-300 hover:text-white"
+          )}
+        >
+          <Trophy className="w-3.5 h-3.5" />
+          <span>Peringkat Operator</span>
+        </button>
+        <button
+          onClick={() => setActiveSubTab('realtime')}
+          className={cn(
+            "flex-1 py-1.5 sm:py-2 text-[11px] sm:text-xs font-extrabold uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer",
+            activeSubTab === 'realtime' 
+              ? "bg-[#00796b] text-white shadow-md font-black" 
+              : "text-slate-300 hover:text-white"
+          )}
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+          <span>Pencapaian Realtime</span>
+        </button>
       </div>
 
-      <div className="bg-[#0f172a] rounded-3xl p-4 sm:p-6 md:p-8 shadow-xl relative overflow-hidden ring-1 ring-slate-800">
-        <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-sky-900/15 to-transparent pointer-events-none" />
-        
-        {rankings.length > 0 ? (
-          <>
-            <div className="flex justify-center items-end gap-2 min-[385px]:gap-4 sm:gap-10 mb-10 pt-4">
-                {top3[1] && <PodiumItem rankItem={top3[1]} rank={2} />}
-                {top3[0] && <PodiumItem rankItem={top3[0]} rank={1} />}
-                {top3[2] && <PodiumItem rankItem={top3[2]} rank={3} />}
+      {activeSubTab === 'ranks' ? (
+        <div className="bg-[#0f172a] rounded-3xl p-3 sm:p-6 md:p-8 shadow-xl relative overflow-hidden ring-1 ring-slate-800">
+          <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-sky-900/15 to-transparent pointer-events-none" />
+          
+          {/* Integrated Header Row containing Trophy Title + Period Filter controls */}
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-2.5 border-b border-slate-800/80 pb-3 mb-4 relative z-10">
+            <div className="flex items-center gap-1.5">
+              <Trophy className="w-4.5 h-4.5 text-amber-400" />
+              <span className="text-white font-extrabold text-sm sm:text-base tracking-tight">Leaderboard Operator</span>
             </div>
+            
+            <div className="flex flex-wrap items-center justify-center gap-1.5">
+              <div className="flex bg-slate-800/60 p-0.5 rounded-lg border border-slate-750">
+                <button 
+                  onClick={() => { setPeriodType('weekly'); setPeriodValue(periods.weeks[0] || 0); }}
+                  className={cn(
+                    "px-2 py-1 text-[8.5px] uppercase tracking-wider font-extrabold rounded transition-colors cursor-pointer",
+                    periodType === 'weekly' ? "bg-amber-400 text-amber-950 font-black" : "text-slate-400 hover:text-white"
+                  )}
+                >
+                  Mingguan
+                </button>
+                <button 
+                  onClick={() => { setPeriodType('monthly'); setPeriodValue(periods.months[0] || 0); }}
+                  className={cn(
+                    "px-2 py-1 text-[8.5px] uppercase tracking-wider font-extrabold rounded transition-colors cursor-pointer",
+                    periodType === 'monthly' ? "bg-amber-400 text-amber-950 font-black" : "text-slate-400 hover:text-white"
+                  )}
+                >
+                  Bulanan
+                </button>
+              </div>
+              
+              <select 
+                className="bg-slate-800/80 border border-slate-750 text-white text-[10px] sm:text-xs font-bold rounded-lg px-2 py-1 outline-none cursor-pointer focus:border-amber-400"
+                value={periodValue}
+                onChange={(e) => setPeriodValue(parseInt(e.target.value))}
+              >
+                {periodType === 'monthly' ? periods.months.map(m => (
+                  <option key={m} value={m} className="bg-[#0f172a]">Bulan {m}</option>
+                )) : periods.weeks.map(w => (
+                  <option key={w} value={w} className="bg-[#0f172a]">Minggu {w}</option>
+                ))}
+              </select>
+            </div>
+          </div>
 
-            <div className="space-y-3 sm:space-y-4 max-w-2xl mx-auto relative z-10">
-                {rest.map((rankItem, i) => {
-                    const rank = i + 4;
-                    return (
-                        <div key={rank} className="bg-[#1e293b] rounded-[1.25rem] p-3 sm:p-4 flex items-center gap-3 sm:gap-6 border border-slate-800/40 hover:bg-[#253247] transition-colors relative overflow-hidden group">
-                            <div className="w-5 sm:w-8 flex justify-center flex-shrink-0">
-                              <span className="text-slate-500 font-bold text-lg sm:text-2xl group-hover:text-slate-400 transition-colors">{rank}</span>
-                            </div>
-                            <div 
-                                className="w-10 h-10 sm:w-14 sm:h-14 rounded-full overflow-hidden bg-slate-800 flex-shrink-0 ring-2 sm:ring-[3px] ring-[#00796b] p-0.5 shadow-[0_0_8px_rgba(0,121,107,0.25)] cursor-pointer group/avatar relative"
-                                onClick={() => setSelectedOperator(rankItem)}
-                            >
-                                <div className="w-full h-full bg-slate-900 rounded-full flex items-center justify-center overflow-hidden relative">
-                                  <img 
-                                    src={getAvatarImage(rankItem.mesin)} 
-                                    alt={rankItem.mesin} 
-                                    className="w-full h-full object-cover object-center transition-transform duration-500 group-hover/avatar:scale-110" 
-                                    onError={handleImageError}
-                                  />
-                                  <User 
-                                    size={20} 
-                                    className="text-slate-500 absolute fallback-icon" 
-                                    style={{ display: 'none' }}
-                                  />
-                                  <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover/avatar:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                                    <ZoomIn className="w-4 h-4 text-white drop-shadow-md" />
+          {rankings.length > 0 ? (
+            <>
+              {/* Podium display */}
+              <div className="flex justify-center items-end gap-1.5 min-[385px]:gap-3.5 sm:gap-10 mb-4 pt-1">
+                  {top3[1] && <PodiumItem rankItem={top3[1]} rank={2} />}
+                  {top3[0] && <PodiumItem rankItem={top3[0]} rank={1} />}
+                  {top3[2] && <PodiumItem rankItem={top3[2]} rank={3} />}
+              </div>
+
+              {/* Ranks list 4-8 */}
+              <div className="space-y-2 max-w-2xl mx-auto relative z-10">
+                  {rest.map((rankItem, i) => {
+                      const rank = i + 4;
+                      return (
+                          <div key={rank} className="bg-[#1e293b]/40 rounded-xl p-2 sm:p-3 flex items-center gap-2 sm:gap-4 border border-slate-800/10 hover:bg-[#253247] transition-colors relative overflow-hidden group">
+                              <div className="w-5 sm:w-8 flex justify-center flex-shrink-0">
+                                <span className="text-slate-500 font-bold text-sm sm:text-xl group-hover:text-slate-400 transition-colors">{rank}</span>
+                              </div>
+                              <div 
+                                  className="w-8 h-8 sm:w-12 sm:h-12 rounded-full overflow-hidden bg-slate-800 flex-shrink-0 ring-1.5 sm:ring-2 ring-[#00796b] p-0.5 shadow-[0_0_6px_rgba(0,121,107,0.15)] cursor-pointer group/avatar relative"
+                                  onClick={() => setSelectedOperator(rankItem)}
+                              >
+                                  <div className="w-full h-full bg-slate-900 rounded-full flex items-center justify-center overflow-hidden relative">
+                                    <img 
+                                      src={getAvatarImage(rankItem.mesin)} 
+                                      alt={rankItem.mesin} 
+                                      className="w-full h-full object-cover object-center transition-transform duration-500 group-hover/avatar:scale-110" 
+                                      onError={handleImageError}
+                                    />
+                                    <User 
+                                      size={16} 
+                                      className="text-slate-500 absolute fallback-icon" 
+                                      style={{ display: 'none' }}
+                                    />
+                                    <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover/avatar:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                                      <ZoomIn className="w-3.5 h-3.5 text-white drop-shadow-md" />
+                                    </div>
                                   </div>
-                                </div>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-white font-bold text-sm sm:text-lg tracking-tight truncate">{avatars[rankItem.mesin]?.name || rankItem.mesin}</p>
-                                <p className="text-sky-400 text-[10px] sm:text-sm font-medium mt-0.5 truncate">{rankItem.mesin}</p>
-                            </div>
-                            <div className="text-right flex-shrink-0">
-                                <p className="text-white font-black text-sm sm:text-xl tracking-tight">{(rankItem.yield * 100).toFixed(1)}%</p>
-                                <p className="text-slate-400 text-[10px] sm:text-sm font-medium mt-0.5">{rankItem.total.toLocaleString('id-ID', { maximumFractionDigits: 1 })} M³</p>
-                            </div>
-                        </div>
-                    );
-                })}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                  <p className="text-white font-bold text-xs sm:text-base tracking-tight truncate leading-tight">{avatars[rankItem.mesin]?.name || rankItem.mesin}</p>
+                                  <p className="text-sky-400 text-[9px] sm:text-xs font-medium mt-0.5 truncate leading-none">{rankItem.mesin}</p>
+                              </div>
+                              <div className="text-right flex-shrink-0">
+                                  <p className="text-white font-black text-xs sm:text-lg tracking-tight">{(rankItem.yield * 100).toFixed(1)}%</p>
+                                  <p className="text-slate-400 text-[9px] sm:text-xs font-medium mt-0.5 leading-none">{rankItem.total.toLocaleString('id-ID', { maximumFractionDigits: 1 })} M³</p>
+                              </div>
+                          </div>
+                      );
+                  })}
+              </div>
+            </>
+          ) : (
+            <div className="text-center text-slate-400 py-12 text-xs relative z-10">
+               Belum ada data produksi yang memadai untuk periode ini.
             </div>
-          </>
-        ) : (
-          <div className="text-center text-slate-400 py-20 text-sm relative z-10">
-             Belum ada data produksi yang memadai untuk periode ini.
-          </div>
-        )}
-      </div>
-
-      <BsAchievementUpdate />
+          )}
+        </div>
+      ) : (
+        <BsAchievementUpdate />
+      )}
 
       {selectedOperator && (
         <div 
