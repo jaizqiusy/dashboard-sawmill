@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Sparkles, Brain, Zap, MessageSquare, Send, Loader2 } from 'lucide-react';
 import { ProductionData } from '../../types';
+import { getApiUrl } from '../../lib/utils';
 
 export function AIPage({ data }: { data: ProductionData[] }) {
   const [message, setMessage] = useState('');
@@ -131,7 +132,7 @@ export function AIPage({ data }: { data: ProductionData[] }) {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/chat', {
+      const response = await fetch(getApiUrl('/api/chat'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

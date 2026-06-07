@@ -18,7 +18,7 @@ import {
   X,
   Gauge
 } from 'lucide-react';
-import { cn } from '../../lib/utils';
+import { cn, getApiUrl } from '../../lib/utils';
 import { normalizeMachineName } from '../../services/dataService';
 
 export const OPERATOR_DETAILS: Record<string, { name: string; tenure: string; joinDate: string; specialty: string }> = {
@@ -81,7 +81,7 @@ export function OperatorProfilePage({ data }: { data: any[] }) {
   // Sync state with server database on mount
   useEffect(() => {
     // 1. Fetch images
-    fetch('/api/avatars')
+    fetch(getApiUrl('/api/avatars'))
       .then(res => res.json())
       .then(serverAvatars => {
         if (serverAvatars && typeof serverAvatars === 'object') {
@@ -99,7 +99,7 @@ export function OperatorProfilePage({ data }: { data: any[] }) {
       .catch(err => console.error("Error loading custom avatars:", err));
 
     // 2. Fetch locks
-    fetch('/api/avatar-locks')
+    fetch(getApiUrl('/api/avatar-locks'))
       .then(res => res.json())
       .then(serverLocks => {
         if (serverLocks && typeof serverLocks === 'object') {
@@ -166,7 +166,7 @@ export function OperatorProfilePage({ data }: { data: any[] }) {
           }
 
           // Synchronize image to server
-          fetch('/api/avatars', {
+          fetch(getApiUrl('/api/avatars'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ mesin, imageBase64: base64 })
@@ -175,7 +175,7 @@ export function OperatorProfilePage({ data }: { data: any[] }) {
           .then(reply => {
             if (reply.success) {
               // Synchronize lock status to server as well
-              return fetch('/api/avatar-locks', {
+              return fetch(getApiUrl('/api/avatar-locks'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ mesin, locked: true })
@@ -211,7 +211,7 @@ export function OperatorProfilePage({ data }: { data: any[] }) {
     }
 
     // Save to server database
-    fetch('/api/avatar-locks', {
+    fetch(getApiUrl('/api/avatar-locks'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ mesin, locked: newLockedState })

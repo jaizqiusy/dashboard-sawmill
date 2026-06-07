@@ -13,6 +13,19 @@ async function startServer() {
 
   app.use(express.json({ limit: '50mb' }));
 
+  // Enable CORS manually to support cross-origin requests from custom hosted frontends (e.g. Vercel)
+  app.use((req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
+    res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type,Authorization');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    if (req.method === 'OPTIONS') {
+      return res.sendStatus(200);
+    }
+    next();
+  });
+
+
   // API Routes for operator avatars
   app.get("/api/avatars", (req, res) => {
     try {

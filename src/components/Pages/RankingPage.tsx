@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Trophy, Crown, X, ZoomIn, User, Lock, Unlock, Upload } from 'lucide-react';
-import { cn } from '../../lib/utils';
+import { cn, getApiUrl } from '../../lib/utils';
 import { getAvailablePeriods, getMachineRankings } from '../../services/dataService';
 import { BsAchievementUpdate } from './BsAchievementUpdate';
 
@@ -73,7 +73,7 @@ export function RankingPage({ data }: any) {
 
   // Load custom avatars and locks from server on mount for cross-device persistence
   React.useEffect(() => {
-    fetch('/api/avatars')
+    fetch(getApiUrl('/api/avatars'))
       .then(res => res.json())
       .then(serverAvatars => {
         if (serverAvatars && typeof serverAvatars === 'object') {
@@ -90,7 +90,7 @@ export function RankingPage({ data }: any) {
       })
       .catch(err => console.error("Error fetching operator avatars from server:", err));
 
-    fetch('/api/avatar-locks')
+    fetch(getApiUrl('/api/avatar-locks'))
       .then(res => res.json())
       .then(serverLocks => {
         if (serverLocks && typeof serverLocks === 'object') {
@@ -120,7 +120,7 @@ export function RankingPage({ data }: any) {
       console.warn("Local storage error", e);
     }
 
-    fetch('/api/avatar-locks', {
+    fetch(getApiUrl('/api/avatar-locks'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ mesin, locked: newLockedState })
@@ -181,7 +181,7 @@ export function RankingPage({ data }: any) {
           }
           
           // Save to server JSON database for cross-device sync
-          fetch('/api/avatars', {
+          fetch(getApiUrl('/api/avatars'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ mesin, imageBase64: base64 })
@@ -190,7 +190,7 @@ export function RankingPage({ data }: any) {
           .then(payload => {
             if (payload.success) {
               console.log(`Synchronized operator photo for ${mesin} successfully`);
-              return fetch('/api/avatar-locks', {
+              return fetch(getApiUrl('/api/avatar-locks'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ mesin, locked: true })
