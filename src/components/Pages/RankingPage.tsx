@@ -4,14 +4,48 @@ import { cn } from '../../lib/utils';
 import { getAvailablePeriods, getMachineRankings } from '../../services/dataService';
 import { BsAchievementUpdate } from './BsAchievementUpdate';
 
-import avatarBs1 from '../../assets/avatars/bs1.png';
-import avatarBs2 from '../../assets/avatars/bs2.png';
-import avatarBs3 from '../../assets/avatars/bs3.png';
-import avatarBs4 from '../../assets/avatars/bs4.png';
-import avatarBs5 from '../../assets/avatars/bs5.png';
-import avatarBs6 from '../../assets/avatars/bs6.png';
-import avatarBs7 from '../../assets/avatars/bs7.png';
-import avatarBs8 from '../../assets/avatars/bs8.png';
+// Premium SVG avatar generator for operators
+const getDefaultSvgAvatar = (mesin: string, name: string) => {
+  const initials = name
+    .split(' ')
+    .filter(Boolean)
+    .map(p => p[0])
+    .join('')
+    .substring(0, 2)
+    .toUpperCase() || mesin;
+    
+  // Custom design-centric gradients matching the machine/operator index
+  const key = mesin.trim().toUpperCase();
+  let gradientColors = {
+    'BS 1': { from: '#f59e0b', to: '#d97706', text: '#ffffff' }, // Amber/Golden Ring
+    'BS 2': { from: '#06b6d4', to: '#0891b2', text: '#ffffff' }, // Cyan
+    'BS 3': { from: '#10b981', to: '#059669', text: '#ffffff' }, // Emerald
+    'BS 4': { from: '#6366f1', to: '#4f46e5', text: '#ffffff' }, // Indigo
+    'BS 5': { from: '#8b5cf6', to: '#7c3aed', text: '#ffffff' }, // Purple
+    'BS 6': { from: '#ec4899', to: '#d946ef', text: '#ffffff' }, // Fuchsia
+    'BS 7': { from: '#3b82f6', to: '#2563eb', text: '#ffffff' }, // Blue
+    'BS 8': { from: '#f97316', to: '#ea580c', text: '#ffffff' }  // Orange
+  }[key] || { from: '#64748b', to: '#475569', text: '#ffffff' };
+
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+      <defs>
+        <linearGradient id="grad-${key.replace(/\s+/g, '-')}" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:${gradientColors.from};stop-opacity:1" />
+          <stop offset="100%" style="stop-color:${gradientColors.to};stop-opacity:1" />
+        </linearGradient>
+      </defs>
+      <circle cx="60" cy="60" r="56" fill="url(#grad-${key.replace(/\s+/g, '-')})" />
+      <text x="50%" y="45%" text-anchor="middle" fill="${gradientColors.text}" font-family="'Inter', system-ui, sans-serif" font-weight="800" font-size="36" dy=".3em">${initials}</text>
+      
+      <!-- Styled machine label badge for precision -->
+      <rect x="25" y="80" width="70" height="18" rx="9" fill="rgba(0,0,0,0.3)" />
+      <text x="50%" y="89%" text-anchor="middle" fill="rgba(255,255,255,0.95)" font-family="'JetBrains Mono', monospace" font-weight="900" font-size="10" dy=".3em">${mesin}</text>
+    </svg>
+  `.trim().replace(/\s+/g, ' ');
+
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+};
 
 export function RankingPage({ data }: any) {
   const [periodType, setPeriodType] = useState('monthly');
@@ -28,13 +62,81 @@ export function RankingPage({ data }: any) {
     }
   });
 
+  // Load custom avatars from server on mount for cross-device persistence (e.g. mobile display)
+  React.useEffect(() => {
+    fetch('/api/avatars')
+      .then(res => res.json())
+      .then(serverAvatars => {
+        if (serverAvatars && typeof serverAvatars === 'object') {
+          setCustomAvatars(prev => {
+            const combined = { ...prev, ...serverAvatars };
+            try {
+              localStorage.setItem('operator_avatars', JSON.stringify(combined));
+            } catch (e) {
+              console.warn("Storage quota full, using in-memory state only", e);
+            }
+            return combined;
+          });
+        }
+      })
+      .catch(err => console.error("Error fetching operator avatars from server:", err));
+  }, []);
+
   const handleAvatarUpload = (mesin: string, file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
-      const base64 = e.target?.result as string;
-      const updated = { ...customAvatars, [mesin]: base64 };
-      setCustomAvatars(updated);
-      localStorage.setItem('operator_avatars', JSON.stringify(updated));
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxDim = 250; // High-enough quality, very small size footprint
+        let width = img.width;
+        let height = img.height;
+        
+        if (width > height) {
+          if (width > maxDim) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          }
+        } else {
+          if (height > maxDim) {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const base64 = canvas.toDataURL('image/jpeg', 0.82); // Compressed dynamically
+          
+          // Save to local state
+          const updated = { ...customAvatars, [mesin]: base64 };
+          setCustomAvatars(updated);
+          
+          try {
+            localStorage.setItem('operator_avatars', JSON.stringify(updated));
+          } catch (storageError) {
+            console.warn("localStorage quota hit", storageError);
+          }
+          
+          // Save to server JSON database for cross-device sync
+          fetch('/api/avatars', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mesin, imageBase64: base64 })
+          })
+          .then(res => res.json())
+          .then(payload => {
+            if (payload.success) {
+              console.log(`Synchronized operator photo for ${mesin} successfully`);
+            }
+          })
+          .catch(err => console.error("Server synchronization error for operator photo:", err));
+        }
+      };
+      img.src = e.target?.result as string;
     };
     reader.readAsDataURL(file);
   };
@@ -57,20 +159,21 @@ export function RankingPage({ data }: any) {
   const top3 = rankings.slice(0, 3);
   const rest = rankings.slice(3, 8); // top 8
 
-  const avatars: Record<string, { image: string, name: string }> = {
-    'BS 1': { name: 'Ahmad Khudlori', image: avatarBs1 },
-    'BS 2': { name: 'Marjono', image: avatarBs2 },
-    'BS 3': { name: 'Hartono', image: avatarBs3 },
-    'BS 4': { name: 'Saenurrodin', image: avatarBs4 },
-    'BS 5': { name: 'Subur', image: avatarBs5 },
-    'BS 6': { name: 'Supardi', image: avatarBs6 },
-    'BS 7': { name: 'Supariyo', image: avatarBs7 },
-    'BS 8': { name: 'Sukono', image: avatarBs8 }
+  const avatars: Record<string, { name: string }> = {
+    'BS 1': { name: 'Ahmad Khudlori' },
+    'BS 2': { name: 'Marjono' },
+    'BS 3': { name: 'Hartono' },
+    'BS 4': { name: 'Saenurrodin' },
+    'BS 5': { name: 'Subur' },
+    'BS 6': { name: 'Supardi' },
+    'BS 7': { name: 'Supariyo' },
+    'BS 8': { name: 'Sukono' }
   };
 
   const getAvatarImage = (mesin: string) => {
     if (customAvatars[mesin]) return customAvatars[mesin];
-    return avatars[mesin]?.image || `https://api.dicebear.com/7.x/identicon/svg?seed=${mesin}`;
+    const name = avatars[mesin]?.name || mesin;
+    return getDefaultSvgAvatar(mesin, name);
   };
 
   const PodiumItem = ({ rankItem, rank }: { rankItem: any, rank: number }) => {
