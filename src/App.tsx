@@ -17,6 +17,7 @@ const AIPage = lazy(() => import('./components/Pages/AIPage').then(module => ({ 
 const OverviewPage = lazy(() => import('./components/Pages/OverviewPage').then(module => ({ default: module.OverviewPage })));
 const AnalyticsPage = lazy(() => import('./components/Pages/AnalyticsPage').then(module => ({ default: module.AnalyticsPage })));
 const RankingPage = lazy(() => import('./components/Pages/RankingPage').then(module => ({ default: module.RankingPage })));
+const OperatorProfilePage = lazy(() => import('./components/Pages/OperatorProfilePage').then(module => ({ default: module.OperatorProfilePage })));
 const ProductionPage = lazy(() => import('./components/Pages/ProductionPage').then(module => ({ default: module.ProductionPage })));
 const RecapPage = lazy(() => import('./components/Pages/RecapPage').then(module => ({ default: module.RecapPage })));
 const DowntimePage = lazy(() => import('./components/Pages/DowntimePage').then(module => ({ default: module.DowntimePage })));
@@ -145,6 +146,7 @@ export default function App() {
         {activeTab === 'Overview' && <OverviewPage stats={stats} todayStats={todayStats} monthPerformance={monthPerformance} monthlyLogData={monthlyLogData} />}
         {activeTab === 'Analytics' && <AnalyticsPage data={data} />}
         {activeTab === 'Ranking' && <RankingPage data={data} />}
+        {activeTab === 'OperatorProfile' && <OperatorProfilePage data={data} />}
         {activeTab === 'Production' && <ProductionPage todayStats={todayStats} />}
         {activeTab === 'Recap' && <RecapPage data={data} supplierData={supplierData} />}
         {activeTab === 'Downtime' && <DowntimePage data={data} />}

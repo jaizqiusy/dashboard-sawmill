@@ -9,6 +9,7 @@ async function startServer() {
   const PORT = 3000;
 
   const AVATARS_FILE = path.join(process.cwd(), "operator_avatars.json");
+  const LOCKS_FILE = path.join(process.cwd(), "operator_avatar_locks.json");
 
   app.use(express.json({ limit: '50mb' }));
 
@@ -47,6 +48,44 @@ async function startServer() {
     } catch (error) {
       console.error("Failed to save avatar:", error);
       res.status(500).json({ error: "Failed to save avatar on server" });
+    }
+  });
+
+  // API Routes for operator avatar locks
+  app.get("/api/avatar-locks", (req, res) => {
+    try {
+      if (fs.existsSync(LOCKS_FILE)) {
+        const data = fs.readFileSync(LOCKS_FILE, "utf-8");
+        res.json(JSON.parse(data));
+      } else {
+        res.json({});
+      }
+    } catch (error) {
+      console.error("Failed to read locks:", error);
+      res.json({});
+    }
+  });
+
+  app.post("/api/avatar-locks", (req, res) => {
+    try {
+      const { mesin, locked } = req.body;
+      if (!mesin) {
+        return res.status(400).json({ error: "Mesin parameter is required" });
+      }
+      let locksList: Record<string, boolean> = {};
+      if (fs.existsSync(LOCKS_FILE)) {
+        try {
+          locksList = JSON.parse(fs.readFileSync(LOCKS_FILE, "utf-8"));
+        } catch {
+          locksList = {};
+        }
+      }
+      locksList[mesin] = !!locked;
+      fs.writeFileSync(LOCKS_FILE, JSON.stringify(locksList, null, 2), "utf-8");
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to save lock:", error);
+      res.status(500).json({ error: "Failed to save lock on server" });
     }
   });
 

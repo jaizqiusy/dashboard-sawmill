@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Trophy, Crown, X, ZoomIn, User } from 'lucide-react';
+import { Trophy, Crown, X, ZoomIn, User, Lock, Unlock, Upload } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { getAvailablePeriods, getMachineRankings } from '../../services/dataService';
 import { BsAchievementUpdate } from './BsAchievementUpdate';
@@ -62,7 +62,16 @@ export function RankingPage({ data }: any) {
     }
   });
 
-  // Load custom avatars from server on mount for cross-device persistence (e.g. mobile display)
+  const [avatarLocks, setAvatarLocks] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem('operator_avatar_locks');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  // Load custom avatars and locks from server on mount for cross-device persistence
   React.useEffect(() => {
     fetch('/api/avatars')
       .then(res => res.json())
@@ -80,7 +89,48 @@ export function RankingPage({ data }: any) {
         }
       })
       .catch(err => console.error("Error fetching operator avatars from server:", err));
+
+    fetch('/api/avatar-locks')
+      .then(res => res.json())
+      .then(serverLocks => {
+        if (serverLocks && typeof serverLocks === 'object') {
+          setAvatarLocks(prev => {
+            const combined = { ...prev, ...serverLocks };
+            try {
+              localStorage.setItem('operator_avatar_locks', JSON.stringify(combined));
+            } catch (e) {
+              console.warn("Storage quota full, using in-memory locks only", e);
+            }
+            return combined;
+          });
+        }
+      })
+      .catch(err => console.error("Error fetching locks from server:", err));
   }, []);
+
+  const toggleLock = (mesin: string) => {
+    const isCurrentlyLocked = !!avatarLocks[mesin];
+    const newLockedState = !isCurrentlyLocked;
+    
+    const updated = { ...avatarLocks, [mesin]: newLockedState };
+    setAvatarLocks(updated);
+    try {
+      localStorage.setItem('operator_avatar_locks', JSON.stringify(updated));
+    } catch (e) {
+      console.warn("Local storage error", e);
+    }
+
+    fetch('/api/avatar-locks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mesin, locked: newLockedState })
+    })
+    .then(res => res.json())
+    .then(p => {
+      if (p.success) console.log(`Lock toggled successfully for ${mesin}`);
+    })
+    .catch(err => console.error("Error toggling lock:", err));
+  };
 
   const handleAvatarUpload = (mesin: string, file: File) => {
     const reader = new FileReader();
@@ -120,6 +170,15 @@ export function RankingPage({ data }: any) {
           } catch (storageError) {
             console.warn("localStorage quota hit", storageError);
           }
+
+          // Auto lock photo after successful upload
+          const updatedLocks = { ...avatarLocks, [mesin]: true };
+          setAvatarLocks(updatedLocks);
+          try {
+            localStorage.setItem('operator_avatar_locks', JSON.stringify(updatedLocks));
+          } catch (e) {
+            console.warn("Local storage write locks issue", e);
+          }
           
           // Save to server JSON database for cross-device sync
           fetch('/api/avatars', {
@@ -131,7 +190,18 @@ export function RankingPage({ data }: any) {
           .then(payload => {
             if (payload.success) {
               console.log(`Synchronized operator photo for ${mesin} successfully`);
+              return fetch('/api/avatar-locks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mesin, locked: true })
+              });
             }
+          })
+          .then(lockRes => {
+            if (lockRes) return lockRes.json();
+          })
+          .then(() => {
+            console.log(`Otomatis mengunci foto operator ${mesin}`);
           })
           .catch(err => console.error("Server synchronization error for operator photo:", err));
         }
@@ -349,7 +419,7 @@ export function RankingPage({ data }: any) {
               <div className="relative mb-6 flex flex-col items-center">
                 <label 
                   className="w-56 h-56 md:w-64 md:h-64 rounded-full overflow-hidden shadow-xl border-8 border-slate-50 bg-slate-100 flex items-center justify-center relative cursor-pointer group"
-                  title="Klik untuk mengubah foto"
+                  title={avatarLocks[selectedOperator.mesin] ? "Foto Terkunci. Klik gembok gembok di bawah untuk Membuka." : "Klik untuk mengubah foto"}
                 >
                     <img
                       src={getAvatarImage(selectedOperator.mesin)}
@@ -362,15 +432,29 @@ export function RankingPage({ data }: any) {
                       className="text-slate-300 absolute fallback-icon" 
                       style={{ display: 'none' }}
                     />
-                    <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center">
-                      <span className="text-white font-bold text-lg drop-shadow-md">Ganti Foto</span>
-                      <span className="text-slate-200 text-sm mt-1">Klik untuk unggah</span>
-                    </div>
+                    {!avatarLocks[selectedOperator.mesin] ? (
+                      <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center">
+                        <span className="text-white font-bold text-lg drop-shadow-md">Ganti Foto</span>
+                        <span className="text-slate-200 text-sm mt-1">Klik untuk unggah</span>
+                      </div>
+                    ) : (
+                      <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center">
+                        <Lock className="text-amber-400 w-8 h-8" />
+                        <span className="text-white font-bold text-xs mt-1">Foto Terkunci</span>
+                      </div>
+                    )}
                     <input 
                       type="file" 
                       accept="image/*" 
                       className="hidden" 
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        if (avatarLocks[selectedOperator.mesin]) {
+                          e.preventDefault();
+                          alert(`Foto saat ini sedang dikunci. Silakan klik tombol gembok gembok untuk Membuka.`);
+                        } else {
+                          e.stopPropagation();
+                        }
+                      }}
                       onChange={(e) => {
                           if (e.target.files?.[0]) {
                               handleAvatarUpload(selectedOperator.mesin, e.target.files[0]);
@@ -378,22 +462,54 @@ export function RankingPage({ data }: any) {
                       }} 
                     />
                 </label>
-                <div className="mt-4">
-                  <label className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium cursor-pointer transition-colors shadow-sm text-sm">
-                    Unggah Foto Operator
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      className="hidden" 
-                      onClick={(e) => e.stopPropagation()}
-                      onChange={(e) => {
-                          if (e.target.files?.[0]) {
-                              handleAvatarUpload(selectedOperator.mesin, e.target.files[0]);
-                          }
-                      }} 
-                    />
-                  </label>
-                </div>
+
+                {/* Padlock button under the avatar circle inside modal */}
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); toggleLock(selectedOperator.mesin); }}
+                  className={cn(
+                    "absolute bottom-2 right-2 w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-95 border",
+                    avatarLocks[selectedOperator.mesin] 
+                      ? "bg-slate-900 border-slate-700 text-amber-400" 
+                      : "bg-white border-slate-200 text-slate-500 hover:text-slate-900"
+                  )}
+                  title={avatarLocks[selectedOperator.mesin] ? "Foto terkunci. Klik untuk Buka Kunci" : "Klik untuk Mengunci Foto"}
+                >
+                  {avatarLocks[selectedOperator.mesin] ? <Lock size={18} /> : <Unlock size={18} />}
+                </button>
+              </div>
+
+              <div className="mt-1 mb-4 flex flex-col items-center gap-1.5">
+                <label className={cn(
+                  "px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-wider cursor-pointer shadow-xs border transition-colors flex items-center gap-1.5",
+                  avatarLocks[selectedOperator.mesin]
+                    ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                    : "bg-blue-600 hover:bg-blue-700 text-white border-blue-500"
+                )}>
+                  {avatarLocks[selectedOperator.mesin] ? <Lock size={14} /> : <Upload size={14} /* wait, we didn't import Upload, so we don't put it to keep things compilation-ready */ />}
+                  {avatarLocks[selectedOperator.mesin] ? 'Foto Terkunci' : 'Unggah Foto Operator'}
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    className="hidden" 
+                    onClick={(e) => {
+                      if (avatarLocks[selectedOperator.mesin]) {
+                        e.preventDefault();
+                        alert(`Gagal: Foto dikunci. Klik tombol gembok di sebelah kanan bawah foto untuk membuka kunci.`);
+                      } else {
+                        e.stopPropagation();
+                      }
+                    }}
+                    onChange={(e) => {
+                        if (e.target.files?.[0]) {
+                            handleAvatarUpload(selectedOperator.mesin, e.target.files[0]);
+                        }
+                    }} 
+                  />
+                </label>
+                <p className="text-[10px] text-slate-500 font-semibold leading-none">
+                  {avatarLocks[selectedOperator.mesin] ? 'Keamanan Aktif (Buka gembok untuk mengubah)' : 'Foto otomatis dikunci setelah Anda unggah'}
+                </p>
               </div>
               
               <h3 className="text-3xl font-extrabold text-slate-900 mb-2 text-center">
