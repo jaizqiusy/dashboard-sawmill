@@ -67,7 +67,7 @@ export function MobileLayout({
               <div className="w-1 h-1 bg-white/20 rounded-full" />
               {user ? (
                 <div className="flex items-center gap-1.5 bg-white/5 px-2 py-0.5 rounded-lg border border-white/10">
-                  {user.photoURL && <img src={user.photoURL} alt={user.displayName || 'User'} className="w-3.5 h-3.5 rounded-full border border-white/20" referrerpolicy="no-referrer" />}
+                  {user.photoURL && <img src={user.photoURL} alt={user.displayName || 'User'} className="w-3.5 h-3.5 rounded-full border border-white/20" referrerPolicy="no-referrer" />}
                   <span className="text-[9px] text-white/80 font-bold max-w-[60px] truncate">{user.displayName?.split(' ')[0]}</span>
                   <button onClick={onLogout} className="text-[8px] text-rose-400 hover:text-rose-300 font-extrabold uppercase ml-1">Keluar</button>
                 </div>

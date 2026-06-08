@@ -39,7 +39,9 @@ function parseOperatorCSV(csv: string): OperatorData[] {
     const values = parseLine(line);
       let urlFoto = values[7] || '';
       if (urlFoto.includes('drive.google.com')) {
-        const idMatch = urlFoto.match(/id=([a-zA-Z0-9_-]+)/);
+        const idMatch = urlFoto.match(/id=([a-zA-Z0-9_-]+)/) || 
+                        urlFoto.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || 
+                        urlFoto.match(/\/open\?.+?id=([a-zA-Z0-9_-]+)/);
         if (idMatch) {
           urlFoto = `https://lh3.googleusercontent.com/d/${idMatch[1]}`;
         }

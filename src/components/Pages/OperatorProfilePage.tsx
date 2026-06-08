@@ -492,6 +492,11 @@ export function OperatorProfilePage({ data, operatorData }: { data: any[], opera
                       className="w-full h-full object-cover object-center transition-transform group-hover:scale-105" 
                       onError={handleImageError}
                     />
+                    <User 
+                      size={24} 
+                      className="text-slate-500 absolute fallback-icon" 
+                      style={{ display: 'none' }}
+                    />
                     <div className="absolute inset-0 bg-black/10 transition-opacity opacity-0 group-hover:opacity-100 pointer-events-none" />
                   </div>
                   
@@ -637,13 +642,18 @@ export function OperatorProfilePage({ data, operatorData }: { data: any[], opera
                   
                   {/* Photo frame */}
                   <div className="relative">
-                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden shadow-md ring-4 ring-indigo-500/10 border border-white">
+                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden shadow-md ring-4 ring-indigo-500/10 border border-white flex items-center justify-center relative">
                       <img 
                         src={getAvatarImage(selectedOperator)} 
                         alt={profile.name} 
                         referrerPolicy="no-referrer"
                         className="w-full h-full object-cover object-center" 
                         onError={handleImageError}
+                      />
+                      <User 
+                        size={32} 
+                        className="text-slate-500 absolute fallback-icon" 
+                        style={{ display: 'none' }}
                       />
                     </div>
                     {/* Visual Padlock lock */}
