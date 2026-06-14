@@ -64,8 +64,7 @@ function parseOperatorCSV(csv: string): OperatorData[] {
 }
 
 export async function fetchProductionData(): Promise<ProductionData[]> {
-  const GID = '0'; // Assuming first sheet, or you can specify GID
-  const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&gid=${GID}`;
+  const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=DATABASE%20APPSCRIPT`;
   
   try {
     const response = await fetch(url);
@@ -511,17 +510,18 @@ export function getMachineRankings(data: ProductionData[], periodType: 'weekly' 
     turunan: Math.round(stats.turunan * 100) / 100,
     lokal: Math.round(stats.lokal * 100) / 100,
     total: Math.round(stats.total * 100) / 100,
+    target: stats.target,
     yield: stats.input > 0 ? stats.utama / stats.input : 0,
     achievement: stats.target > 0 ? stats.utama / stats.target : 0
   }));
 
-  const maxYield = Math.max(...parsed.map(m => m.yield), 0.0001);
-  const maxTotal = Math.max(...parsed.map(m => m.total), 0.0001);
-
   return parsed.map(m => {
-    // Normalisasi: (Rendemen/Max_Rendemen * 55) + (Total/Max_Total * 45)
-    // agar adil dalam persentase
-    const score = ((m.yield / maxYield) * 55) + ((m.total / maxTotal) * 45);
+    // perhitungan rendemen utama di bagi target rendemen utama 30% di kali 55%
+    const scoreYield = (m.yield / 0.30) * 55;
+    // perhitungan output total di bagi target output 9M3 perhari di kali 45%
+    const scoreTotal = m.target > 0 ? (m.total / m.target) * 45 : 0;
+    
+    const score = scoreYield + scoreTotal;
     return { ...m, score };
   }).sort((a, b) => (b.score || 0) - (a.score || 0));
 }

@@ -462,29 +462,35 @@ export function RankingPage({ data, operatorData }: { data: any[], operatorData?
             </div>
             
             <div className="flex flex-wrap items-center justify-center gap-1.5">
-              <div className="flex bg-slate-800/60 p-0.5 rounded-lg border border-slate-750">
+              <div className="flex bg-[#1e293b] p-0.5 rounded-lg border border-slate-700/50">
                 <button 
                   onClick={() => { setPeriodType('weekly'); setPeriodValue(periods.weeks[0] || 0); }}
                   className={cn(
-                    "px-2 py-1 text-[8.5px] uppercase tracking-wider font-extrabold rounded transition-colors cursor-pointer",
-                    periodType === 'weekly' ? "bg-amber-400 text-amber-950 font-black" : "text-slate-400 hover:text-white"
+                    "relative px-3 py-1.5 text-[10px] sm:text-xs uppercase tracking-wider font-extrabold rounded-md transition-all cursor-pointer",
+                    periodType === 'weekly' ? "bg-[#FBBC05] text-amber-950 font-black" : "text-slate-400 hover:text-white"
                   )}
                 >
                   Mingguan
+                  {periodType === 'weekly' && (
+                    <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-[#FBBC05]" />
+                  )}
                 </button>
                 <button 
                   onClick={() => { setPeriodType('monthly'); setPeriodValue(periods.months[0] || 0); }}
                   className={cn(
-                    "px-2 py-1 text-[8.5px] uppercase tracking-wider font-extrabold rounded transition-colors cursor-pointer",
-                    periodType === 'monthly' ? "bg-amber-400 text-amber-950 font-black" : "text-slate-400 hover:text-white"
+                    "relative px-3 py-1.5 text-[10px] sm:text-xs uppercase tracking-wider font-extrabold rounded-md transition-all cursor-pointer",
+                    periodType === 'monthly' ? "bg-[#FBBC05] text-amber-950 font-black" : "text-slate-400 hover:text-white"
                   )}
                 >
                   Bulanan
+                  {periodType === 'monthly' && (
+                    <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-[#FBBC05]" />
+                  )}
                 </button>
               </div>
               
               <select 
-                className="bg-slate-800/80 border border-slate-750 text-white text-[10px] sm:text-xs font-bold rounded-lg px-2 py-1 outline-none cursor-pointer focus:border-amber-400"
+                className="appearance-none bg-[#1e293b] border border-white text-white text-[10px] sm:text-xs font-extrabold rounded-lg px-3 pl-4 pr-8 py-1.5 outline-none cursor-pointer focus:border-[#FBBC05] bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%24%2024%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M7%2010L12%2015L17%2010%22%20stroke%3D%22white%22%20stroke-width%3D%222.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[center_right_0.5rem] bg-[length:1.2em_1.2em]"
                 value={periodValue}
                 onChange={(e) => setPeriodValue(parseInt(e.target.value))}
               >
