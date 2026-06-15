@@ -4,7 +4,15 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 import { getPerformanceByTimeframe } from '../../services/dataService';
 
 export function AnalyticsPage({ data }) {
-  const timeframes = ['daily', 'weekly', 'monthly', 'quarterly'] as const;
+  const timeframes = React.useMemo(() => ['daily', 'weekly', 'monthly', 'quarterly'] as const, []);
+
+  const timeframeDataMap = React.useMemo(() => {
+    const map = {} as Record<string, ReturnType<typeof getPerformanceByTimeframe>>;
+    timeframes.forEach((type) => {
+      map[type] = getPerformanceByTimeframe(data, type);
+    });
+    return map;
+  }, [data, timeframes]);
 
   return (
     <div className="p-5 space-y-6">
@@ -18,7 +26,7 @@ export function AnalyticsPage({ data }) {
 
       <div className="space-y-6">
         {timeframes.map((type) => {
-          const timeframeData = getPerformanceByTimeframe(data, type);
+          const timeframeData = timeframeDataMap[type];
           if (timeframeData.length === 0) return null;
 
           return (

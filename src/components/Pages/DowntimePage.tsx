@@ -5,25 +5,28 @@ import { cn } from '../../lib/utils';
 
 export function DowntimePage({ data }) {
   const [periodType, setPeriodType] = useState('daily');
-  const periods = getAvailablePeriods(data);
+  const periods = React.useMemo(() => getAvailablePeriods(data), [data]);
   const [periodValue, setPeriodValue] = useState(periods.dates[0] || '');
 
   // Filter Data
-  let filtered = data.filter(d => d.downtime && d.downtime.replace(/,/g, '').trim().length > 0 && d.downtime.toLowerCase().trim() !== 'libur');
-  if (periodType === 'daily') {
-    filtered = filtered.filter(d => d.tanggal === periodValue);
-  } else if (periodType === 'weekly') {
-    filtered = filtered.filter(d => d.week === Number(periodValue));
-  } else if (periodType === 'monthly') {
-    filtered = filtered.filter(d => d.month === Number(periodValue));
-  }
+  const grouped = React.useMemo(() => {
+    let filtered = data.filter(d => d.downtime && d.downtime.replace(/,/g, '').trim().length > 0 && d.downtime.toLowerCase().trim() !== 'libur');
+    if (periodType === 'daily') {
+      filtered = filtered.filter(d => d.tanggal === periodValue);
+    } else if (periodType === 'weekly') {
+      filtered = filtered.filter(d => d.week === Number(periodValue));
+    } else if (periodType === 'monthly') {
+      filtered = filtered.filter(d => d.month === Number(periodValue));
+    }
 
-  const grouped = {};
-  filtered.forEach(d => {
-    const normalizedMesin = normalizeMachineName(d.mesin);
-    if (!grouped[normalizedMesin]) grouped[normalizedMesin] = [];
-    grouped[normalizedMesin].push(d);
-  });
+    const map = {} as Record<string, any[]>;
+    filtered.forEach(d => {
+      const normalizedMesin = normalizeMachineName(d.mesin);
+      if (!map[normalizedMesin]) map[normalizedMesin] = [];
+      map[normalizedMesin].push(d);
+    });
+    return map;
+  }, [data, periodType, periodValue]);
 
   const machines = ['BS 1', 'BS 2', 'BS 3', 'BS 4', 'BS 5', 'BS 6', 'BS 7', 'BS 8', 'Pony A', 'Pony B', 'Breakdown'];
 

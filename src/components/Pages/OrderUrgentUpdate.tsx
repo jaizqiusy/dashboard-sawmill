@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Papa from 'papaparse';
-import { AlertCircle, RefreshCw, Download, Search, Loader2, FileSearch } from 'lucide-react';
+import { AlertCircle, RefreshCw, Search, Loader2, FileSearch, X, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { cn } from '../../lib/utils';
 
 interface OrderData {
   ukuran: string;
@@ -23,6 +24,8 @@ export function OrderUrgentUpdate() {
   const [error, setError] = useState<string | null>(null);
   const [todayColName, setTodayColName] = useState('Hari Ini');
   const [yesterdayColName, setYesterdayColName] = useState('Kemarin');
+  
+  const [sortConfig, setSortConfig] = useState<{ key: keyof OrderData, direction: 'asc' | 'desc' } | null>(null);
 
   const sheetUrl = "https://docs.google.com/spreadsheets/d/1G7x3dtE2KFF338w6qdd4jrMkz-yrbThlzx5Vi0I8AqQ/edit?gid=1352797868#gid=1352797868";
 
@@ -225,7 +228,7 @@ export function OrderUrgentUpdate() {
 
   const filteredData = useMemo(() => {
     const sTerm = searchTerm.toLowerCase();
-    return data.filter(row => {
+    let filtered = data.filter(row => {
       const matchesSearch = row.ukuran.toLowerCase().includes(sTerm) || 
              row.panjang.toLowerCase().includes(sTerm) || 
              row.jo.toLowerCase().includes(sTerm);
@@ -237,124 +240,213 @@ export function OrderUrgentUpdate() {
       }
       return matchesSearch;
     });
-  }, [data, searchTerm, showTodayOnly]);
+
+    if (sortConfig !== null) {
+      filtered.sort((a, b) => {
+        let aValue: string | number = a[sortConfig.key];
+        let bValue: string | number = b[sortConfig.key];
+        
+        // Convert to numerals for specific columns
+        if (['kebutuhan', 'kemarin', 'hariIni', 'total', 'kekurangan'].includes(sortConfig.key)) {
+            aValue = parseFloat(aValue.toString().replace(/[^0-9.-]+/g,"")) || 0;
+            bValue = parseFloat(bValue.toString().replace(/[^0-9.-]+/g,"")) || 0;
+        }
+
+        if (aValue < bValue) {
+          return sortConfig.direction === 'asc' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === 'asc' ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+    return filtered;
+  }, [data, searchTerm, showTodayOnly, sortConfig]);
+
+  const requestSort = (key: keyof OrderData) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const getSortIcon = (key: keyof OrderData) => {
+    if (!sortConfig || sortConfig.key !== key) {
+        return <ArrowUpDown className="w-3 h-3 ml-1 text-slate-400 inline" />;
+    }
+    if (sortConfig.direction === 'asc') {
+        return <ArrowUp className="w-3 h-3 ml-1 text-sky-500 inline" />;
+    }
+    return <ArrowDown className="w-3 h-3 ml-1 text-sky-500 inline" />;
+  };
 
   return (
-    <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm mt-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4 mb-4">
+    <div className="w-full mx-auto bg-white sm:rounded-xl shadow-sm sm:border border-slate-100 p-4 sm:p-6 lg:mt-6 mt-2 relative min-h-[calc(100vh-6rem)] sm:min-h-0">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
-            <AlertCircle className="w-5 h-5 text-rose-600" /> Order Urgent
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
+            <AlertCircle className="w-6 h-6 text-rose-500" />
+            Order Urgent
           </h1>
-          <p className="text-xs text-slate-500 mt-1">Pemantauan Ukuran Urgent & Kekurangan</p>
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">Pemantauan Ukuran Urgent & Kekurangan Material</p>
         </div>
         
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <button 
-            disabled={loading}
-            onClick={syncData} 
-            className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-colors"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            <span>{loading ? 'Menarik...' : 'Sinkronkan'}</span>
-          </button>
-        </div>
+        <button 
+          disabled={loading}
+          onClick={syncData} 
+          className="w-full sm:w-auto justify-center bg-slate-900 hover:bg-slate-800 text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 shadow-sm disabled:opacity-70 disabled:cursor-not-allowed"
+        >
+          <RefreshCw className={cn("w-4 h-4", loading ? 'animate-spin' : '')} />
+          {loading ? 'MENARIK...' : 'SINKRONKAN'}
+        </button>
       </div>
 
       {error && (
-        <div className="mb-4 text-xs font-medium text-rose-600 bg-rose-50 p-2 rounded border border-rose-100">
-          {error}
+        <div className="mb-4 text-xs font-medium text-rose-600 bg-rose-50 p-3 rounded-lg border border-rose-100 flex items-start gap-2">
+           <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" /> 
+           <span>{error}</span>
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row gap-3 mb-4">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+      <div className="flex flex-col sm:flex-row gap-3 mb-6">
+        <div className="relative flex-grow">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search className="w-4 h-4 text-slate-400" />
+          </div>
           <input 
             type="text" 
-            placeholder="Cari ukuran, panjang, JO..." 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none transition-all"
+            className="block w-full pl-9 pr-10 py-2.5 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-sm transition-shadow outline-none" 
+            placeholder="Cari ukuran, panjang, JO..."
           />
+          {searchTerm && (
+            <button 
+              onClick={() => setSearchTerm('')} 
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
-        <div className="flex items-center">
-          <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-100 transition-colors">
+        
+        <label className="flex items-center justify-between sm:justify-start cursor-pointer border border-slate-200 rounded-lg px-4 py-2.5 hover:bg-slate-50 transition-colors w-full sm:w-auto group select-none">
+          <div className="text-sm font-medium text-slate-700 sm:mr-3 order-2 sm:order-1">
+            Update Terbaru
+          </div>
+          <div className="relative order-1 sm:order-2">
             <input 
               type="checkbox" 
+              className="sr-only peer" 
               checked={showTodayOnly} 
-              onChange={(e) => setShowTodayOnly(e.target.checked)}
-              className="rounded text-rose-600 focus:ring-rose-500 accent-rose-600 w-4 h-4"
+              onChange={(e) => setShowTodayOnly(e.target.checked)} 
             />
-            <span>Hanya Update Terbaru</span>
-          </label>
-        </div>
+            <div className="block bg-slate-200 peer-checked:bg-sky-500 w-10 h-6 rounded-full transition-colors"></div>
+            <div className="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform peer-checked:translate-x-4"></div>
+          </div>
+        </label>
       </div>
 
-      <div className="border border-slate-200 rounded-xl overflow-hidden">
-        <div className="overflow-x-auto max-h-[400px]">
-          <table className="w-full text-left border-collapse relative min-w-[700px]">
-            <thead className="sticky top-0 bg-slate-50 border-b border-slate-200 z-10 shadow-sm">
-              <tr className="text-[10px] uppercase tracking-wider text-slate-500 font-bold bg-slate-50">
-                <th className="px-4 py-3 bg-slate-50">Ukuran</th>
-                <th className="px-4 py-3 bg-slate-50">Panjang</th>
-                <th className="px-4 py-3 bg-slate-50">JO</th>
-                <th className="px-4 py-3 text-right bg-slate-50">Kebutuhan</th>
-                <th className="px-4 py-3 text-right text-rose-600 bg-slate-50 border-l border-slate-200">1 Hr Lalu ({yesterdayColName})</th>
-                <th className="px-4 py-3 text-right text-rose-600 bg-slate-50 border-r border-slate-200">Hr Ini ({todayColName})</th>
-                <th className="px-4 py-3 text-right bg-slate-50">Total</th>
-                <th className="px-4 py-3 text-right bg-slate-50">Kekurangan</th>
-                <th className="px-4 py-3 bg-slate-50">Sat</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-sm">
-              {loading && data.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="px-4 py-8 text-center text-slate-500">
+      <div className="sm:border border-slate-200 sm:rounded-lg overflow-x-auto overflow-y-auto max-h-[65vh] shadow-inner sm:shadow-sm -mx-4 sm:mx-0 w-auto table-scrollbar relative">
+        <table className="w-full text-left text-sm whitespace-nowrap min-w-[800px]">
+          <thead className="text-xs text-slate-500 bg-slate-50 border-y sm:border-t-0 border-slate-200 uppercase sticky top-0 z-20 shadow-sm">
+            <tr>
+              <th colSpan={3} className="px-4 py-3 text-center border-r border-slate-200 font-semibold tracking-wider bg-slate-50">Identifikasi Material</th>
+              <th className="px-4 py-3 text-center border-r border-slate-200 font-semibold tracking-wider bg-slate-50">Target</th>
+              <th colSpan={2} className="px-4 py-3 text-center border-r border-slate-200 font-semibold tracking-wider bg-slate-100">Produksi (Pcs)</th>
+              <th colSpan={2} className="px-4 py-3 text-center font-semibold tracking-wider bg-slate-50">Status Pemenuhan</th>
+            </tr>
+            <tr className="bg-slate-100 border-b border-slate-200">
+              <th className="px-4 py-3 cursor-pointer hover:bg-slate-200 transition-colors select-none bg-slate-50" onClick={() => requestSort('ukuran')}>
+                Ukuran {getSortIcon('ukuran')}
+              </th>
+              <th className="px-4 py-3 cursor-pointer hover:bg-slate-200 transition-colors select-none bg-slate-50" onClick={() => requestSort('panjang')}>
+                Panjang {getSortIcon('panjang')}
+              </th>
+              <th className="px-4 py-3 border-r border-slate-200 cursor-pointer hover:bg-slate-200 transition-colors select-none bg-slate-50" onClick={() => requestSort('jo')}>
+                JO {getSortIcon('jo')}
+              </th>
+              <th className="px-4 py-3 border-r border-slate-200 text-right cursor-pointer hover:bg-slate-200 transition-colors select-none bg-slate-50" onClick={() => requestSort('kebutuhan')}>
+                Kebutuhan {getSortIcon('kebutuhan')}
+              </th>
+              <th className="px-4 py-3 text-center border-r border-white font-semibold cursor-pointer hover:bg-slate-200 transition-colors select-none bg-slate-100" onClick={() => requestSort('kemarin')}>
+                1 Hr Lalu ({yesterdayColName}) {getSortIcon('kemarin')}
+              </th>
+              <th className="px-4 py-3 text-center border-r border-slate-200 text-sky-900 font-semibold cursor-pointer hover:bg-slate-200 transition-colors select-none bg-slate-100" onClick={() => requestSort('hariIni')}>
+                Hr Ini ({todayColName}) {getSortIcon('hariIni')}
+              </th>
+              <th className="px-4 py-3 text-right cursor-pointer hover:bg-slate-200 transition-colors select-none bg-slate-50" onClick={() => requestSort('total')}>
+                Total {getSortIcon('total')}
+              </th>
+              <th className="px-4 py-3 text-center cursor-pointer hover:bg-slate-200 transition-colors select-none bg-slate-50" onClick={() => requestSort('kekurangan')}>
+                Kekurangan {getSortIcon('kekurangan')}
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 bg-white">
+            {loading && data.length === 0 ? (
+              <tr>
+                 <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
                     <div className="flex flex-col items-center justify-center gap-2">
-                      <Loader2 className="w-5 h-5 animate-spin text-rose-500" />
-                      <p className="text-xs">Memuat data "Order Urgent"...</p>
+                       <Loader2 className="w-6 h-6 animate-spin text-sky-500" />
+                       <p className="text-sm font-medium mt-2">Memuat data Order Urgent...</p>
                     </div>
-                  </td>
-                </tr>
-              ) : filteredData.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="px-4 py-8 text-center text-slate-500">
+                 </td>
+              </tr>
+            ) : filteredData.length === 0 ? (
+              <tr>
+                 <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
                     <div className="flex flex-col items-center gap-2">
-                      <FileSearch className="w-6 h-6 text-slate-300" />
-                      <p className="text-xs">Tidak ada data ditemukan.</p>
+                       <FileSearch className="w-8 h-8 text-slate-300 mb-2" />
+                       <p className="text-sm font-medium">Tidak ada data ditemukan.</p>
+                       <p className="text-xs text-slate-400">Coba ubah kata kunci pencarian atau matikan filter "Update Terbaru".</p>
                     </div>
-                  </td>
-                </tr>
-              ) : (
+                 </td>
+              </tr>
+            ) : (
                 filteredData.map((row, idx) => {
                   const isNegative = row.kekurangan.startsWith('-');
+                  // Decide visual priority based on negative number magnitude roughly
+                  let rowOpacity = "opacity-100";
+                  if (!isNegative && parseFloat(row.kekurangan.replace(/[^0-9.-]+/g,"")) >= 0) {
+                      rowOpacity = "opacity-80 hover:opacity-100";
+                  }
+
                   return (
-                    <tr key={idx} className="bg-white hover:bg-slate-50 transition-colors">
-                      <td className="px-4 py-2 font-bold text-slate-800 align-top whitespace-nowrap">{row.ukuran}</td>
-                      <td className="px-4 py-2 text-slate-600 font-mono text-[11px] align-top whitespace-nowrap">{row.panjang || '-'}</td>
-                      <td className="px-4 py-2 font-medium text-slate-700 align-top whitespace-nowrap">{row.jo || '-'}</td>
-                      <td className="px-4 py-2 text-right font-medium text-slate-600 align-top">{row.kebutuhan || '0'}</td>
-                      <td className="px-4 py-2 text-right font-black text-rose-500 align-top bg-rose-50/10 border-l border-slate-200">{row.kemarin || '-'}</td>
-                      <td className="px-4 py-2 text-right font-black text-rose-600 align-top bg-rose-50/40 border-r border-slate-200">{row.hariIni || '-'}</td>
-                      <td className="px-4 py-2 text-right font-bold text-slate-700 align-top">{row.total || '0'}</td>
-                      <td className="px-4 py-2 text-right align-top">
-                        <span className={`inline-flex px-1.5 py-0.5 rounded text-xs font-bold ${isNegative ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                    <tr key={idx} className={cn("hover:bg-slate-50 transition-colors group", rowOpacity)}>
+                      <td className="px-4 py-3 font-bold text-slate-900">
+                         {row.ukuran}
+                         <span className="text-[10px] text-slate-400 font-normal ml-1 hidden sm:inline-block">{row.satuan}</span>
+                      </td>
+                      <td className="px-4 py-3 text-slate-500 font-mono text-xs">{row.panjang || '-'}</td>
+                      <td className="px-4 py-3 text-slate-600 font-medium">{row.jo || '-'}</td>
+                      <td className="px-4 py-3 text-right text-slate-500 font-medium border-r border-slate-50">{row.kebutuhan || '0'}</td>
+                      <td className="px-4 py-3 text-center text-slate-400 font-medium group-hover:text-slate-500 transition-colors">{row.kemarin || '0'}</td>
+                      <td className="px-4 py-3 text-center font-bold text-sky-700 bg-sky-50/30 group-hover:bg-sky-50 transition-colors border-r border-slate-50/50">{row.hariIni || '0'}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-slate-900 text-base">{row.total || '0'}</td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={cn(
+                            "inline-flex items-center justify-center px-2.5 py-1 rounded-md text-sm font-bold min-w-[60px] border",
+                            isNegative 
+                            ? "bg-rose-100 text-rose-700 border-rose-200" 
+                            : "bg-emerald-100 text-emerald-700 border-emerald-200"
+                        )}>
                           {row.kekurangan || '0'}
                         </span>
                       </td>
-                      <td className="px-4 py-2 text-slate-500 text-[10px] font-bold align-top">{row.satuan}</td>
                     </tr>
-                  );
+                  )
                 })
-              )}
-            </tbody>
-          </table>
-        </div>
-        <div className="bg-slate-50 px-4 py-2 border-t border-slate-200 flex justify-between items-center text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-          <span>Pembaruan: <span className="text-slate-800">{lastUpdate}</span></span>
-          <span>Item: <span className="text-slate-800 bg-slate-200 px-1.5 py-0.5 rounded">{filteredData.length}</span></span>
-        </div>
+            )}
+          </tbody>
+        </table>
+      </div>
+      
+      <div className="mt-4 flex flex-col sm:flex-row justify-between items-center text-xs text-slate-500 gap-2 px-4 sm:px-0">
+        <div>Menampilkan <span className="font-semibold text-slate-700">{filteredData.length}</span> baris data</div>
+        <div>Terakhir disinkronkan: <span className="font-semibold text-slate-700">{lastUpdate}</span></div>
       </div>
     </div>
   );

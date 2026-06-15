@@ -52,7 +52,7 @@ const getDefaultSvgAvatar = (mesin: string, name: string) => {
 export function RankingPage({ data, operatorData }: { data: any[], operatorData?: any[] }) {
   const [activeSubTab, setActiveSubTab] = useState<'ranks' | 'realtime'>('ranks');
   const [periodType, setPeriodType] = useState('monthly');
-  const periods = getAvailablePeriods(data);
+  const periods = React.useMemo(() => getAvailablePeriods(data), [data]);
   const [periodValue, setPeriodValue] = useState(periods.months[0] || 0);
   const [selectedOperator, setSelectedOperator] = useState<any>(null);
 
@@ -307,11 +307,11 @@ export function RankingPage({ data, operatorData }: { data: any[], operatorData?
     reader.readAsDataURL(file);
   };
 
-  const closeProfile = () => {
+  const closeProfile = React.useCallback(() => {
     setSelectedOperator(null);
-  };
+  }, []);
 
-  const handleImageError = (e: any) => {
+  const handleImageError = React.useCallback((e: any) => {
     e.target.onerror = null; 
     e.target.style.display = 'none';
     const parent = e.target.parentElement;
@@ -319,11 +319,11 @@ export function RankingPage({ data, operatorData }: { data: any[], operatorData?
       const fallbackIcon = parent.querySelector('.fallback-icon');
       if (fallbackIcon) fallbackIcon.style.display = 'block';
     }
-  };
+  }, []);
 
-  const rankings = getMachineRankings(data, periodType as any, periodValue);
-  const top3 = rankings.slice(0, 3);
-  const rest = rankings.slice(3, 8); // top 8
+  const rankings = React.useMemo(() => getMachineRankings(data, periodType as any, periodValue), [data, periodType, periodValue]);
+  const top3 = React.useMemo(() => rankings.slice(0, 3), [rankings]);
+  const rest = React.useMemo(() => rankings.slice(3, 8), [rankings]); // top 8
 
   const avatars: Record<string, { name: string; photoUrl?: string }> = React.useMemo(() => {
     const base: Record<string, { name: string; photoUrl?: string }> = {
@@ -349,14 +349,14 @@ export function RankingPage({ data, operatorData }: { data: any[], operatorData?
     return base;
   }, [operatorData]);
 
-  const getAvatarImage = (mesin: string) => {
+  const getAvatarImage = React.useCallback((mesin: string) => {
     if (customAvatars[mesin]) return customAvatars[mesin];
     if (avatars[mesin]?.photoUrl) return avatars[mesin].photoUrl;
     const name = avatars[mesin]?.name || mesin;
     return getDefaultSvgAvatar(mesin, name);
-  };
+  }, [customAvatars, avatars]);
 
-  const PodiumItem = ({ rankItem, rank }: { rankItem: any, rank: number }) => {
+  const renderPodiumItem = (rankItem: any, rank: number) => {
       const isFirst = rank === 1;
       const isSecond = rank === 2;
       const isThird = rank === 3;
@@ -373,7 +373,7 @@ export function RankingPage({ data, operatorData }: { data: any[], operatorData?
         : 'w-14 h-14 min-[385px]:w-16 min-[385px]:h-16 sm:w-24 sm:h-24';
       
       return (
-          <div className={cn("flex flex-col items-center relative z-10 hover:-translate-y-1 transition-transform duration-300", isFirst ? "-mt-8 sm:-mt-12" : "mt-2 sm:mt-6")}>
+          <div key={rankItem.mesin} className={cn("flex flex-col items-center relative z-10 hover:-translate-y-1 transition-transform duration-300", isFirst ? "-mt-8 sm:-mt-12" : "mt-2 sm:mt-6")}>
               {isFirst && (
                 <Crown 
                   className="w-7 h-7 min-[385px]:w-9 min-[385px]:h-9 sm:w-14 sm:h-14 text-amber-400 absolute -top-5 min-[385px]:-top-7 sm:-top-10 drop-shadow-[0_0_15px_rgba(251,191,36,0.5)] z-20" 
@@ -507,9 +507,9 @@ export function RankingPage({ data, operatorData }: { data: any[], operatorData?
             <>
               {/* Podium display */}
               <div className="flex justify-center items-end gap-3 min-[385px]:gap-6 sm:gap-14 mb-4 pt-1">
-                  {top3[1] && <PodiumItem rankItem={top3[1]} rank={2} />}
-                  {top3[0] && <PodiumItem rankItem={top3[0]} rank={1} />}
-                  {top3[2] && <PodiumItem rankItem={top3[2]} rank={3} />}
+                  {top3[1] && renderPodiumItem(top3[1], 2)}
+                  {top3[0] && renderPodiumItem(top3[0], 1)}
+                  {top3[2] && renderPodiumItem(top3[2], 3)}
               </div>
 
               {/* Ranks list 4-8 */}
