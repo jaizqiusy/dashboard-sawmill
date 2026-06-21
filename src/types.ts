@@ -70,6 +70,8 @@ export interface MonthlyLogData {
   yieldTotalLokal: number;
   total: number;
   yieldTotal: number;
+  pilotLadder: number;
+  utamaTanpaPilotLadder: number;
 }
 
 export interface OperatorData {

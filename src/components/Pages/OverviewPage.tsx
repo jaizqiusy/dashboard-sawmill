@@ -42,7 +42,7 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
     const availableMonths = [...new Set(monthlyLogData.map((d: any) => d.bulan))].filter((b: any) => !isNaN(b) && b > 0) as number[];
     const latestMonth = availableMonths.length > 0 ? Math.max(...availableMonths) : new Date().getMonth() + 1;
     
-    const categories: Record<string, { kategori: string, input: number, utama: number, turunan: number, lokal: number, total: number, monthName: number }> = {
+    const categories: Record<string, { kategori: string, input: number, utama: number, turunan: number, lokal: number, total: number, pilotLadder: number, utamaTanpaPilotLadder: number, monthName: number }> = {
       'Log Panjang': {
         kategori: 'Log Panjang',
         input: 0,
@@ -50,6 +50,8 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
         turunan: 0,
         lokal: 0,
         total: 0,
+        pilotLadder: 0,
+        utamaTanpaPilotLadder: 0,
         monthName: latestMonth
       },
       'Log End': {
@@ -59,6 +61,8 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
         turunan: 0,
         lokal: 0,
         total: 0,
+        pilotLadder: 0,
+        utamaTanpaPilotLadder: 0,
         monthName: latestMonth
       }
     };
@@ -74,6 +78,8 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
         categories[cat].turunan += row.turunan || 0;
         categories[cat].lokal += row.totalLokal || 0; // Using totalLokal from row
         categories[cat].total += row.total || 0;
+        categories[cat].pilotLadder += row.pilotLadder || 0;
+        categories[cat].utamaTanpaPilotLadder += row.utamaTanpaPilotLadder || 0;
       }
     });
 
@@ -286,13 +292,16 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[900px]">
+            <table className="w-full text-left border-collapse min-w-[1200px]">
               <thead>
                 <tr className="border-b-[3px] border-slate-200 text-[11px] text-slate-800 font-black uppercase tracking-widest bg-slate-50">
                   <th className="py-4 px-4 sticky left-0 bg-slate-50">Kategori</th>
                   <th className="py-4 px-4 text-right">Input (m³)</th>
                   <th className="py-4 px-4 text-right">Utama (m³)</th>
                   <th className="py-4 px-4 text-center">Rendemen Utama (%)</th>
+                  <th className="py-4 px-4 text-right">Pilot Ladder (m³)</th>
+                  <th className="py-4 px-4 text-right">Utama Tanpa Pilot (m³)</th>
+                  <th className="py-4 px-4 text-center">Rendemen Utama Non Pilot (%)</th>
                   <th className="py-4 px-4 text-right">Turunan (m³)</th>
                   <th className="py-4 px-4 text-center">Rendemen Turunan (%)</th>
                   <th className="py-4 px-4 text-right">Lokal (m³)</th>
@@ -305,6 +314,7 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
                   const yieldTotal = cat.input > 0 ? (cat.total / cat.input) * 100 : 0;
                   const yieldUtama = cat.input > 0 ? (cat.utama / cat.input) * 100 : 0;
                   const yieldTurunan = cat.input > 0 ? (cat.turunan / cat.input) * 100 : 0;
+                  const yieldUtamaTanpaPilot = cat.input > 0 ? ((cat.utama - cat.pilotLadder) / cat.input) * 100 : 0;
                   return (
                     <tr key={cat.kategori} className="hover:bg-slate-50/50 transition-colors">
                       <td className="py-4 px-4 font-black text-slate-900 sticky left-0 bg-white group-hover:bg-slate-50/50">{cat.kategori}</td>
@@ -313,6 +323,13 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
                       <td className="py-4 px-4 text-center">
                         <span className="inline-flex items-center justify-center min-w-[60px] px-2 py-1 rounded text-xs font-black bg-sky-50 text-sky-700 border border-sky-100">
                           {yieldUtama.toFixed(1)}%
+                        </span>
+                      </td>
+                      <td className="py-4 px-4 text-right font-black text-indigo-600">{cat.pilotLadder.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                      <td className="py-4 px-4 text-right font-black text-indigo-700">{cat.utamaTanpaPilotLadder.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                      <td className="py-4 px-4 text-center">
+                        <span className="inline-flex items-center justify-center min-w-[60px] px-2 py-1 rounded text-xs font-black bg-indigo-50 text-indigo-700 border border-indigo-100">
+                          {yieldUtamaTanpaPilot.toFixed(1)}%
                         </span>
                       </td>
                       <td className="py-4 px-4 text-right font-black text-orange-700">{cat.turunan.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
@@ -337,10 +354,13 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
                   const totalTurunan = currentMonthLogsByCategory.reduce((sum: number, cat: any) => sum + cat.turunan, 0);
                   const totalLokal = currentMonthLogsByCategory.reduce((sum: number, cat: any) => sum + cat.lokal, 0);
                   const totalAll = currentMonthLogsByCategory.reduce((sum: number, cat: any) => sum + cat.total, 0);
+                  const totalPilotLadder = currentMonthLogsByCategory.reduce((sum: number, cat: any) => sum + cat.pilotLadder, 0);
+                  const totalUtamaTanpaPilot = currentMonthLogsByCategory.reduce((sum: number, cat: any) => sum + cat.utamaTanpaPilotLadder, 0);
                   
                   const yieldTotalUtama = totalInput > 0 ? (totalUtama / totalInput) * 100 : 0;
                   const yieldTotalTurunan = totalInput > 0 ? (totalTurunan / totalInput) * 100 : 0;
                   const yieldTotalAll = totalInput > 0 ? (totalAll / totalInput) * 100 : 0;
+                  const yieldTotalUtamaTanpaPilot = totalInput > 0 ? ((totalUtama - totalPilotLadder) / totalInput) * 100 : 0;
                   
                   return (
                     <tr className="bg-slate-100/50 font-black border-t-[3px] border-slate-200 shadow-sm">
@@ -350,6 +370,13 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
                       <td className="py-5 px-4 text-center">
                         <span className="inline-flex items-center justify-center min-w-[70px] px-3 py-1.5 rounded-md text-sm font-black bg-sky-100 text-sky-800 shadow-sm">
                           {yieldTotalUtama.toFixed(1)}%
+                        </span>
+                      </td>
+                      <td className="py-5 px-4 text-right text-indigo-700 text-base">{totalPilotLadder.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                      <td className="py-5 px-4 text-right text-indigo-800 text-base">{totalUtamaTanpaPilot.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                      <td className="py-5 px-4 text-center">
+                        <span className="inline-flex items-center justify-center min-w-[70px] px-3 py-1.5 rounded-md text-sm font-black bg-indigo-100 text-indigo-900 shadow-sm">
+                          {yieldTotalUtamaTanpaPilot.toFixed(1)}%
                         </span>
                       </td>
                       <td className="py-5 px-4 text-right text-orange-700 text-base">{totalTurunan.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>

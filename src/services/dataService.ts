@@ -189,6 +189,8 @@ function parseMonthlyLogCSV(csv: string): MonthlyLogData[] {
       yieldTotalLokal: parseFloat(values[15]) || 0,
       total: parseFloat(values[16]) || 0,
       yieldTotal: parseFloat(values[17]) || 0,
+      pilotLadder: parseFloat(values[18]) || 0,
+      utamaTanpaPilotLadder: parseFloat(values[19]) || 0,
     };
   }).filter(row => row.supplier && row.supplier.trim() !== '' && row.supplier.toLowerCase() !== 'total');
 }
@@ -516,10 +518,10 @@ export function getMachineRankings(data: ProductionData[], periodType: 'weekly' 
   }));
 
   return parsed.map(m => {
-    // perhitungan rendemen utama di bagi target rendemen utama 30% di kali 55%
-    const scoreYield = (m.yield / 0.30) * 55;
-    // perhitungan output total di bagi target output 9M3 perhari di kali 45%
-    const scoreTotal = m.target > 0 ? (m.total / m.target) * 45 : 0;
+    // perhitungan rendemen utama di bagi target rendemen utama 30% di kali 50%
+    const scoreYield = (m.yield / 0.30) * 50;
+    // perhitungan output total di bagi target output 9M3 perhari di kali 50%
+    const scoreTotal = m.target > 0 ? (m.total / m.target) * 50 : 0;
     
     const score = scoreYield + scoreTotal;
     return { ...m, score };
