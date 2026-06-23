@@ -17,6 +17,8 @@ export interface ProductionData {
   quartal: number;
   point: number;
   durasi: number;
+  pilotLadder: number;
+  utamaNonPilotLadder: number;
   jam: number;
   downtime: string;
 }

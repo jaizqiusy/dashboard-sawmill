@@ -13,6 +13,8 @@ interface BsData {
   total: number;
   week: number;
   month: number;
+  pilotLadder: number;
+  utamaNonPilotLadder: number;
 }
 
 export function BsAchievementUpdate() {
@@ -64,6 +66,8 @@ export function BsAchievementUpdate() {
     const colTotal = headers.findIndex((h: string) => h === 'total');
     const colWeek = headers.findIndex((h: string) => h === 'week');
     const colMonth = headers.findIndex((h: string) => h === 'month');
+    const colPilotLadder = headers.findIndex((h: string) => h === 'pilot ladder');
+    const colUtamaNonPilot = headers.findIndex((h: string) => h === 'utama non pilot ladder');
 
     for (let i = 1; i < csvData.length; i++) {
         const row = csvData[i];
@@ -81,7 +85,9 @@ export function BsAchievementUpdate() {
             lokal: parseFloat(row[colLokal] || '0') || 0,
             total: parseFloat(row[colTotal] || '0') || 0,
             week: parseInt(row[colWeek] || '0') || 0,
-            month: parseInt(row[colMonth] || '0') || 0
+            month: parseInt(row[colMonth] || '0') || 0,
+            pilotLadder: colPilotLadder !== -1 ? parseFloat(row[colPilotLadder] || '0') || 0 : 0,
+            utamaNonPilotLadder: colUtamaNonPilot !== -1 ? parseFloat(row[colUtamaNonPilot] || '0') || 0 : 0
         });
     }
 
@@ -166,6 +172,8 @@ export function BsAchievementUpdate() {
             turunan: 0,
             lokal: 0,
             totalOutput: 0,
+            pilotLadder: 0,
+            utamaNonPilotLadder: 0,
             count: 0
         };
     }
@@ -189,6 +197,8 @@ export function BsAchievementUpdate() {
             byMachine[normalizedName].turunan += d.turunan;
             byMachine[normalizedName].lokal += d.lokal;
             byMachine[normalizedName].totalOutput += d.total;
+            byMachine[normalizedName].pilotLadder += d.pilotLadder || 0;
+            byMachine[normalizedName].utamaNonPilotLadder += d.utamaNonPilotLadder || 0;
             byMachine[normalizedName].count++;
         }
         
@@ -206,12 +216,14 @@ export function BsAchievementUpdate() {
 
     const details = Object.values(byMachine).map(m => {
         const yieldU = m.input > 0 ? (m.utama / m.input) * 100 : 0;
+        const yieldUNonPilot = m.input > 0 ? (m.utamaNonPilotLadder / m.input) * 100 : 0;
         const yieldT = m.input > 0 ? (m.turunan / m.input) * 100 : 0;
         const yieldTot = m.input > 0 ? (m.totalOutput / m.input) * 100 : 0;
         const avg = m.count > 0 ? m.totalOutput / m.count : 0;
         return {
             ...m,
             yieldUtama: yieldU,
+            yieldUtamaNonPilot: yieldUNonPilot,
             yieldTurunan: yieldT,
             yieldTotal: yieldTot,
             averageOutput: avg
@@ -359,42 +371,67 @@ export function BsAchievementUpdate() {
                     </span>
                 </div>
 
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-                {statsBS.details.map((m: any, idx: number) => (
-                    <div key={idx} className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-md transition-all flex flex-col">
-                        <div className="flex justify-between items-center border-b border-slate-100 pb-2 mb-3">
-                            <h3 className="font-bold text-slate-800 text-sm">{m.name}</h3>
-                            <span className="text-[10px] font-black bg-indigo-50 text-indigo-600 px-2 py-1 rounded border border-indigo-100">Rendemen: {m.yieldTotal.toFixed(1)}%</span>
-                        </div>
-                        
-                        <div className="grid grid-cols-3 sm:grid-cols-6 gap-x-2 gap-y-3">
-                            <div>
-                                <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-0.5">Input</p>
-                                <p className="text-xs font-bold text-slate-800">{m.input.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</p>
-                            </div>
-                            <div>
-                                <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-0.5 flex gap-1">Utama <span className="text-sky-500">({m.yieldUtama.toFixed(0)}%)</span></p>
-                                <p className="text-xs font-bold text-slate-800">{m.utama.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</p>
-                            </div>
-                            <div>
-                                <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-0.5 flex gap-1">Turunan <span className="text-orange-500">({m.yieldTurunan.toFixed(0)}%)</span></p>
-                                <p className="text-xs font-bold text-slate-800">{m.turunan.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</p>
-                            </div>
-                            <div>
-                                <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-0.5">Lokal</p>
-                                <p className="text-xs font-bold text-slate-800">{m.lokal.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</p>
-                            </div>
-                            <div>
-                                <p className="text-[9px] text-emerald-600 font-black uppercase tracking-widest mb-0.5">Total Out</p>
-                                <p className="text-xs font-bold text-emerald-600">{m.totalOutput.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</p>
-                            </div>
-                            <div>
-                                <p className="text-[9px] text-indigo-500 font-black uppercase tracking-widest mb-0.5">Avg Out</p>
-                                <p className="text-xs font-bold text-indigo-600">{m.averageOutput.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</p>
-                            </div>
-                        </div>
-                    </div>
-                ))}
+                <div className="overflow-x-auto ring-1 ring-slate-100 rounded-xl mt-2">
+                    <table className="w-full text-left border-collapse min-w-[900px] text-sm">
+                        <thead className="bg-[#f8fafc] text-[11px] text-slate-500 font-bold uppercase tracking-wider">
+                            <tr>
+                                <th className="py-4 px-4 font-semibold border-b border-slate-100 w-16">NO</th>
+                                <th className="py-4 px-4 font-semibold border-b border-slate-100">MESIN</th>
+                                <th className="py-4 px-4 font-semibold border-b border-slate-100">INPUT (M³)</th>
+                                <th className="py-4 px-4 font-semibold border-b border-slate-100">UTAMA (M³)</th>
+                                <th className="py-4 px-4 font-semibold border-b border-slate-100 text-center">RENDEMEN<br/>UTAMA (%)</th>
+                                <th className="py-4 px-4 font-semibold border-b border-slate-100 text-center">RENDEMEN UTAMA<br/>NON PILOT LADDER (%)</th>
+                                <th className="py-4 px-4 font-semibold border-b border-slate-100">TURUNAN (M³)</th>
+                                <th className="py-4 px-4 font-semibold border-b border-slate-100 text-center">RENDEMEN<br/>TURUNAN (%)</th>
+                                <th className="py-4 px-4 font-semibold border-b border-slate-100">LOKAL (M³)</th>
+                                <th className="py-4 px-4 font-semibold border-b border-slate-100">TOTAL<br/>OUTPUT (M³)</th>
+                                <th className="py-4 px-4 font-semibold border-b border-slate-100 text-center">RENDEMEN<br/>TOTAL (%)</th>
+                                <th className="py-4 px-4 font-semibold border-b border-slate-100">AVG<br/>OUTPUT</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 bg-white">
+                        {statsBS.details.map((m: any, idx: number) => {
+                            let statusClassesU = 'bg-rose-100 text-rose-600';
+                            if (m.yieldUtama >= 30) statusClassesU = 'bg-emerald-100 text-emerald-600';
+                            else if (m.yieldUtama >= 25) statusClassesU = 'bg-amber-100 text-amber-600';
+
+                            let statusClassesUNon = 'bg-rose-100 text-rose-600';
+                            if (m.yieldUtamaNonPilot >= 30) statusClassesUNon = 'bg-emerald-100 text-emerald-600';
+                            else if (m.yieldUtamaNonPilot >= 25) statusClassesUNon = 'bg-amber-100 text-amber-600';
+
+                            return (
+                                <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                                    <td className="py-4 px-4 text-slate-500">{idx + 1}</td>
+                                    <td className="py-4 px-4 text-slate-700 font-medium">{m.name}</td>
+                                    <td className="py-4 px-4 text-slate-600">{m.input.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                                    <td className="py-4 px-4 text-slate-600">{m.utama.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                                    <td className="py-4 px-4 text-center">
+                                        <span className={cn("px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide", statusClassesU)}>
+                                            {m.yieldUtama.toFixed(1)}%
+                                        </span>
+                                    </td>
+                                    <td className="py-4 px-4 text-center">
+                                        {m.yieldUtamaNonPilot > 0 ? (
+                                           <span className={cn("px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide", statusClassesUNon)}>
+                                              {m.yieldUtamaNonPilot.toFixed(1)}%
+                                           </span>
+                                        ) : (
+                                           <span className="text-slate-400">-</span>
+                                        )}
+                                    </td>
+                                    <td className="py-4 px-4 text-slate-600">{m.turunan.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                                    <td className="py-4 px-4 text-center text-slate-600 font-medium">
+                                        {m.yieldTurunan.toFixed(1)}%
+                                    </td>
+                                    <td className="py-4 px-4 text-slate-600">{m.lokal.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                                    <td className="py-4 px-4 text-slate-700 font-medium">{m.totalOutput.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                                    <td className="py-4 px-4 text-slate-700 font-medium text-center">{m.yieldTotal.toFixed(1)}%</td>
+                                    <td className="py-4 px-4 text-slate-600">{m.averageOutput.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                                </tr>
+                            );
+                        })}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         )}

@@ -1,3 +1,4 @@
+import Papa from 'papaparse';
 import { RAW_CSV_DATA } from '../data/raw_data';
 import { ProductionData, SummaryStats, SupplierData, MonthlyLogData, OperatorData } from '../types';
 
@@ -17,26 +18,10 @@ export async function fetchOperatorData(): Promise<OperatorData[]> {
 }
 
 function parseOperatorCSV(csv: string): OperatorData[] {
-  const lines = csv.trim().split('\n');
-  if (lines.length <= 1) return [];
+  const parsed = Papa.parse<string[]>(csv.trim(), { skipEmptyLines: true });
+  if (!parsed.data || parsed.data.length <= 1) return [];
 
-  const parseLine = (line: string) => {
-    const result = [];
-    let start = 0;
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-        if (line[i] === '"') inQuotes = !inQuotes;
-        if (line[i] === ',' && !inQuotes) {
-            result.push(line.substring(start, i));
-            start = i + 1;
-        }
-    }
-    result.push(line.substring(start));
-    return result.map(v => v.replace(/^"|"$/g, '').trim());
-  };
-
-  return lines.slice(1).map(line => {
-    const values = parseLine(line);
+  return parsed.data.slice(1).map(values => {
       let urlFoto = values[7] || '';
       if (urlFoto.includes('drive.google.com')) {
         const idMatch = urlFoto.match(/id=([a-zA-Z0-9_-]+)/) || 
@@ -93,26 +78,10 @@ export async function fetchSupplierData(): Promise<SupplierData[]> {
 }
 
 function parseSupplierCSV(csv: string): SupplierData[] {
-  const lines = csv.trim().split('\n');
-  if (lines.length <= 1) return [];
+  const parsed = Papa.parse<string[]>(csv.trim(), { skipEmptyLines: true });
+  if (!parsed.data || parsed.data.length <= 1) return [];
 
-  const parseLine = (line: string) => {
-    const result = [];
-    let start = 0;
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-        if (line[i] === '"') inQuotes = !inQuotes;
-        if (line[i] === ',' && !inQuotes) {
-            result.push(line.substring(start, i));
-            start = i + 1;
-        }
-    }
-    result.push(line.substring(start));
-    return result.map(v => v.replace(/^"|"$/g, '').trim());
-  };
-
-  return lines.slice(1).map(line => {
-    const values = parseLine(line);
+  return parsed.data.slice(1).map(values => {
     return {
       kode: values[0] || '',
       supplier: values[1] || '',
@@ -150,26 +119,10 @@ export async function fetchMonthlyLogData(): Promise<MonthlyLogData[]> {
 }
 
 function parseMonthlyLogCSV(csv: string): MonthlyLogData[] {
-  const lines = csv.trim().split('\n');
-  if (lines.length <= 1) return [];
+  const parsed = Papa.parse<string[]>(csv.trim(), { skipEmptyLines: true });
+  if (!parsed.data || parsed.data.length <= 1) return [];
 
-  const parseLine = (line: string) => {
-    const result = [];
-    let start = 0;
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-        if (line[i] === '"') inQuotes = !inQuotes;
-        if (line[i] === ',' && !inQuotes) {
-            result.push(line.substring(start, i));
-            start = i + 1;
-        }
-    }
-    result.push(line.substring(start));
-    return result.map(v => v.replace(/^"|"$/g, '').trim());
-  };
-
-  return lines.slice(1).map(line => {
-    const values = parseLine(line);
+  return parsed.data.slice(1).map(values => {
     return {
       bulan: parseInt(values[0]) || 0,
       kode: values[1] || '',
@@ -205,25 +158,10 @@ export function getMockSupplierData(): SupplierData[] {
 }
 
 function parseCSV(csv: string): ProductionData[] {
-  const lines = csv.trim().split('\n');
-  
-  const parseLine = (line: string) => {
-    const result = [];
-    let start = 0;
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      if (line[i] === '"') inQuotes = !inQuotes;
-      if (line[i] === ',' && !inQuotes) {
-        result.push(line.substring(start, i));
-        start = i + 1;
-      }
-    }
-    result.push(line.substring(start));
-    return result.map(v => v.replace(/^"|"$/g, '').trim());
-  };
+  const parsed = Papa.parse<string[]>(csv.trim(), { skipEmptyLines: true });
+  if (!parsed.data || parsed.data.length <= 1) return [];
 
-  return lines.slice(1).map(line => {
-    const values = parseLine(line);
+  return parsed.data.slice(1).map(values => {
     return {
       tanggal: values[0] || '',
       mesin: values[1] || '',
@@ -243,8 +181,10 @@ function parseCSV(csv: string): ProductionData[] {
       quartal: parseInt(values[15]) || 0,
       point: parseInt(values[16]) || 0,
       durasi: parseFloat(values[17]) || 0,
-      jam: parseFloat(values[18]) || 0,
-      downtime: values[19] || '',
+      pilotLadder: parseFloat(values[18]) || 0,
+      utamaNonPilotLadder: parseFloat(values[19]) || 0,
+      jam: parseFloat(values[21]) || 0,
+      downtime: values[22] || '',
     };
   });
 }

@@ -258,10 +258,20 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
             <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-4 shadow-inner relative overflow-hidden">
                <div className="absolute -right-4 -top-8 w-24 h-24 bg-white/5 rounded-full blur-2xl" />
                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 relative z-10">Tingkat Rendemen Bulanan</p>
-               <div className="grid grid-cols-3 divide-x divide-white/10 relative z-10">
+               <div className="grid grid-cols-4 divide-x divide-white/10 relative z-10">
                  <div className="flex flex-col px-2 text-center">
                    <span className="text-xl font-black text-sky-400">{monthPerformance.totals.rendemenUtama.toFixed(1)}%</span>
                    <span className="text-[8px] font-bold text-slate-300 uppercase tracking-wider mt-1">Utama</span>
+                 </div>
+                 <div className="flex flex-col px-2 text-center">
+                   {(() => {
+                     const totalInputMonth = currentMonthLogsByCategory.reduce((sum, cat) => sum + cat.input, 0);
+                     const totalUtamaMonth = currentMonthLogsByCategory.reduce((sum, cat) => sum + cat.utama, 0);
+                     const totalPilotMonth = currentMonthLogsByCategory.reduce((sum, cat) => sum + cat.pilotLadder, 0);
+                     const rendemenUtamaNonPilot = totalInputMonth > 0 ? ((totalUtamaMonth - totalPilotMonth) / totalInputMonth) * 100 : 0;
+                     return <span className="text-xl font-black text-indigo-400">{rendemenUtamaNonPilot.toFixed(1)}%</span>;
+                   })()}
+                   <span className="text-[8px] font-bold text-slate-300 uppercase tracking-wider mt-1">Utama Non Pilot</span>
                  </div>
                  <div className="flex flex-col px-2 text-center">
                    <span className="text-xl font-black text-orange-400">{monthPerformance.totals.rendemenTurunan.toFixed(1)}%</span>
