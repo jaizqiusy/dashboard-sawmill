@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
-import { Trophy, Crown, X, ZoomIn, User, Lock, Unlock, Upload } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Trophy, Crown, X, ZoomIn, User, Lock, Unlock, Upload, Download, Loader2 } from 'lucide-react';
 import { cn, getApiUrl } from '../../lib/utils';
 import { getAvailablePeriods, getMachineRankings } from '../../services/dataService';
 import { BsAchievementUpdate } from './BsAchievementUpdate';
 import { collection, onSnapshot, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../../firebase';
+import { toJpeg } from 'html-to-image';
 
 // Premium SVG avatar generator for operators
 const getDefaultSvgAvatar = (mesin: string, name: string) => {
@@ -55,6 +56,39 @@ export function RankingPage({ data, operatorData }: { data: any[], operatorData?
   const periods = React.useMemo(() => getAvailablePeriods(data), [data]);
   const [periodValue, setPeriodValue] = useState(periods.months[0] || 0);
   const [selectedOperator, setSelectedOperator] = useState<any>(null);
+
+  const leaderboardRef = useRef<HTMLDivElement>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const downloadLeaderboardJpg = async () => {
+    if (!leaderboardRef.current) return;
+    setIsDownloading(true);
+    try {
+      const dataUrl = await toJpeg(leaderboardRef.current, {
+        quality: 0.95,
+        backgroundColor: '#0f172a',
+        cacheBust: true,
+        style: {
+          width: '600px',
+          transform: 'none',
+        },
+        filter: (node: any) => {
+          if (node.classList && node.classList.contains('no-export')) {
+            return false;
+          }
+          return true;
+        }
+      });
+      const link = document.createElement('a');
+      link.download = `Leaderboard_${periodType}_${periodValue}.jpg`;
+      link.href = dataUrl;
+      link.click();
+    } catch (error) {
+      console.error('Error downloading leaderboard:', error);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   const [customAvatars, setCustomAvatars] = useState<Record<string, string>>(() => {
     try {
@@ -451,7 +485,7 @@ export function RankingPage({ data, operatorData }: { data: any[], operatorData?
       </div>
 
       {activeSubTab === 'ranks' ? (
-        <div className="bg-[#0f172a] rounded-3xl p-3 sm:p-6 md:p-8 shadow-xl relative overflow-hidden ring-1 ring-slate-800">
+        <div ref={leaderboardRef} className="bg-[#0f172a] rounded-3xl p-3 sm:p-6 md:p-8 shadow-xl relative overflow-hidden ring-1 ring-slate-800">
           <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-sky-900/15 to-transparent pointer-events-none" />
           
           {/* Integrated Header Row containing Trophy Title + Period Filter controls */}
@@ -500,6 +534,20 @@ export function RankingPage({ data, operatorData }: { data: any[], operatorData?
                   <option key={w} value={w} className="bg-[#0f172a]">Minggu {w}</option>
                 ))}
               </select>
+
+              <button
+                onClick={downloadLeaderboardJpg}
+                disabled={isDownloading}
+                className="no-export bg-[#00796b] hover:bg-[#005c51] text-white text-[10px] sm:text-xs font-extrabold rounded-lg px-3 py-1.5 outline-none cursor-pointer flex items-center gap-1 disabled:opacity-50 transition-colors"
+                title="Download JPG"
+              >
+                {isDownloading ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Download className="w-3.5 h-3.5" />
+                )}
+                <span>JPG</span>
+              </button>
             </div>
           </div>
 

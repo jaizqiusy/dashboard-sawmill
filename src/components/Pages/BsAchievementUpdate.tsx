@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Papa from 'papaparse';
-import { Target, RefreshCw, Calendar, ChevronDown, Loader2 } from 'lucide-react';
+import { Target, RefreshCw, Calendar, ChevronDown, Loader2, Download } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { toJpeg } from 'html-to-image';
 
 interface BsData {
   tanggal: string;
@@ -26,6 +27,39 @@ export function BsAchievementUpdate() {
   const [periodType, setPeriodType] = useState<'monthly' | 'weekly'>('monthly');
   const [selectedMonth, setSelectedMonth] = useState<number>(0);
   const [selectedWeek, setSelectedWeek] = useState<number>(0);
+
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const downloadJpg = async () => {
+    if (!cardRef.current) return;
+    setIsDownloading(true);
+    try {
+      const dataUrl = await toJpeg(cardRef.current, {
+        quality: 0.95,
+        backgroundColor: '#ffffff',
+        cacheBust: true,
+        style: {
+          width: '1150px', // Perfect width to display full columns clearly
+          transform: 'none',
+        },
+        filter: (node: any) => {
+          if (node.classList && node.classList.contains('no-export')) {
+            return false;
+          }
+          return true;
+        }
+      });
+      const link = document.createElement('a');
+      link.download = `Pencapaian_BS_1-8_${periodType}_${periodType === 'monthly' ? selectedMonth : selectedWeek}.jpg`;
+      link.href = dataUrl;
+      link.click();
+    } catch (err) {
+      console.error("Error generating JPG image:", err);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   const sheetUrl = "https://docs.google.com/spreadsheets/d/1G7x3dtE2KFF338w6qdd4jrMkz-yrbThlzx5Vi0I8AqQ/edit?gid=0#gid=0";
 
@@ -247,7 +281,7 @@ export function BsAchievementUpdate() {
   }, [data, periodType, selectedMonth, selectedWeek]);
 
   return (
-    <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm relative overflow-hidden mt-6">
+    <div ref={cardRef} className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm relative overflow-hidden mt-6">
         <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full blur-[60px] -mr-16 -mt-16 pointer-events-none" />
         
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5 border-b border-slate-100 pb-4 relative z-10">
@@ -299,6 +333,20 @@ export function BsAchievementUpdate() {
                 >
                     <RefreshCw className={cn("w-3 h-3", loading ? 'animate-spin' : '')} />
                     <span>{loading ? 'Menarik...' : 'Sync'}</span>
+                </button>
+
+                <button
+                    onClick={downloadJpg}
+                    disabled={isDownloading}
+                    className="no-export flex-shrink-0 flex items-center justify-center gap-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 px-3 py-1 rounded-lg text-[10px] font-bold uppercase transition-colors border border-emerald-100 cursor-pointer disabled:opacity-50"
+                    title="Download JPG"
+                >
+                    {isDownloading ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                        <Download className="w-3 h-3" />
+                    )}
+                    <span>JPG</span>
                 </button>
             </div>
         </div>
