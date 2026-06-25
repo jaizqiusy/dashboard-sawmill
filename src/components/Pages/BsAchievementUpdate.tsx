@@ -409,72 +409,75 @@ export function BsAchievementUpdate() {
                     </div>
                 </div>
 
-                <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
-                    <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2 tracking-tight">
-                        <Target className="w-4 h-4 text-indigo-500" />
+                <div className="flex justify-between items-center mb-5 border-b border-slate-100 pb-4">
+                    <h2 className="text-sm sm:text-base font-extrabold text-slate-900 flex items-center gap-2.5 tracking-tight">
+                        <span className="relative flex h-5 w-5 items-center justify-center">
+                            <span className="absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-20 animate-ping"></span>
+                            <span className="relative inline-flex rounded-full h-3 w-3 bg-indigo-500"></span>
+                        </span>
                         Detail Per Mesin
                     </h2>
-                    <span className="text-[9px] text-slate-500 font-medium bg-slate-50 px-2 py-1 rounded border border-slate-100">
+                    <span className="text-[10px] sm:text-xs text-slate-500 font-bold bg-[#f8fafc] border border-slate-200/60 shadow-sm rounded-lg px-3 py-1.5 uppercase tracking-wide">
                         Update: {lastUpdate}
                     </span>
                 </div>
 
-                <div className="overflow-x-auto ring-1 ring-slate-100 rounded-xl mt-2 hide-scrollbar">
+                <div className="overflow-x-auto border border-slate-200/80 rounded-[24px] mt-3 shadow-sm bg-white no-scrollbar">
                     <table className="w-full text-left border-collapse min-w-[1000px] text-sm">
-                        <thead className="bg-[#f8fafc] text-[11px] text-slate-700 font-black uppercase tracking-wider">
+                        <thead className="bg-[#f8fafc] border-b border-slate-100 text-[11px] sm:text-xs text-[#475569] font-extrabold uppercase tracking-wider">
                             <tr>
-                                <th className="py-4 px-4 font-black border-b border-slate-200 w-16">NO</th>
-                                <th className="py-4 px-4 font-black border-b border-slate-200">MESIN</th>
-                                <th className="py-4 px-4 font-black border-b border-slate-200 text-right">INPUT (M³)</th>
-                                <th className="py-4 px-4 font-black border-b border-slate-200 text-right">UTAMA (M³)</th>
-                                <th className="py-4 px-4 font-black border-b border-slate-200 text-center">RENDEMEN<br/>UTAMA (%)</th>
-                                <th className="py-4 px-4 font-black border-b border-slate-200 text-center">RENDEMEN UTAMA<br/>NON PILOT LADDER (%)</th>
-                                <th className="py-4 px-4 font-black border-b border-slate-200 text-right">TURUNAN (M³)</th>
-                                <th className="py-4 px-4 font-black border-b border-slate-200 text-center">RENDEMEN<br/>TURUNAN (%)</th>
-                                <th className="py-4 px-4 font-black border-b border-slate-200 text-right">LOKAL (M³)</th>
-                                <th className="py-4 px-4 font-black border-b border-slate-200 text-right">TOTAL<br/>OUTPUT (M³)</th>
-                                <th className="py-4 px-4 font-black border-b border-slate-200 text-center">RENDEMEN<br/>TOTAL (%)</th>
-                                <th className="py-4 px-4 font-black border-b border-slate-200 text-right">AVG<br/>OUTPUT</th>
+                                <th className="py-5 px-4 font-extrabold text-[#475569] text-center uppercase tracking-wider w-16 hidden sm:table-cell">NO</th>
+                                <th className="py-5 px-6 font-extrabold text-[#475569] text-left uppercase tracking-wider">MESIN</th>
+                                <th className="py-5 px-4 font-extrabold text-[#475569] text-center uppercase tracking-wider leading-tight">INPUT<br/><span className="text-[10px] text-slate-400 font-semibold">(M³)</span></th>
+                                <th className="py-5 px-4 font-extrabold text-[#475569] text-center uppercase tracking-wider leading-tight">UTAMA<br/><span className="text-[10px] text-slate-400 font-semibold">(M³)</span></th>
+                                <th className="py-5 px-4 font-extrabold text-[#475569] text-center uppercase tracking-wider leading-tight">RENDEMEN<br/>UTAMA (%)</th>
+                                <th className="py-5 px-4 font-extrabold text-[#475569] text-center uppercase tracking-wider leading-tight">RENDEMEN UTAMA<br/>NON PILOT LADDER (%)</th>
+                                <th className="py-5 px-4 font-extrabold text-[#475569] text-right uppercase tracking-wider">TURUNAN (M³)</th>
+                                <th className="py-5 px-4 font-extrabold text-[#475569] text-center uppercase tracking-wider">RENDEMEN<br/>TURUNAN (%)</th>
+                                <th className="py-5 px-4 font-extrabold text-[#475569] text-right uppercase tracking-wider">LOKAL (M³)</th>
+                                <th className="py-5 px-4 font-extrabold text-[#475569] text-right uppercase tracking-wider">TOTAL<br/>OUTPUT (M³)</th>
+                                <th className="py-5 px-4 font-extrabold text-[#475569] text-center uppercase tracking-wider">RENDEMEN<br/>TOTAL (%)</th>
+                                <th className="py-5 px-4 font-extrabold text-[#475569] text-right uppercase tracking-wider">AVG<br/>OUTPUT</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 bg-white">
                         {statsBS.details.map((m: any, idx: number) => {
-                            let statusClassesU = 'bg-rose-100 text-rose-700';
-                            if (m.yieldUtama >= 30) statusClassesU = 'bg-emerald-100 text-emerald-700';
-                            else if (m.yieldUtama >= 25) statusClassesU = 'bg-amber-100 text-amber-700';
+                            let statusClassesU = 'bg-rose-50 text-rose-700 border border-rose-100';
+                            if (m.yieldUtama >= 30) statusClassesU = 'bg-[#e6f4ea] text-[#137333] border border-emerald-100/60';
+                            else if (m.yieldUtama >= 25) statusClassesU = 'bg-amber-50 text-amber-700 border border-amber-100';
 
-                            let statusClassesUNon = 'bg-rose-100 text-rose-700';
-                            if (m.yieldUtamaNonPilot >= 30) statusClassesUNon = 'bg-emerald-100 text-emerald-700';
-                            else if (m.yieldUtamaNonPilot >= 25) statusClassesUNon = 'bg-amber-100 text-amber-700';
+                            let statusClassesUNon = 'bg-rose-50 text-rose-700 border border-rose-100';
+                            if (m.yieldUtamaNonPilot >= 30) statusClassesUNon = 'bg-emerald-50 text-emerald-700 border border-emerald-100/60';
+                            else if (m.yieldUtamaNonPilot >= 25) statusClassesUNon = 'bg-amber-50 text-amber-700 border border-amber-100';
 
                             return (
-                                <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                                    <td className="py-4 px-4 font-bold text-slate-800">{idx + 1}</td>
-                                    <td className="py-4 px-4 font-black text-slate-900">{m.name}</td>
-                                    <td className="py-4 px-4 font-bold text-slate-800 text-right">{m.input.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
-                                    <td className="py-4 px-4 font-bold text-slate-800 text-right">{m.utama.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
-                                    <td className="py-4 px-4 text-center">
-                                        <span className={cn("px-2.5 py-1.5 rounded-md text-xs font-black tracking-wide", statusClassesU)}>
-                                            {m.yieldUtama.toFixed(1)}%
+                                <tr key={idx} className="hover:bg-slate-50/40 transition-colors">
+                                    <td className="py-5 px-4 font-bold text-slate-500 text-center hidden sm:table-cell">{idx + 1}</td>
+                                    <td className="py-5 px-6 font-black text-slate-950 text-left text-sm sm:text-base">{m.name}</td>
+                                    <td className="py-5 px-4 font-black text-slate-900 text-center text-sm sm:text-base">{m.input.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                                    <td className="py-5 px-4 font-black text-slate-900 text-center text-sm sm:text-base">{m.utama.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                                    <td className="py-5 px-4 text-center">
+                                        <span className={cn("inline-flex items-center justify-center px-3 py-1.5 rounded-lg text-xs sm:text-sm font-black tracking-wide min-w-[70px] sm:min-w-[80px] shadow-sm", statusClassesU)}>
+                                            {m.yieldUtama.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%
                                         </span>
                                     </td>
-                                    <td className="py-4 px-4 text-center">
+                                    <td className="py-5 px-4 text-center">
                                         {m.yieldUtamaNonPilot > 0 ? (
-                                           <span className={cn("px-2.5 py-1.5 rounded-md text-xs font-black tracking-wide", statusClassesUNon)}>
-                                              {m.yieldUtamaNonPilot.toFixed(1)}%
+                                           <span className={cn("inline-flex items-center justify-center px-3 py-1.5 rounded-lg text-xs sm:text-sm font-black tracking-wide min-w-[70px] sm:min-w-[80px] shadow-sm", statusClassesUNon)}>
+                                              {m.yieldUtamaNonPilot.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%
                                            </span>
                                         ) : (
-                                           <span className="font-bold text-slate-400">-</span>
+                                           <span className="font-extrabold text-slate-300">-</span>
                                         )}
                                     </td>
-                                    <td className="py-4 px-4 font-bold text-slate-800 text-right">{m.turunan.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
-                                    <td className="py-4 px-4 text-center font-bold text-slate-800">
-                                        {m.yieldTurunan.toFixed(1)}%
+                                    <td className="py-5 px-4 font-bold text-slate-800 text-right text-sm sm:text-base">{m.turunan.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                                    <td className="py-5 px-4 text-center font-bold text-slate-800 text-sm sm:text-base">
+                                        {m.yieldTurunan.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%
                                     </td>
-                                    <td className="py-4 px-4 font-bold text-slate-800 text-right">{m.lokal.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
-                                    <td className="py-4 px-4 font-black text-slate-900 text-right">{m.totalOutput.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
-                                    <td className="py-4 px-4 font-black text-slate-900 text-center">{m.yieldTotal.toFixed(1)}%</td>
-                                    <td className="py-4 px-4 font-bold text-slate-800 text-right">{m.averageOutput.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                                    <td className="py-5 px-4 font-bold text-slate-800 text-right text-sm sm:text-base">{m.lokal.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                                    <td className="py-5 px-4 font-black text-slate-900 text-right text-sm sm:text-base">{m.totalOutput.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                                    <td className="py-5 px-4 font-black text-slate-900 text-center text-sm sm:text-base">{m.yieldTotal.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%</td>
+                                    <td className="py-5 px-4 font-bold text-slate-800 text-right text-sm sm:text-base">{m.averageOutput.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
                                 </tr>
                             );
                         })}

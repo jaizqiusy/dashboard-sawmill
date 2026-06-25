@@ -128,6 +128,20 @@ export function ProductionPage({ todayStats }) {
                         {stat.lokal.toFixed(1)} <span className="text-[10px] text-indigo-500 font-bold">m³</span>
                       </span>
                     </div>
+
+                    <div className="bg-fuchsia-50 p-3 rounded-xl shadow-sm border border-fuchsia-200">
+                      <span className="text-[9px] text-fuchsia-600 uppercase tracking-widest block mb-1 font-black">Pilot Ladder</span>
+                      <span className="text-fuchsia-700 font-mono text-lg font-black leading-none block">
+                        {(stat.pilotLadder || 0).toFixed(1)} <span className="text-[10px] text-fuchsia-500 font-bold">m³</span>
+                      </span>
+                    </div>
+
+                    <div className="bg-teal-50 p-3 rounded-xl shadow-sm border border-teal-200">
+                      <span className="text-[9px] text-teal-600 uppercase tracking-widest block mb-1 font-black">Rendemen Utama Tanpa PL</span>
+                      <span className="text-teal-700 font-mono text-lg font-black leading-none block">
+                        {(stat.input > 0 ? ((stat.utamaNonPilotLadder || 0) / stat.input) * 100 : 0).toFixed(1)}%
+                      </span>
+                    </div>
                   </div>
                   
                   {isDown && (

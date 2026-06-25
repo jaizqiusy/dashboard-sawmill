@@ -308,6 +308,8 @@ export interface MachineRanking {
   achievement: number;
   downtime?: string[];
   score?: number;
+  pilotLadder?: number;
+  utamaNonPilotLadder?: number;
 }
 
 export function getAvailablePeriods(data: ProductionData[]) {
@@ -355,6 +357,8 @@ export function getTodayMachineStats(data: ProductionData[]): { date: string, st
       yield: 0,
       achievement: 0,
       target_total: 0,
+      pilotLadder: 0,
+      utamaNonPilotLadder: 0,
       downtime: []
     });
   });
@@ -374,6 +378,8 @@ export function getTodayMachineStats(data: ProductionData[]): { date: string, st
         yield: 0,
         achievement: 0,
         target_total: 0,
+        pilotLadder: 0,
+        utamaNonPilotLadder: 0,
         downtime: []
       });
     }
@@ -385,6 +391,8 @@ export function getTodayMachineStats(data: ProductionData[]): { date: string, st
     stat.lokal += d.lokal || 0;
     stat.total += d.total || 0;
     stat.target_total += d.target_total || 0;
+    stat.pilotLadder += d.pilotLadder || 0;
+    stat.utamaNonPilotLadder += d.utamaNonPilotLadder || 0;
     // Assume yield/achievement are recalculated or taken from totals
     stat.yield = stat.input > 0 ? (stat.utama / stat.input) : 0;
     // For achievement, use sum of target if it exists, otherwise keep average/last
