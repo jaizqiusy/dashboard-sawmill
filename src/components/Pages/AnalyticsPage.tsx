@@ -100,8 +100,8 @@ export function AnalyticsPage({ data, monthlyLogData }) {
                       contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px', color: '#1e293b' }}
                       itemStyle={{ color: '#1e293b' }}
                     />
-                    <Bar dataKey="utama" fill="#38bdf8" radius={[4, 4, 0, 0]} name="Output Utama" />
-                    <Bar dataKey="input" fill="#c7d2fe" radius={[4, 4, 0, 0]} name="Input" />
+                    <Bar isAnimationActive={false} dataKey="utama" fill="#38bdf8" radius={[4, 4, 0, 0]} name="Output Utama" />
+                    <Bar isAnimationActive={false} dataKey="input" fill="#c7d2fe" radius={[4, 4, 0, 0]} name="Input" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

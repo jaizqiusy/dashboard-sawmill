@@ -124,10 +124,10 @@ export function RecapPage({ data, supplierData }) {
                 <YAxis yAxisId="right" orientation="right" tick={{fontSize: 10, fill: '#64748b'}} axisLine={false} tickLine={false} tickFormatter={(val) => `${val}%`} width={40} />
                 <RechartsTooltip cursor={{fill: '#f8fafc'}} contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '11px'}} />
                 <Legend iconType="circle" wrapperStyle={{paddingTop: '10px', fontSize: '10px'}}/>
-                <Bar yAxisId="left" dataKey="input" name="Input Log" fill="#10b981" radius={[4, 4, 0, 0]} />
-                <Bar yAxisId="left" dataKey="total" name="Total Output" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                <Line yAxisId="right" type="monotone" dataKey="yieldUtama" name="R. Utama" stroke="#f59e0b" strokeWidth={2} dot={{ r: 4 }} />
-                <Line yAxisId="right" type="monotone" dataKey="yieldTotal" name="R. Total" stroke="#6366f1" strokeWidth={2} dot={{ r: 4 }} />
+                <Bar isAnimationActive={false} yAxisId="left" dataKey="input" name="Input Log" fill="#10b981" radius={[4, 4, 0, 0]} />
+                <Bar isAnimationActive={false} yAxisId="left" dataKey="total" name="Total Output" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                <Line isAnimationActive={false} yAxisId="right" type="monotone" dataKey="yieldUtama" name="R. Utama" stroke="#f59e0b" strokeWidth={2} dot={{ r: 4 }} />
+                <Line isAnimationActive={false} yAxisId="right" type="monotone" dataKey="yieldTotal" name="R. Total" stroke="#6366f1" strokeWidth={2} dot={{ r: 4 }} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>

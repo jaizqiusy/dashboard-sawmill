@@ -324,9 +324,25 @@ export function getAvailablePeriods(data: ProductionData[]) {
       if (d.tanggal) dates.add(d.tanggal);
     }
   });
+  const maxWeek = weeks.size > 0 ? Math.max(...Array.from(weeks)) : 0;
+  const allWeeks = [];
+  if (maxWeek > 0) {
+    for (let i = maxWeek; i >= 1; i--) {
+      allWeeks.push(i);
+    }
+  }
+
+  const maxMonth = months.size > 0 ? Math.max(...Array.from(months)) : 0;
+  const allMonths = [];
+  if (maxMonth > 0) {
+    for (let i = maxMonth; i >= 1; i--) {
+      allMonths.push(i);
+    }
+  }
+
   return {
-    weeks: Array.from(weeks).sort((a, b) => b - a),
-    months: Array.from(months).sort((a, b) => b - a),
+    weeks: allWeeks.length > 0 ? allWeeks : Array.from(weeks).sort((a, b) => b - a),
+    months: allMonths.length > 0 ? allMonths : Array.from(months).sort((a, b) => b - a),
     dates: Array.from(dates).sort((a, b) => b.localeCompare(a))
   };
 }

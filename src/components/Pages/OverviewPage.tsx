@@ -176,6 +176,7 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
+                    isAnimationActive={false}
                     data={[{ value: kpiData.yieldUtamaNumber }, { value: Math.max(0, 100 - kpiData.yieldUtamaNumber) }]}
                     cx="50%" cy="100%" startAngle={180} endAngle={0} innerRadius={60} outerRadius={80} stroke="none" paddingAngle={2}
                   >
@@ -197,6 +198,7 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
+                    isAnimationActive={false}
                     data={[{ value: kpiData.yieldTotalNumber }, { value: Math.max(0, 100 - kpiData.yieldTotalNumber) }]}
                     cx="50%" cy="100%" startAngle={180} endAngle={0} innerRadius={60} outerRadius={80} stroke="none" paddingAngle={2}
                   >

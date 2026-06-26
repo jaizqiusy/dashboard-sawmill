@@ -4,9 +4,9 @@ import { getAvailablePeriods, normalizeMachineName } from '../../services/dataSe
 import { cn } from '../../lib/utils';
 
 export function DowntimePage({ data }) {
-  const [periodType, setPeriodType] = useState('daily');
+  const [periodType, setPeriodType] = useState('all');
   const periods = React.useMemo(() => getAvailablePeriods(data), [data]);
-  const [periodValue, setPeriodValue] = useState(periods.dates[0] || '');
+  const [periodValue, setPeriodValue] = useState('all' as string | number);
 
   // Filter Data
   const grouped = React.useMemo(() => {
@@ -18,6 +18,7 @@ export function DowntimePage({ data }) {
     } else if (periodType === 'monthly') {
       filtered = filtered.filter(d => d.month === Number(periodValue));
     }
+    // If periodType is 'all', do not filter further
 
     const map = {} as Record<string, any[]>;
     filtered.forEach(d => {
@@ -42,19 +43,22 @@ export function DowntimePage({ data }) {
 
         <div className="flex gap-2 mt-4 relative z-10 overflow-x-auto no-scrollbar pb-1">
           <div className="flex bg-slate-50 border border-slate-200 rounded-lg p-1 shrink-0">
+             <button onClick={() => { setPeriodType('all'); setPeriodValue('all'); }} className={cn("px-3 py-1 text-[10px] uppercase tracking-wider font-bold rounded-md transition-colors", periodType === 'all' ? "bg-rose-100 text-rose-600" : "text-slate-500")}>Semua</button>
              <button onClick={() => { setPeriodType('daily'); setPeriodValue(periods.dates[0]); }} className={cn("px-3 py-1 text-[10px] uppercase tracking-wider font-bold rounded-md transition-colors", periodType === 'daily' ? "bg-rose-100 text-rose-600" : "text-slate-500")}>Hari</button>
              <button onClick={() => { setPeriodType('weekly'); setPeriodValue(periods.weeks[0]); }} className={cn("px-3 py-1 text-[10px] uppercase tracking-wider font-bold rounded-md transition-colors", periodType === 'weekly' ? "bg-rose-100 text-rose-600" : "text-slate-500")}>Minggu</button>
              <button onClick={() => { setPeriodType('monthly'); setPeriodValue(periods.months[0]); }} className={cn("px-3 py-1 text-[10px] uppercase tracking-wider font-bold rounded-md transition-colors", periodType === 'monthly' ? "bg-rose-100 text-rose-600" : "text-slate-500")}>Bulan</button>
           </div>
-          <select 
-            className="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-lg px-3 py-1 outline-none shrink-0"
-            value={periodValue}
-            onChange={(e) => setPeriodValue(periodType === 'daily' ? e.target.value : parseInt(e.target.value))}
-          >
-            {periodType === 'daily' && periods.dates.map(d => <option key={d} value={d}>{d}</option>)}
-            {periodType === 'weekly' && periods.weeks.map(w => <option key={w} value={w}>Minggu {w}</option>)}
-            {periodType === 'monthly' && periods.months.map(m => <option key={m} value={m}>Bulan {m}</option>)}
-          </select>
+          {periodType !== 'all' && (
+            <select 
+              className="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-lg px-3 py-1 outline-none shrink-0"
+              value={periodValue}
+              onChange={(e) => setPeriodValue(periodType === 'daily' ? e.target.value : parseInt(e.target.value))}
+            >
+              {periodType === 'daily' && periods.dates.map(d => <option key={d} value={d}>{d}</option>)}
+              {periodType === 'weekly' && periods.weeks.map(w => <option key={w} value={w}>Minggu {w}</option>)}
+              {periodType === 'monthly' && periods.months.map(m => <option key={m} value={m}>Bulan {m}</option>)}
+            </select>
+          )}
         </div>
       </div>
 
