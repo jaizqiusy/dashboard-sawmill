@@ -3,12 +3,54 @@ import { History, Search, Download, TrendingUp, TrendingDown } from 'lucide-reac
 import { getPerformanceByTimeframe } from '../../services/dataService';
 import { cn } from '../../lib/utils';
 
-export function HistoryPage({ data }) {
+export function HistoryPage({ data, monthlyLogData }) {
   const bsData = React.useMemo(() => data.filter(d => d.mesin && d.input > 0 && d.mesin.toLowerCase().trim().startsWith('bs')), [data]);
 
   const daily = React.useMemo(() => getPerformanceByTimeframe(bsData, 'daily'), [bsData]);
   const weekly = React.useMemo(() => getPerformanceByTimeframe(bsData, 'weekly'), [bsData]);
-  const monthly = React.useMemo(() => getPerformanceByTimeframe(bsData, 'monthly'), [bsData]);
+  const monthly = React.useMemo(() => {
+    if (monthlyLogData && monthlyLogData.length > 0) {
+      const groups: Record<string, { input: number; utama: number }> = {};
+      monthlyLogData.forEach((row: any) => {
+        const mInput = row.input || 0;
+        const mUtama = row.utama || 0;
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const key = monthNames[row.bulan - 1] || `Month ${row.bulan}`;
+        if (!groups[key]) groups[key] = { input: 0, utama: 0 };
+        groups[key].input += mInput;
+        groups[key].utama += mUtama;
+      });
+      return Object.entries(groups).map(([label, stats]) => ({
+        label,
+        input: Math.round(stats.input * 100) / 100,
+        utama: Math.round(stats.utama * 100) / 100,
+        yield: stats.input > 0 ? (stats.utama / stats.input) : 0
+      }));
+    }
+    return getPerformanceByTimeframe(bsData, 'monthly');
+  }, [bsData, monthlyLogData]);
+
+  const quarterly = React.useMemo(() => {
+    if (monthlyLogData && monthlyLogData.length > 0) {
+      const groups: Record<string, { input: number; utama: number }> = {};
+      monthlyLogData.forEach((row: any) => {
+        const mInput = row.input || 0;
+        const mUtama = row.utama || 0;
+        const q = Math.ceil(row.bulan / 3);
+        const key = `Q${q}`;
+        if (!groups[key]) groups[key] = { input: 0, utama: 0 };
+        groups[key].input += mInput;
+        groups[key].utama += mUtama;
+      });
+      return Object.entries(groups).map(([label, stats]) => ({
+        label,
+        input: Math.round(stats.input * 100) / 100,
+        utama: Math.round(stats.utama * 100) / 100,
+        yield: stats.input > 0 ? (stats.utama / stats.input) : 0
+      }));
+    }
+    return getPerformanceByTimeframe(bsData, 'quarterly');
+  }, [bsData, monthlyLogData]);
 
   const getExtremes = React.useCallback((perf) => {
     if (!perf || perf.length === 0) return null;
@@ -25,7 +67,8 @@ export function HistoryPage({ data }) {
     { title: 'Harian', data: getExtremes(daily), color: 'text-sky-400', bg: 'bg-sky-500/10 border-sky-500/20' },
     { title: 'Mingguan', data: getExtremes(weekly), color: 'text-indigo-400', bg: 'bg-indigo-500/10 border-indigo-500/20' },
     { title: 'Bulanan', data: getExtremes(monthly), color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' },
-  ], [daily, weekly, monthly, getExtremes]);
+    { title: 'Kuartal', data: getExtremes(quarterly), color: 'text-fuchsia-400', bg: 'bg-fuchsia-500/10 border-fuchsia-500/20' },
+  ], [daily, weekly, monthly, quarterly, getExtremes]);
 
   return (
     <div className="p-5 space-y-6">

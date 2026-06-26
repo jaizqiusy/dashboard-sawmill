@@ -90,11 +90,39 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
     return result;
   }, [monthlyLogData]);
 
+  const kpiData = React.useMemo(() => {
+    let input = 0;
+    let utama = 0;
+    let produksi = 0;
+
+    if (aggregatedLogsByMonth && aggregatedLogsByMonth.length > 0) {
+      input = aggregatedLogsByMonth.reduce((sum: number, m: any) => sum + m.input, 0);
+      utama = aggregatedLogsByMonth.reduce((sum: number, m: any) => sum + m.utama, 0);
+      produksi = aggregatedLogsByMonth.reduce((sum: number, m: any) => sum + m.total, 0);
+    } else {
+      input = stats.totalInput;
+      produksi = stats.totalAllOutput;
+      utama = stats.totalInput > 0 ? (stats.avgYield * stats.totalInput) : 0;
+    }
+
+    const yieldUtama = input > 0 ? (utama / input) * 100 : 0;
+    const yieldTotal = input > 0 ? (produksi / input) * 100 : 0;
+    
+    return {
+      input: input.toLocaleString('id-ID', { maximumFractionDigits: 2 }),
+      produksi: produksi.toLocaleString('id-ID', { maximumFractionDigits: 2 }),
+      yieldUtama: yieldUtama.toFixed(1),
+      yieldUtamaNumber: yieldUtama,
+      yieldTotalNumber: yieldTotal,
+      downtime: stats.totalDowntimeMinutes.toLocaleString('id-ID')
+    };
+  }, [aggregatedLogsByMonth, stats]);
+
   const kpiCards = [
-    { title: 'Input Log', value: stats.totalInput.toLocaleString('id-ID'), unit: 'm³', icon: BarChart3, color: 'text-sky-900', bg: 'bg-sky-300/50', cardBg: 'bg-sky-200', border: 'border-sky-300' },
-    { title: 'Total Produksi', value: stats.totalAllOutput.toLocaleString('id-ID'), unit: 'm³', icon: Package, color: 'text-orange-900', bg: 'bg-orange-300/50', cardBg: 'bg-orange-200', border: 'border-orange-300' },
-    { title: 'Rendemen Utama', value: (stats.avgYield * 100).toFixed(1), unit: '%', icon: TrendingUp, color: 'text-emerald-900', bg: 'bg-emerald-300/50', cardBg: 'bg-emerald-200', border: 'border-emerald-300' },
-    { title: 'Downtime', value: stats.totalDowntimeMinutes.toLocaleString('id-ID'), unit: 'mnt', icon: Clock, color: 'text-rose-900', bg: 'bg-rose-300/50', cardBg: 'bg-rose-200', border: 'border-rose-300' },
+    { title: 'Input Log', value: kpiData.input, unit: 'm³', icon: BarChart3, color: 'text-sky-900', bg: 'bg-sky-300/50', cardBg: 'bg-sky-200', border: 'border-sky-300' },
+    { title: 'Total Produksi', value: kpiData.produksi, unit: 'm³', icon: Package, color: 'text-orange-900', bg: 'bg-orange-300/50', cardBg: 'bg-orange-200', border: 'border-orange-300' },
+    { title: 'Rendemen Utama', value: kpiData.yieldUtama, unit: '%', icon: TrendingUp, color: 'text-emerald-900', bg: 'bg-emerald-300/50', cardBg: 'bg-emerald-200', border: 'border-emerald-300' },
+    { title: 'Downtime', value: kpiData.downtime, unit: 'mnt', icon: Clock, color: 'text-rose-900', bg: 'bg-rose-300/50', cardBg: 'bg-rose-200', border: 'border-rose-300' },
   ];
 
   const activeMachinesCount = todayStats?.stats?.length || 0;
@@ -148,7 +176,7 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={[{ value: stats.avgYield * 100 }, { value: Math.max(0, 100 - (stats.avgYield * 100)) }]}
+                    data={[{ value: kpiData.yieldUtamaNumber }, { value: Math.max(0, 100 - kpiData.yieldUtamaNumber) }]}
                     cx="50%" cy="100%" startAngle={180} endAngle={0} innerRadius={60} outerRadius={80} stroke="none" paddingAngle={2}
                   >
                     <Cell fill="#38bdf8" />
@@ -157,7 +185,7 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center">
-                <span className="text-3xl font-black text-slate-800 tracking-tighter">{(stats.avgYield * 100).toFixed(1)}%</span>
+                <span className="text-3xl font-black text-slate-800 tracking-tighter">{kpiData.yieldUtamaNumber.toFixed(1)}%</span>
                 <span className="text-[11px] text-sky-500 font-black uppercase tracking-widest mt-1">Utama</span>
                 <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">TGT 30%</span>
               </div>
@@ -169,7 +197,7 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={[{ value: stats.totalInput > 0 ? (stats.totalAllOutput / stats.totalInput) * 100 : 0 }, { value: Math.max(0, 100 - (stats.totalInput > 0 ? (stats.totalAllOutput / stats.totalInput) * 100 : 0)) }]}
+                    data={[{ value: kpiData.yieldTotalNumber }, { value: Math.max(0, 100 - kpiData.yieldTotalNumber) }]}
                     cx="50%" cy="100%" startAngle={180} endAngle={0} innerRadius={60} outerRadius={80} stroke="none" paddingAngle={2}
                   >
                     <Cell fill="#10b981" />
@@ -178,7 +206,7 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center">
-                <span className="text-3xl font-black text-slate-800 tracking-tighter">{stats.totalInput > 0 ? ((stats.totalAllOutput / stats.totalInput) * 100).toFixed(1) : '0'}%</span>
+                <span className="text-3xl font-black text-slate-800 tracking-tighter">{kpiData.yieldTotalNumber.toFixed(1)}%</span>
                 <span className="text-[11px] text-emerald-500 font-black uppercase tracking-widest mt-1">Total</span>
                 <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">TGT 65%</span>
               </div>

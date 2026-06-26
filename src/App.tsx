@@ -201,13 +201,13 @@ export default function App() {
       }>
         {activeTab === 'Home' && <HomePage setActiveTab={handleTabChange} />}
         {activeTab === 'Overview' && <OverviewPage stats={stats} todayStats={todayStats} monthPerformance={monthPerformance} monthlyLogData={monthlyLogData} />}
-        {activeTab === 'Analytics' && <AnalyticsPage data={data} />}
+        {activeTab === 'Analytics' && <AnalyticsPage data={data} monthlyLogData={monthlyLogData} />}
         {activeTab === 'Ranking' && <RankingPage data={data} operatorData={operatorData} />}
         {activeTab === 'OperatorProfile' && <OperatorProfilePage data={data} operatorData={operatorData} />}
         {activeTab === 'Production' && <ProductionPage todayStats={todayStats} />}
         {activeTab === 'Recap' && <RecapPage data={data} supplierData={supplierData} />}
         {activeTab === 'Downtime' && <DowntimePage data={data} />}
-        {activeTab === 'History' && <HistoryPage data={data} />}
+        {activeTab === 'History' && <HistoryPage data={data} monthlyLogData={monthlyLogData} />}
         {activeTab === 'Plan' && <PlanPage todayStats={todayStats} data={data} />}
         {activeTab === 'AI' && <AIPage data={data} />}
       </Suspense>

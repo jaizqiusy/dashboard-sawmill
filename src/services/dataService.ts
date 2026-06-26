@@ -466,10 +466,10 @@ export function getMachineRankings(data: ProductionData[], periodType: 'weekly' 
   }));
 
   return parsed.map(m => {
-    // perhitungan rendemen utama di bagi target rendemen utama 30% di kali 50%
-    const scoreYield = (m.yield / 0.30) * 50;
-    // perhitungan output total di bagi target output 9M3 perhari di kali 50%
-    const scoreTotal = m.target > 0 ? (m.total / m.target) * 50 : 0;
+    // perhitungan bobot rendemen utama x 50%
+    const scoreYield = (m.yield * 100) * 0.5;
+    // perhitungan bobot output total x 50%
+    const scoreTotal = m.total * 0.5;
     
     const score = scoreYield + scoreTotal;
     return { ...m, score };

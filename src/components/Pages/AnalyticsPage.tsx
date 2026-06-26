@@ -3,16 +3,56 @@ import { BarChart3, LineChart as LineIcon } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { getPerformanceByTimeframe } from '../../services/dataService';
 
-export function AnalyticsPage({ data }) {
+export function AnalyticsPage({ data, monthlyLogData }) {
   const timeframes = React.useMemo(() => ['daily', 'weekly', 'monthly', 'quarterly'] as const, []);
 
   const timeframeDataMap = React.useMemo(() => {
     const map = {} as Record<string, ReturnType<typeof getPerformanceByTimeframe>>;
     timeframes.forEach((type) => {
-      map[type] = getPerformanceByTimeframe(data, type);
+      if ((type === 'monthly' || type === 'quarterly') && monthlyLogData && monthlyLogData.length > 0) {
+        const groups: Record<string, { input: number; utama: number }> = {};
+        
+        monthlyLogData.forEach((row: any) => {
+          const mInput = row.input || 0;
+          const mUtama = row.utama || 0;
+          
+          let key = '';
+          if (type === 'monthly') {
+             const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+             key = monthNames[row.bulan - 1] || `Month ${row.bulan}`;
+          } else if (type === 'quarterly') {
+             const q = Math.ceil(row.bulan / 3);
+             key = `Q${q}`;
+          }
+          
+          if (!groups[key]) groups[key] = { input: 0, utama: 0 };
+          groups[key].input += mInput;
+          groups[key].utama += mUtama;
+        });
+        
+        // Ensure month order is correct by mapping over predefined order if needed, but for simplicity let's just use the keys if they sort correctly or sort them.
+        let entries = Object.entries(groups).map(([label, stats]) => ({
+          label,
+          input: Math.round(stats.input * 100) / 100,
+          utama: Math.round(stats.utama * 100) / 100,
+          yield: stats.input > 0 ? (stats.utama / stats.input) : 0
+        }));
+        
+        // Sort for quarterly and monthly
+        if (type === 'monthly') {
+          const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+          entries.sort((a, b) => monthNames.indexOf(a.label) - monthNames.indexOf(b.label));
+        } else if (type === 'quarterly') {
+          entries.sort((a, b) => a.label.localeCompare(b.label));
+        }
+        
+        map[type] = entries;
+      } else {
+        map[type] = getPerformanceByTimeframe(data, type);
+      }
     });
     return map;
-  }, [data, timeframes]);
+  }, [data, monthlyLogData, timeframes]);
 
   return (
     <div className="p-5 space-y-6">

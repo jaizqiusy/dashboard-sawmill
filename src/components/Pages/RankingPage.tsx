@@ -447,8 +447,9 @@ export function RankingPage({ data, operatorData }: { data: any[], operatorData?
                       {avatars[rankItem.mesin]?.name || rankItem.mesin}
                   </p>
                   <p className={cn("text-slate-400 font-bold mt-0.5 uppercase tracking-wider leading-none", isFirst ? "text-[8.5px] sm:text-xs" : "text-[7.5px] sm:text-[10px]")}>{rankItem.mesin}</p>
-                  <p className={cn("font-black mt-0.5 tracking-tight", yieldColor, isFirst ? "text-sm min-[385px]:text-base sm:text-2xl" : "text-xs min-[385px]:text-sm sm:text-xl")}>{(rankItem.yield * 100).toFixed(1)}%</p>
+                  <p className={cn("font-black mt-1 tracking-tight", yieldColor, isFirst ? "text-sm min-[385px]:text-base sm:text-2xl" : "text-xs min-[385px]:text-sm sm:text-xl")}>{(rankItem.yield * 100).toFixed(1)}%</p>
                   <p className={cn("text-slate-400 font-medium leading-none", isFirst ? "text-[9.5px] sm:text-sm mt-1" : "text-[8.5px] sm:text-xs mt-0.5")}>{rankItem.total.toLocaleString('id-ID', { maximumFractionDigits: 1 })} M³</p>
+                  <p className={cn("text-amber-400 font-black", isFirst ? "text-xs sm:text-base mt-1.5" : "text-[10px] sm:text-sm mt-1")}>Score: {rankItem.score.toFixed(1)}</p>
               </div>
           </div>
       )
@@ -595,9 +596,13 @@ export function RankingPage({ data, operatorData }: { data: any[], operatorData?
                                   <p className="text-white font-bold text-xs sm:text-base tracking-tight truncate leading-tight">{avatars[rankItem.mesin]?.name || rankItem.mesin}</p>
                                   <p className="text-sky-400 text-[9px] sm:text-xs font-medium mt-0.5 truncate leading-none">{rankItem.mesin}</p>
                               </div>
-                              <div className="text-right flex-shrink-0">
-                                  <p className="text-white font-black text-xs sm:text-lg tracking-tight">{(rankItem.yield * 100).toFixed(1)}%</p>
-                                  <p className="text-slate-400 text-[9px] sm:text-xs font-medium mt-0.5 leading-none">{rankItem.total.toLocaleString('id-ID', { maximumFractionDigits: 1 })} M³</p>
+                              <div className="text-right flex-shrink-0 pr-2 sm:pr-4 border-r border-slate-700/50">
+                                  <p className="text-slate-300 font-bold text-[10px] sm:text-sm tracking-tight">{(rankItem.yield * 100).toFixed(1)}%</p>
+                                  <p className="text-slate-400 text-[8px] sm:text-[10px] font-medium mt-0.5 leading-none">{rankItem.total.toLocaleString('id-ID', { maximumFractionDigits: 1 })} M³</p>
+                              </div>
+                              <div className="text-right flex-shrink-0 w-12 sm:w-16">
+                                  <p className="text-amber-400 font-black text-sm sm:text-lg tracking-tight">{rankItem.score.toFixed(1)}</p>
+                                  <p className="text-amber-400/70 text-[8px] sm:text-[9px] font-bold uppercase mt-0.5 leading-none">Score</p>
                               </div>
                           </div>
                       );
