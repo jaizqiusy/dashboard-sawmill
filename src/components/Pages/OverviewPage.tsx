@@ -366,7 +366,7 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
                         </span>
                       </td>
                       <td className="py-4 px-4 text-right font-black text-indigo-600">{cat.pilotLadder.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
-                      <td className="py-4 px-4 text-right font-black text-indigo-700">{cat.utamaTanpaPilotLadder.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                      <td className="py-4 px-4 text-right font-black text-indigo-700">{(cat.utama - cat.pilotLadder).toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
                       <td className="py-4 px-4 text-center">
                         <span className="inline-flex items-center justify-center min-w-[60px] px-2 py-1 rounded text-xs font-black bg-indigo-50 text-indigo-700 border border-indigo-100">
                           {yieldUtamaTanpaPilot.toFixed(1)}%
@@ -395,7 +395,7 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
                   const totalLokal = currentMonthLogsByCategory.reduce((sum: number, cat: any) => sum + cat.lokal, 0);
                   const totalAll = currentMonthLogsByCategory.reduce((sum: number, cat: any) => sum + cat.total, 0);
                   const totalPilotLadder = currentMonthLogsByCategory.reduce((sum: number, cat: any) => sum + cat.pilotLadder, 0);
-                  const totalUtamaTanpaPilot = currentMonthLogsByCategory.reduce((sum: number, cat: any) => sum + cat.utamaTanpaPilotLadder, 0);
+                  const totalUtamaTanpaPilot = currentMonthLogsByCategory.reduce((sum: number, cat: any) => sum + (cat.utama - cat.pilotLadder), 0);
                   
                   const yieldTotalUtama = totalInput > 0 ? (totalUtama / totalInput) * 100 : 0;
                   const yieldTotalTurunan = totalInput > 0 ? (totalTurunan / totalInput) * 100 : 0;
