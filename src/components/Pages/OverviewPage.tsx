@@ -21,7 +21,8 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
           utama: 0,
           turunan: 0,
           lokal: 0,
-          total: 0
+          total: 0,
+          pilotLadder: 0
         };
       }
       acc[row.bulan].input += row.input || 0;
@@ -29,10 +30,13 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
       acc[row.bulan].turunan += row.turunan || 0;
       acc[row.bulan].lokal += row.totalLokal || 0;
       acc[row.bulan].total += row.total || 0;
+      acc[row.bulan].pilotLadder += row.pilotLadder || 0;
       return acc;
     }, {});
     
-    return Object.values(grouped).sort((a: any, b: any) => a.bulan - b.bulan);
+    return Object.values(grouped)
+      .filter((a: any) => a.input > 0 && a.bulan > 0)
+      .sort((a: any, b: any) => a.bulan - b.bulan);
   }, [monthlyLogData]);
 
   const currentMonthLogsByCategory = React.useMemo(() => {
@@ -459,6 +463,8 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
                   <th className="py-4 px-4 text-right">Input (m³)</th>
                   <th className="py-4 px-4 text-right">Utama (m³)</th>
                   <th className="py-4 px-4 text-center">Rendemen Utama (%)</th>
+                  <th className="py-4 px-4 text-right">Utama No PL (m³)</th>
+                  <th className="py-4 px-4 text-center">Rendemen Utama No PL (%)</th>
                   <th className="py-4 px-4 text-right">Turunan (m³)</th>
                   <th className="py-4 px-4 text-center">Rendemen Turunan (%)</th>
                   <th className="py-4 px-4 text-right">Lokal (m³)</th>
@@ -472,6 +478,8 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
                   const monthNames = ['-', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
                   const monthName = monthNames[Math.min(12, Math.max(1, parseInt(monthData.bulan)))] || monthData.bulan;
                   const yieldUtama = monthData.input > 0 ? (monthData.utama / monthData.input) * 100 : 0;
+                  const utamaNoPL = monthData.utama - monthData.pilotLadder;
+                  const yieldUtamaNoPL = monthData.input > 0 ? (utamaNoPL / monthData.input) * 100 : 0;
                   const yieldTurunan = monthData.input > 0 ? (monthData.turunan / monthData.input) * 100 : 0;
                   const yieldLokal = monthData.input > 0 ? (monthData.lokal / monthData.input) * 100 : 0;
                   const yieldTotal = monthData.input > 0 ? (monthData.total / monthData.input) * 100 : 0;
@@ -484,6 +492,12 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
                       <td className="py-4 px-4 text-center">
                         <span className="inline-flex items-center justify-center min-w-[60px] px-2 py-1 rounded text-xs font-black bg-sky-50 text-sky-700 border border-sky-100">
                           {yieldUtama.toFixed(1)}%
+                        </span>
+                      </td>
+                      <td className="py-4 px-4 text-right font-black text-indigo-700">{utamaNoPL.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                      <td className="py-4 px-4 text-center">
+                        <span className="inline-flex items-center justify-center min-w-[60px] px-2 py-1 rounded text-xs font-black bg-indigo-50 text-indigo-700 border border-indigo-100">
+                          {yieldUtamaNoPL.toFixed(1)}%
                         </span>
                       </td>
                       <td className="py-4 px-4 text-right font-black text-orange-700">{monthData.turunan.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
@@ -516,15 +530,19 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
                   const totalTurunan = aggregatedLogsByMonth.reduce((sum: number, m: any) => sum + m.turunan, 0);
                   const totalLokal = aggregatedLogsByMonth.reduce((sum: number, m: any) => sum + m.lokal, 0);
                   const totalAll = aggregatedLogsByMonth.reduce((sum: number, m: any) => sum + m.total, 0);
+                  const totalPilotLadder = aggregatedLogsByMonth.reduce((sum: number, m: any) => sum + m.pilotLadder, 0);
+                  const totalUtamaNoPL = totalUtama - totalPilotLadder;
                   
                   const avgInput = totalInput / numMonths;
                   const avgUtama = totalUtama / numMonths;
+                  const avgUtamaNoPL = totalUtamaNoPL / numMonths;
                   const avgTurunan = totalTurunan / numMonths;
                   const avgLokal = totalLokal / numMonths;
                   const avgAll = totalAll / numMonths;
                   
                   // Rendemen dari total keseluruhan (Total output / Total input)
                   const avgYieldUtama = totalInput > 0 ? (totalUtama / totalInput) * 100 : 0;
+                  const avgYieldUtamaNoPL = totalInput > 0 ? (totalUtamaNoPL / totalInput) * 100 : 0;
                   const avgYieldTurunan = totalInput > 0 ? (totalTurunan / totalInput) * 100 : 0;
                   const avgYieldLokal = totalInput > 0 ? (totalLokal / totalInput) * 100 : 0;
                   const avgYieldAll = totalInput > 0 ? (totalAll / totalInput) * 100 : 0;
@@ -537,6 +555,12 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
                       <td className="py-5 px-4 text-center">
                         <span className="inline-flex items-center justify-center min-w-[70px] px-3 py-1.5 rounded-md text-sm font-black bg-sky-100 text-sky-800 shadow-sm">
                           {avgYieldUtama.toFixed(1)}%
+                        </span>
+                      </td>
+                      <td className="py-5 px-4 text-right text-indigo-700 text-base">{avgUtamaNoPL.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                      <td className="py-5 px-4 text-center">
+                        <span className="inline-flex items-center justify-center min-w-[70px] px-3 py-1.5 rounded-md text-sm font-black bg-indigo-100 text-indigo-900 shadow-sm">
+                          {avgYieldUtamaNoPL.toFixed(1)}%
                         </span>
                       </td>
                       <td className="py-5 px-4 text-right text-orange-700 text-base">{avgTurunan.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>

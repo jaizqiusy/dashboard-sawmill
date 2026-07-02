@@ -443,7 +443,6 @@ export function BsAchievementUpdate() {
                                 <th className="py-5 px-4 font-extrabold text-[#475569] text-center uppercase tracking-wider leading-tight">INPUT<br/><span className="text-[10px] text-slate-400 font-semibold">(M³)</span></th>
                                 <th className="py-5 px-4 font-extrabold text-[#475569] text-center uppercase tracking-wider leading-tight">UTAMA<br/><span className="text-[10px] text-slate-400 font-semibold">(M³)</span></th>
                                 <th className="py-5 px-4 font-extrabold text-[#475569] text-center uppercase tracking-wider leading-tight">RENDEMEN<br/>UTAMA (%)</th>
-                                <th className="py-5 px-4 font-extrabold text-[#475569] text-center uppercase tracking-wider leading-tight">RENDEMEN UTAMA<br/>NON PILOT LADDER (%)</th>
                                 <th className="py-5 px-4 font-extrabold text-[#475569] text-right uppercase tracking-wider">TURUNAN (M³)</th>
                                 <th className="py-5 px-4 font-extrabold text-[#475569] text-center uppercase tracking-wider">RENDEMEN<br/>TURUNAN (%)</th>
                                 <th className="py-5 px-4 font-extrabold text-[#475569] text-right uppercase tracking-wider">LOKAL (M³)</th>
@@ -458,10 +457,6 @@ export function BsAchievementUpdate() {
                             if (m.yieldUtama >= 30) statusClassesU = 'bg-[#e6f4ea] text-[#137333] border border-emerald-100/60';
                             else if (m.yieldUtama >= 25) statusClassesU = 'bg-amber-50 text-amber-700 border border-amber-100';
 
-                            let statusClassesUNon = 'bg-rose-50 text-rose-700 border border-rose-100';
-                            if (m.yieldUtamaNonPilot >= 30) statusClassesUNon = 'bg-emerald-50 text-emerald-700 border border-emerald-100/60';
-                            else if (m.yieldUtamaNonPilot >= 25) statusClassesUNon = 'bg-amber-50 text-amber-700 border border-amber-100';
-
                             return (
                                 <tr key={idx} className="hover:bg-slate-50/40 transition-colors">
                                     <td className="py-5 px-4 font-bold text-slate-500 text-center hidden sm:table-cell">{idx + 1}</td>
@@ -472,15 +467,6 @@ export function BsAchievementUpdate() {
                                         <span className={cn("inline-flex items-center justify-center px-3 py-1.5 rounded-lg text-xs sm:text-sm font-black tracking-wide min-w-[70px] sm:min-w-[80px] shadow-sm", statusClassesU)}>
                                             {m.yieldUtama.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%
                                         </span>
-                                    </td>
-                                    <td className="py-5 px-4 text-center">
-                                        {m.yieldUtamaNonPilot > 0 ? (
-                                           <span className={cn("inline-flex items-center justify-center px-3 py-1.5 rounded-lg text-xs sm:text-sm font-black tracking-wide min-w-[70px] sm:min-w-[80px] shadow-sm", statusClassesUNon)}>
-                                              {m.yieldUtamaNonPilot.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%
-                                           </span>
-                                        ) : (
-                                           <span className="font-extrabold text-slate-300">-</span>
-                                        )}
                                     </td>
                                     <td className="py-5 px-4 font-bold text-slate-800 text-right text-sm sm:text-base">{m.turunan.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
                                     <td className="py-5 px-4 text-center font-bold text-slate-800 text-sm sm:text-base">
