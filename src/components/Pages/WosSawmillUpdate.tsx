@@ -10,6 +10,10 @@ interface WosData {
   m3: string;
 }
 
+let cachedWosData: WosData[] | null = null;
+let cachedWosLastUpdate: string = "-";
+let cachedWosAvailableMonths: string[] = [];
+
 export function WosSawmillUpdate() {
   const [data, setData] = useState<WosData[]>([]);
   const [availableMonths, setAvailableMonths] = useState<string[]>([]);
@@ -112,7 +116,14 @@ export function WosSawmillUpdate() {
     setLastUpdate(now.toLocaleTimeString('id-ID', { hour: '2-digit', minute:'2-digit', second:'2-digit' }) + ' (Luring)');
   };
 
-  const syncData = useCallback(() => {
+  const syncData = useCallback((force = false) => {
+    if (!force && cachedWosData && cachedWosData.length > 0) {
+      setData(cachedWosData);
+      setAvailableMonths(cachedWosAvailableMonths);
+      setLastUpdate(cachedWosLastUpdate);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     const csvUrl = getCsvExportUrl(sheetUrl);
@@ -129,9 +140,20 @@ export function WosSawmillUpdate() {
       complete: function(results) {
         try {
           const processed = processRawData(results.data);
+          cachedWosData = processed;
           setData(processed);
+          
           const now = new Date();
-          setLastUpdate(now.toLocaleTimeString('id-ID', { hour: '2-digit', minute:'2-digit', second:'2-digit' }));
+          cachedWosLastUpdate = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute:'2-digit', second:'2-digit' });
+          setLastUpdate(cachedWosLastUpdate);
+
+          // Update available months cache
+          const months = new Set<string>();
+          processed.forEach(item => {
+            if (item.bulan) months.add(item.bulan);
+          });
+          cachedWosAvailableMonths = Array.from(months);
+
         } catch (err: any) {
           console.error(err);
           setError("Gagal memilah data. " + err.message);
@@ -210,7 +232,7 @@ export function WosSawmillUpdate() {
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <button 
             disabled={loading}
-            onClick={syncData} 
+            onClick={() => syncData(true)} 
             className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-colors"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />

@@ -18,6 +18,9 @@ interface BsData {
   utamaNonPilotLadder: number;
 }
 
+let cachedBsData: BsData[] | null = null;
+let cachedBsLastUpdate: string = "-";
+
 export function BsAchievementUpdate() {
   const [data, setData] = useState<BsData[]>([]);
   const [loading, setLoading] = useState(false);
@@ -128,7 +131,18 @@ export function BsAchievementUpdate() {
     return cleanedData;
   };
 
-  const syncData = useCallback(() => {
+  const syncData = useCallback((force = false) => {
+    if (!force && cachedBsData && cachedBsData.length > 0) {
+      setData(cachedBsData);
+      setLastUpdate(cachedBsLastUpdate);
+      const validData = cachedBsData.filter(d => d.input > 0 || d.total > 0);
+      const months = [...new Set(validData.map(d => d.month).filter(m => m > 0))].sort((a, b) => b - a);
+      const weeks = [...new Set(validData.map(d => d.week).filter(w => w > 0))].sort((a, b) => b - a);
+      if (months.length > 0) setSelectedMonth(months[0]);
+      if (weeks.length > 0) setSelectedWeek(weeks[0]);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     const csvUrl = getCsvExportUrl(sheetUrl);
@@ -145,6 +159,7 @@ export function BsAchievementUpdate() {
       complete: function(results) {
         try {
           const processed = processRawData(results.data);
+          cachedBsData = processed;
           
           // Determine available periods based on data that actually has input
           const validData = processed.filter(d => d.input > 0 || d.total > 0);
@@ -158,7 +173,8 @@ export function BsAchievementUpdate() {
           if (weeks.length > 0) setSelectedWeek(weeks[0]);
 
           const now = new Date();
-          setLastUpdate(now.toLocaleTimeString('id-ID', { hour: '2-digit', minute:'2-digit', second:'2-digit' }));
+          cachedBsLastUpdate = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute:'2-digit', second:'2-digit' });
+          setLastUpdate(cachedBsLastUpdate);
         } catch (err: any) {
           console.error(err);
           setError("Gagal memilah data. " + err.message);
@@ -340,7 +356,7 @@ export function BsAchievementUpdate() {
 
                 <button 
                     disabled={loading}
-                    onClick={syncData} 
+                    onClick={() => syncData(true)} 
                     className="flex-shrink-0 flex items-center justify-center gap-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 px-3 py-1 rounded-lg text-[10px] font-bold uppercase transition-colors border border-indigo-100"
                 >
                     <RefreshCw className={cn("w-3 h-3", loading ? 'animate-spin' : '')} />

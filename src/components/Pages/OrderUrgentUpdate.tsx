@@ -15,6 +15,11 @@ interface OrderData {
   satuan: string;
 }
 
+let cachedOrderData: OrderData[] | null = null;
+let cachedOrderLastUpdate: string = "-";
+let cachedOrderTodayCol: string = "Hari Ini";
+let cachedOrderYestCol: string = "Kemarin";
+
 export function OrderUrgentUpdate() {
   const [data, setData] = useState<OrderData[]>([]);
   const [loading, setLoading] = useState(false);
@@ -103,14 +108,14 @@ export function OrderUrgentUpdate() {
     let yesterdayIdx = headers.findIndex(h => yesterdayVars.some(v => v.toLowerCase() === h.trim().toLowerCase()));
 
     if (todayIdx !== -1) {
-        setTodayColName(headers[todayIdx]);
+        setTodayColName(headers[todayIdx]); cachedOrderTodayCol=headers[todayIdx];
         if (yesterdayIdx !== -1) {
-            setYesterdayColName(headers[yesterdayIdx]);
+            setYesterdayColName(headers[yesterdayIdx]); cachedOrderYestCol=headers[yesterdayIdx];
         } else {
             // fallback for yesterday to the previous column
             yesterdayIdx = todayIdx - 1;
             if (yesterdayIdx > 5 && headers[yesterdayIdx]) {
-                setYesterdayColName(headers[yesterdayIdx]);
+                setYesterdayColName(headers[yesterdayIdx]); cachedOrderYestCol=headers[yesterdayIdx];
             }
         }
     } else {
@@ -121,11 +126,11 @@ export function OrderUrgentUpdate() {
         if (totalIdx > 5) {
             todayIdx = totalIdx - 1; // get the last date column if today not found
             if (headers[todayIdx]) {
-                setTodayColName(headers[todayIdx]);
+                setTodayColName(headers[todayIdx]); cachedOrderTodayCol=headers[todayIdx];
             }
             yesterdayIdx = todayIdx - 1;
             if (yesterdayIdx > 5 && headers[yesterdayIdx]) {
-                setYesterdayColName(headers[yesterdayIdx]);
+                setYesterdayColName(headers[yesterdayIdx]); cachedOrderYestCol=headers[yesterdayIdx];
             }
         }
     }
@@ -185,7 +190,15 @@ export function OrderUrgentUpdate() {
     setLastUpdate(now.toLocaleTimeString('id-ID', { hour: '2-digit', minute:'2-digit', second:'2-digit' }) + ' (Luring)');
   };
 
-  const syncData = useCallback(() => {
+  const syncData = useCallback((force = false) => {
+    if (!force && cachedOrderData && cachedOrderData.length > 0) {
+      setData(cachedOrderData);
+      setLastUpdate(cachedOrderLastUpdate);
+      setTodayColName(cachedOrderTodayCol);
+      setYesterdayColName(cachedOrderYestCol);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     const csvUrl = getCsvExportUrl(sheetUrl);
@@ -202,9 +215,23 @@ export function OrderUrgentUpdate() {
       complete: function(results) {
         try {
           const processed = processRawData(results.data as any[][]);
+          cachedOrderData = processed;
           setData(processed);
+          
+          // Need to grab current state values since processRawData updates them
+          // but react state isn't synchronous. Wait, processRawData calls setTodayColName directly.
+          // Since we want to cache it, we can just let it run, but we don't have access to the exact strings easily here unless we refactor processRawData.
+          // Actually, we can just refactor the fallback loading if needed, or grab from state later.
+          // For now, let's just grab from the headers inside processRawData or let it update state.
+          // Let's do it in a setTimeout to let React update the state first, or just cache it when it changes.
+          
           const now = new Date();
-          setLastUpdate(now.toLocaleTimeString('id-ID', { hour: '2-digit', minute:'2-digit', second:'2-digit' }));
+          cachedOrderLastUpdate = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute:'2-digit', second:'2-digit' });
+          setLastUpdate(cachedOrderLastUpdate);
+
+          // We'll trust processRawData to call setTodayColName which updates state. To update the cache,
+          // we can just use an effect or let processRawData write to cache.
+          // For simplicity, we can do nothing here, the states are fine on initial fetch. 
         } catch (err: any) {
           console.error(err);
           setError("Gagal memilah data. " + err.message);
@@ -295,7 +322,7 @@ export function OrderUrgentUpdate() {
         
         <button 
           disabled={loading}
-          onClick={syncData} 
+          onClick={() => syncData(true)} 
           className="w-full sm:w-auto justify-center bg-slate-900 hover:bg-slate-800 text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 shadow-sm disabled:opacity-70 disabled:cursor-not-allowed"
         >
           <RefreshCw className={cn("w-4 h-4", loading ? 'animate-spin' : '')} />
