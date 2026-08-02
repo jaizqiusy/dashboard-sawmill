@@ -10,6 +10,8 @@ import {
 import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogData }) {
+  const [selectedLogMonth, setSelectedLogMonth] = React.useState<number | null>(null);
+
   const aggregatedLogsByMonth = React.useMemo(() => {
     if (!monthlyLogData || monthlyLogData.length === 0) return [];
     
@@ -39,12 +41,14 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
       .sort((a: any, b: any) => a.bulan - b.bulan);
   }, [monthlyLogData]);
 
-  const currentMonthLogsByCategory = React.useMemo(() => {
-    if (!monthlyLogData || monthlyLogData.length === 0) return [];
+  const { currentMonthLogsByCategory, availableLogMonths } = React.useMemo(() => {
+    if (!monthlyLogData || monthlyLogData.length === 0) return { currentMonthLogsByCategory: [], availableLogMonths: [] };
     
     // Find the latest available month in the data
     const availableMonths = [...new Set(monthlyLogData.map((d: any) => d.bulan))].filter((b: any) => !isNaN(b) && b > 0) as number[];
+    availableMonths.sort((a, b) => b - a); // sort descending for dropdown
     const latestMonth = availableMonths.length > 0 ? Math.max(...availableMonths) : new Date().getMonth() + 1;
+    const targetMonth = selectedLogMonth || latestMonth;
     
     const categories: Record<string, { kategori: string, input: number, utama: number, turunan: number, lokal: number, total: number, pilotLadder: number, utamaTanpaPilotLadder: number, monthName: number }> = {
       'Log Panjang': {
@@ -56,7 +60,7 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
         total: 0,
         pilotLadder: 0,
         utamaTanpaPilotLadder: 0,
-        monthName: latestMonth
+        monthName: targetMonth
       },
       'Log End': {
         kategori: 'Log End',
@@ -67,12 +71,12 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
         total: 0,
         pilotLadder: 0,
         utamaTanpaPilotLadder: 0,
-        monthName: latestMonth
+        monthName: targetMonth
       }
     };
     
     monthlyLogData.forEach((row: any) => {
-      if (row.bulan === latestMonth) {
+      if (row.bulan === targetMonth) {
         const supplierName = (row.supplier || '').toLowerCase();
         // Check for "(end)" or "(log end)"
         const isLogEnd = supplierName.includes('(end)') || supplierName.includes('(log end)');
@@ -88,11 +92,9 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
     });
 
     const result = [categories['Log Panjang'], categories['Log End']].filter(c => c.input > 0);
-    if (result.length === 0) {
-       return [categories['Log Panjang'], categories['Log End']];
-    }
-    return result;
-  }, [monthlyLogData]);
+    const finalResult = result.length === 0 ? [categories['Log Panjang'], categories['Log End']] : result;
+    return { currentMonthLogsByCategory: finalResult, availableLogMonths: availableMonths };
+  }, [monthlyLogData, selectedLogMonth]);
 
   const kpiData = React.useMemo(() => {
     let input = 0;
@@ -314,15 +316,27 @@ export function OverviewPage({ stats, todayStats, monthPerformance, monthlyLogDa
       {/* Monthly Log Database Section */}
       {currentMonthLogsByCategory.length > 0 && (
         <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm space-y-5 overflow-hidden mt-6">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-3 gap-4">
             <h3 className="text-lg font-black text-slate-900 tracking-wide uppercase flex items-center gap-2">
               <Package className="w-5 h-5 text-emerald-600" />
               Data Log Bulan {currentMonthLogsByCategory[0]?.monthName || 'Ini'}
             </h3>
-            <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-wider rounded border border-emerald-100 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              Realtime
-            </span>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+              <select
+                className="bg-slate-50 border border-slate-200 text-slate-800 text-xs font-bold rounded-lg focus:ring-emerald-500 focus:border-emerald-500 block w-full sm:w-auto p-2"
+                value={selectedLogMonth || ''}
+                onChange={(e) => setSelectedLogMonth(e.target.value ? Number(e.target.value) : null)}
+              >
+                <option value="">Pilih Bulan</option>
+                {availableLogMonths.map((m) => (
+                  <option key={m} value={m}>Bulan {m}</option>
+                ))}
+              </select>
+              <span className="px-2 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-wider rounded border border-emerald-100 flex items-center gap-1 w-fit">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                Realtime
+              </span>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
