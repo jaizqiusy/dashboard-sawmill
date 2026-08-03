@@ -26,6 +26,7 @@ const ProductionPage = lazy(() => import('./components/Pages/ProductionPage').th
 const RecapPage = lazy(() => import('./components/Pages/RecapPage').then(module => ({ default: module.RecapPage })));
 const DowntimePage = lazy(() => import('./components/Pages/DowntimePage').then(module => ({ default: module.DowntimePage })));
 const HistoryPage = lazy(() => import('./components/Pages/HistoryPage').then(module => ({ default: module.HistoryPage })));
+const PerformancePage = lazy(() => import('./components/Pages/PerformancePage').then(module => ({ default: module.PerformancePage })));
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('Home');
@@ -208,6 +209,7 @@ export default function App() {
         {activeTab === 'Recap' && <RecapPage data={data} supplierData={supplierData} />}
         {activeTab === 'Downtime' && <DowntimePage data={data} />}
         {activeTab === 'History' && <HistoryPage data={data} monthlyLogData={monthlyLogData} />}
+        {activeTab === 'Performance' && <PerformancePage data={data} />}
         {activeTab === 'Plan' && <PlanPage todayStats={todayStats} data={data} />}
         {activeTab === 'AI' && <AIPage data={data} />}
       </Suspense>

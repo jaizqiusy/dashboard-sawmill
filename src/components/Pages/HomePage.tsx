@@ -9,7 +9,8 @@ import {
   History,
   Sparkles,
   Calendar,
-  Users
+  Users,
+  Activity
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -29,6 +30,7 @@ export function HomePage({ setActiveTab }: HomePageProps) {
     { id: 'Plan', icon: Calendar, label: 'Plan', desc: 'Rencana produksi', color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-100' },
     { id: 'AI', icon: Sparkles, label: 'Laporan AI', desc: 'Analisa cerdas', color: 'text-fuchsia-600', bg: 'bg-fuchsia-50', border: 'border-fuchsia-100' },
     { id: 'History', icon: History, label: 'History', desc: 'Riwayat data', color: 'text-slate-600', bg: 'bg-slate-50', border: 'border-slate-100' },
+    { id: 'Performance', icon: Activity, label: 'Performance', desc: 'Analisa mingguan', color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-100' },
   ];
 
   return (
