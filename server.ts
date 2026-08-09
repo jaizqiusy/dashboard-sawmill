@@ -127,6 +127,33 @@ async function startServer() {
     }
   });
 
+  app.get("/api/proxy/spreadsheet", async (req, res) => {
+    try {
+      const { id, sheet, gid } = req.query;
+      if (!id) return res.status(400).json({ error: "Spreadsheet ID is required" });
+      
+      let url = "";
+      if (sheet) {
+        url = `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheet as string)}`;
+      } else if (gid) {
+        url = `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
+      } else {
+        return res.status(400).json({ error: "Either sheet or gid must be provided" });
+      }
+
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Google Sheets responded with ${response.status}: ${response.statusText}`);
+      }
+      const data = await response.text();
+      res.setHeader('Content-Type', 'text/csv');
+      res.send(data);
+    } catch (error) {
+      console.error("Spreadsheet Proxy Error:", error);
+      res.status(500).json({ error: "Failed to fetch spreadsheet data" });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

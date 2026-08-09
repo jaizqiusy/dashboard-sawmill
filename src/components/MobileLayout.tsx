@@ -14,6 +14,7 @@ interface MobileLayoutProps {
   firebaseConnected: boolean;
   onLogin: () => void;
   onLogout: () => void;
+  loginError?: string | null;
 }
 
 export function MobileLayout({ 
@@ -24,7 +25,8 @@ export function MobileLayout({
   user,
   firebaseConnected,
   onLogin,
-  onLogout
+  onLogout,
+  loginError
 }: MobileLayoutProps) {
   const isHome = activeTab === 'Home';
   
@@ -72,9 +74,12 @@ export function MobileLayout({
                   <button onClick={onLogout} className="text-[8px] text-rose-400 hover:text-rose-300 font-extrabold uppercase ml-1">Keluar</button>
                 </div>
               ) : (
-                <button onClick={onLogin} className="text-[9px] bg-indigo-600/50 hover:bg-indigo-600/70 text-white/90 border border-indigo-500/30 px-2 py-0.5 rounded-lg font-bold flex items-center gap-1 transition-all">
-                  Sign In
-                </button>
+                <div className="flex flex-col items-end">
+                  <button onClick={onLogin} className="text-[9px] bg-indigo-600/50 hover:bg-indigo-600/70 text-white/90 border border-indigo-500/30 px-2 py-0.5 rounded-lg font-bold flex items-center gap-1 transition-all">
+                    Sign In
+                  </button>
+                  {loginError && <span className="text-[8px] text-rose-400 mt-1 max-w-[100px] truncate" title={loginError}>{loginError}</span>}
+                </div>
               )}
             </div>
           </div>

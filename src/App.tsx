@@ -62,11 +62,15 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  const [loginError, setLoginError] = useState<string | null>(null);
+
   const handleLogin = async () => {
     try {
+      setLoginError(null);
       await signInWithPopup(auth, googleProvider);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Firebase Login error:", err);
+      setLoginError(err.message || String(err));
     }
   };
 
@@ -194,6 +198,7 @@ export default function App() {
       firebaseConnected={firebaseConnected}
       onLogin={handleLogin}
       onLogout={handleLogout}
+      loginError={loginError}
     >
       <Suspense fallback={
         <div className="flex h-64 items-center justify-center">
