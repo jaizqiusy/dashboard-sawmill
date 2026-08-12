@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ProductionData } from '../../types';
 import { normalizeMachineName } from '../../services/dataService';
 import { ChevronDown, ChevronRight, User } from 'lucide-react';
@@ -19,6 +19,8 @@ interface ProcessedData {
 
 export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
+  const [selectedDate, setSelectedDate] = useState<string>('all');
+  const [selectedMachine, setSelectedMachine] = useState<string>('all');
 
   const months = useMemo(() => {
     const m = new Set<number>();
@@ -30,7 +32,7 @@ export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
 
   const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 
-  const tableData = useMemo(() => {
+  const { processedData, availableDates, availableMachines } = useMemo(() => {
     const monthData = data.filter(d => {
       if (d.month !== selectedMonth || !d.mesin || d.input <= 0) return false;
       const name = normalizeMachineName(d.mesin);
@@ -69,8 +71,28 @@ export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
       };
     });
     
-    return processed;
+    const dates = Array.from(new Set(processed.map(r => r.tanggal))).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+    const machines = Array.from(new Set(processed.map(r => r.mesin))).sort((a,b) => {
+      const numA = parseInt(a.replace(/\D/g, '')) || 0;
+      const numB = parseInt(b.replace(/\D/g, '')) || 0;
+      return numA - numB;
+    });
+
+    return { processedData: processed, availableDates: dates, availableMachines: machines };
   }, [data, selectedMonth]);
+
+  useEffect(() => {
+    setSelectedDate('all');
+    setSelectedMachine('all');
+  }, [selectedMonth]);
+
+  const filteredData = useMemo(() => {
+    return processedData.filter(row => {
+      if (selectedDate !== 'all' && row.tanggal !== selectedDate) return false;
+      if (selectedMachine !== 'all' && row.mesin !== selectedMachine) return false;
+      return true;
+    });
+  }, [processedData, selectedDate, selectedMachine]);
 
   const formatPercent = (val: number) => (val * 100).toFixed(2) + '%';
 
@@ -104,6 +126,37 @@ export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
           </div>
         </div>
 
+        {/* Filters */}
+        <div className="flex flex-col sm:flex-row gap-4 bg-white rounded-2xl p-4 shadow-xl shadow-indigo-100/20 border border-indigo-50">
+          <div className="flex flex-col gap-1 w-full sm:w-1/3">
+            <label className="text-xs font-semibold text-slate-500 uppercase">Tanggal</label>
+            <select
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700"
+            >
+              <option value="all">Semua Tanggal</option>
+              {availableDates.map(d => {
+                const fd = new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).replace(/ /g, '-');
+                return <option key={d} value={d}>{fd}</option>
+              })}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1 w-full sm:w-1/3">
+            <label className="text-xs font-semibold text-slate-500 uppercase">Mesin</label>
+            <select
+              value={selectedMachine}
+              onChange={(e) => setSelectedMachine(e.target.value)}
+              className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700"
+            >
+              <option value="all">Semua Mesin</option>
+              {availableMachines.map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
         {/* Data Table */}
         <div className="bg-white rounded-3xl shadow-xl shadow-indigo-100/20 border border-indigo-50 overflow-hidden">
           <div className="overflow-x-auto">
@@ -120,8 +173,8 @@ export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {tableData.length > 0 ? (
-                  tableData.map((row, i) => {
+                {filteredData.length > 0 ? (
+                  filteredData.map((row, i) => {
                     const formatDate = new Date(row.tanggal).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).replace(/ /g, '-');
                     return (
                       <tr key={i} className="hover:bg-indigo-50/30 transition-colors">
