@@ -215,40 +215,42 @@ export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
             </h1>
             
             
-            <div className="flex flex-row gap-4 mt-1">
-              <div className="flex flex-col gap-1 w-full sm:w-48">
-                <label className="text-xs font-semibold text-slate-500 uppercase">Tanggal</label>
-                <select
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700"
-                >
-                  <option value="all">Semua Tanggal</option>
-                  {availableDates.map(d => {
-                    const fd = new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).replace(/ /g, '-');
-                    return <option key={d} value={d}>{fd}</option>
-                  })}
-                </select>
-              </div>
-              <div className="flex flex-col gap-1 w-full sm:w-48">
-                <label className="text-xs font-semibold text-slate-500 uppercase">Mesin</label>
-                <select
-                  value={selectedMachine}
-                  onChange={(e) => setSelectedMachine(e.target.value)}
-                  className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700"
-                >
-                  <option value="all">Semua Mesin</option>
-                  {availableMachines.map(m => (
-                    <option key={m} value={m}>{m}</option>
-                  ))}
-                </select>
+            <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-end w-full sm:w-auto mt-2">
+              <div className="grid grid-cols-2 gap-2.5 flex-1 sm:flex-none">
+                <div className="flex flex-col gap-1 w-full sm:w-44">
+                  <label className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Tanggal</label>
+                  <select
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 shadow-sm"
+                  >
+                    <option value="all">Semua Tanggal</option>
+                    {availableDates.map(d => {
+                      const fd = new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).replace(/ /g, '-');
+                      return <option key={d} value={d}>{fd}</option>
+                    })}
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1 w-full sm:w-44">
+                  <label className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Mesin</label>
+                  <select
+                    value={selectedMachine}
+                    onChange={(e) => setSelectedMachine(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 shadow-sm"
+                  >
+                    <option value="all">Semua Mesin</option>
+                    {availableMachines.map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
               
-              <div className="flex flex-col justify-end">
+              <div className="flex justify-end items-end">
                 <button
                   onClick={handleDownloadPDF}
                   title="Download PDF"
-                  className="flex items-center justify-center px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-sm transition-all"
+                  className="flex items-center justify-center p-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md shadow-indigo-600/20 transition-all active:scale-95"
                 >
                   <Download className="w-5 h-5" />
                 </button>
@@ -274,48 +276,50 @@ export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
 
 
 
-                {/* Note Input Bar - Only visible to allowed emails */}
-        {canEditNotes && (
-                <div className="bg-white rounded-2xl p-4 shadow-xl shadow-indigo-100/20 border border-indigo-50 flex flex-col sm:flex-row gap-3 items-end sm:items-center mt-4">
-                  <div className="flex flex-col gap-1 w-full sm:w-auto">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">Tgl Catatan</label>
-                    <input 
-                      type="date" 
-                      value={noteTanggal}
-                      onChange={e => setNoteTanggal(e.target.value)}
-                      className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1 w-full sm:w-auto">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">Mesin</label>
-                    <select 
-                      value={noteMesin}
-                      onChange={e => setNoteMesin(e.target.value)}
-                      className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    >
-                      <option value="">Pilih Mesin</option>
-                      {availableMachines.map(m => <option key={m} value={m}>{m}</option>)}
-                    </select>
-                  </div>
-                  <div className="flex flex-col gap-1 w-full flex-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">Isi Catatan Harian</label>
-                    <input 
-                      type="text" 
-                      placeholder="Ketik catatan di sini..."
-                      value={noteText}
-                      onChange={e => setNoteText(e.target.value)}
-                      className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full"
-                    />
-                  </div>
-                  <button 
-                    onClick={submitNote}
-                    disabled={isSubmitting}
-                    className="w-full sm:w-auto px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold shadow-sm transition-all disabled:opacity-50 mt-1 sm:mt-0"
-                  >
-                    {isSubmitting ? 'Menyimpan...' : 'Simpan Catatan'}
-                  </button>
-                </div>
-        )}
+                {/* Note Input Bar */}
+        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-xl shadow-indigo-100/20 border border-indigo-50 flex flex-col gap-3.5 mt-4">
+          <div className="grid grid-cols-2 gap-2.5 w-full sm:flex sm:flex-row sm:w-auto">
+            <div className="flex flex-col gap-1 w-full sm:w-48">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tgl Catatan</label>
+              <input 
+                type="date" 
+                value={noteTanggal}
+                onChange={e => setNoteTanggal(e.target.value)}
+                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700"
+              />
+            </div>
+            <div className="flex flex-col gap-1 w-full sm:w-48">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Mesin</label>
+              <select 
+                value={noteMesin}
+                onChange={e => setNoteMesin(e.target.value)}
+                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700"
+              >
+                <option value="">Pilih Mesin</option>
+                {availableMachines.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1 w-full">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Isi Catatan Harian</label>
+            <textarea 
+              rows={2}
+              placeholder="Ketik catatan di sini..."
+              value={noteText}
+              onChange={e => setNoteText(e.target.value)}
+              className="px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 w-full min-h-[64px] resize-y"
+            />
+          </div>
+
+          <button 
+            onClick={submitNote}
+            disabled={isSubmitting}
+            className="w-full sm:w-auto px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold shadow-md shadow-emerald-600/20 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {isSubmitting ? 'Menyimpan...' : 'Simpan Catatan'}
+          </button>
+        </div>
 
         {/* Data Table */}
         <div className="bg-white rounded-3xl shadow-xl shadow-indigo-100/20 border border-indigo-50 overflow-hidden">
