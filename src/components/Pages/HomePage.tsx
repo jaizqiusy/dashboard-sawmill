@@ -13,12 +13,31 @@ import {
   Activity
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { syncSpreadsheetToFirestore } from '../../services/dataService';
+import { RefreshCw } from 'lucide-react';
+import { useState } from 'react';
 
 interface HomePageProps {
   setActiveTab: (tab: string) => void;
 }
 
 export function HomePage({ setActiveTab }: HomePageProps) {
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState('');
+  
+  const handleSync = async () => {
+    if (isSyncing) return;
+    setIsSyncing(true);
+    try {
+      await syncSpreadsheetToFirestore(setSyncStatus);
+      setSyncStatus('Selesai! Memuat ulang...');
+      setTimeout(() => window.location.reload(), 1500);
+    } catch (err: any) {
+      setSyncStatus('Gagal: ' + err.message);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
   const menuItems = [
     { id: 'Overview', icon: LayoutGrid, label: 'Overview', desc: 'Ringkasan performa', color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-100' },
     { id: 'Analytics', icon: BarChart3, label: 'Analytics', desc: 'Analisis detail', color: 'text-sky-600', bg: 'bg-sky-50', border: 'border-sky-100' },
@@ -59,6 +78,23 @@ export function HomePage({ setActiveTab }: HomePageProps) {
               "Kebersamaan adalah awal dari kesuksesan yang luar biasa."
             ][new Date().getDate() % 10]}"
           </p>
+        </div>
+
+        
+        {/* Sync Card */}
+        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/10 shadow-xl flex items-center justify-between">
+          <div className="flex flex-col">
+            <h3 className="text-sm font-bold text-white">Database Firestore</h3>
+            <p className="text-xs text-indigo-200 mt-1">{syncStatus || 'Sinkronkan data terbaru dari Google Sheets'}</p>
+          </div>
+          <button 
+            onClick={handleSync}
+            disabled={isSyncing}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white font-bold text-xs transition-all disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+            {isSyncing ? 'Menyinkronkan...' : 'Sinkron Data'}
+          </button>
         </div>
 
         {/* Main Menu Grid */}

@@ -1,10 +1,13 @@
+
+import { db } from '../firebase';
+import { doc, getDoc, setDoc, writeBatch } from 'firebase/firestore';
 import Papa from 'papaparse';
 import { RAW_CSV_DATA } from '../data/raw_data';
 import { ProductionData, SummaryStats, SupplierData, MonthlyLogData, OperatorData } from '../types';
 
 const SPREADSHEET_ID = '1G7x3dtE2KFF338w6qdd4jrMkz-yrbThlzx5Vi0I8AqQ';
 
-export async function fetchOperatorData(): Promise<OperatorData[]> {
+export async function fetchOperatorDataFromSheet(): Promise<OperatorData[]> {
   const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=Operstor%20bs`;
   try {
     const response = await fetch(url);
@@ -48,7 +51,7 @@ function parseOperatorCSV(csv: string): OperatorData[] {
   }).filter(row => row.id_operator);
 }
 
-export async function fetchProductionData(): Promise<ProductionData[]> {
+export async function fetchProductionDataFromSheet(): Promise<ProductionData[]> {
   const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=DATABASE%20APPSCRIPT`;
   
   try {
@@ -63,7 +66,7 @@ export async function fetchProductionData(): Promise<ProductionData[]> {
   }
 }
 
-export async function fetchSupplierData(): Promise<SupplierData[]> {
+export async function fetchSupplierDataFromSheet(): Promise<SupplierData[]> {
   const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=LOG%20SUPPLIER`;
   
   try {
@@ -104,7 +107,7 @@ function parseSupplierCSV(csv: string): SupplierData[] {
   }).filter(row => row.kode && row.kode.trim() !== '' && row.supplier.toLowerCase() !== 'total');
 }
 
-export async function fetchMonthlyLogData(): Promise<MonthlyLogData[]> {
+export async function fetchMonthlyLogDataFromSheet(): Promise<MonthlyLogData[]> {
   const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=log%20per%20bulan`;
   
   try {
@@ -533,4 +536,101 @@ export function getPerformanceByTimeframe(data: ProductionData[], type: 'daily' 
     const numB = parseInt(b.label.replace(/[^\d]/g, '')) || 0;
     return numA - numB;
   });
+}
+
+
+async function fetchChunkedData<T>(collectionName: string): Promise<T[] | null> {
+  try {
+    const infoDoc = await getDoc(doc(db, 'dashboard_data', collectionName + '_info'));
+    if (!infoDoc.exists()) return null;
+    
+    const numChunks = infoDoc.data().numChunks;
+    let allData: T[] = [];
+    
+    for (let i = 0; i < numChunks; i++) {
+      const chunkDoc = await getDoc(doc(db, 'dashboard_data', collectionName + '_chunk_' + i));
+      if (chunkDoc.exists()) {
+        allData = allData.concat(chunkDoc.data().data);
+      }
+    }
+    return allData.length > 0 ? allData : null;
+  } catch (error) {
+    console.error('Error reading from Firestore:', error);
+    return null;
+  }
+}
+
+export async function fetchOperatorData(): Promise<OperatorData[]> {
+  const fsData = await fetchChunkedData<OperatorData>('operator');
+  if (fsData) return fsData;
+  return fetchOperatorDataFromSheet();
+}
+
+export async function fetchProductionData(): Promise<ProductionData[]> {
+  const fsData = await fetchChunkedData<ProductionData>('production');
+  if (fsData) return fsData;
+  return fetchProductionDataFromSheet();
+}
+
+export async function fetchSupplierData(): Promise<SupplierData[]> {
+  const fsData = await fetchChunkedData<SupplierData>('supplier');
+  if (fsData) return fsData;
+  return fetchSupplierDataFromSheet();
+}
+
+export async function fetchMonthlyLogData(): Promise<MonthlyLogData[]> {
+  const fsData = await fetchChunkedData<MonthlyLogData>('monthlyLog');
+  if (fsData) return fsData;
+  return fetchMonthlyLogDataFromSheet();
+}
+
+export async function syncSpreadsheetToFirestore(onProgress?: (msg: string) => void) {
+  const CHUNK_SIZE = 500;
+  
+  async function saveInChunks(collectionName: string, dataArray: any[]) {
+    if (onProgress) onProgress('Saving ' + collectionName + ' (' + dataArray.length + ' rows)...');
+    
+    const numChunks = Math.ceil(dataArray.length / CHUNK_SIZE);
+    
+    // Save info doc
+    await setDoc(doc(db, 'dashboard_data', collectionName + '_info'), { 
+      numChunks, 
+      lastUpdated: new Date().toISOString(),
+      totalRows: dataArray.length
+    });
+    
+    // We can use a batch for chunks since there are max ~8 chunks (4000 rows / 500)
+    // Firestore batch limit is 500 operations. We are doing max 10 operations here.
+    const batch = writeBatch(db);
+    for (let i = 0; i < numChunks; i++) {
+      const chunkData = dataArray.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+      const chunkRef = doc(db, 'dashboard_data', collectionName + '_chunk_' + i);
+      batch.set(chunkRef, { data: chunkData });
+    }
+    await batch.commit();
+  }
+
+  try {
+    if (onProgress) onProgress('Fetching Production Data from Sheet...');
+    const prod = await fetchProductionDataFromSheet();
+    await saveInChunks('production', prod);
+
+    if (onProgress) onProgress('Fetching Operator Data from Sheet...');
+    const op = await fetchOperatorDataFromSheet();
+    await saveInChunks('operator', op);
+
+    if (onProgress) onProgress('Fetching Supplier Data from Sheet...');
+    const supp = await fetchSupplierDataFromSheet();
+    await saveInChunks('supplier', supp);
+
+    if (onProgress) onProgress('Fetching Monthly Log Data from Sheet...');
+    const monthly = await fetchMonthlyLogDataFromSheet();
+    await saveInChunks('monthlyLog', monthly);
+
+    if (onProgress) onProgress('Sync Complete!');
+  } catch (error: any) {
+    console.error("Sync Error:", error);
+    if (onProgress) onProgress('Error: ' + error.message);
+    throw error;
+  }
 }
