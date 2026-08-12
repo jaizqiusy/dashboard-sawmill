@@ -102,12 +102,41 @@ export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
         
         {/* Header */}
         <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xl shadow-indigo-100/20 border border-indigo-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
+          <div className="flex flex-col gap-4">
             <h1 className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight flex items-center gap-3">
               <User className="w-8 h-8 text-indigo-600" />
               Analisa Operator
             </h1>
-            <p className="text-slate-500 mt-1 font-medium">Laporan Harian dan Akumulasi Performa Mesin</p>
+            
+            <div className="flex flex-row gap-4 mt-1">
+              <div className="flex flex-col gap-1 w-full sm:w-48">
+                <label className="text-xs font-semibold text-slate-500 uppercase">Tanggal</label>
+                <select
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700"
+                >
+                  <option value="all">Semua Tanggal</option>
+                  {availableDates.map(d => {
+                    const fd = new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).replace(/ /g, '-');
+                    return <option key={d} value={d}>{fd}</option>
+                  })}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1 w-full sm:w-48">
+                <label className="text-xs font-semibold text-slate-500 uppercase">Mesin</label>
+                <select
+                  value={selectedMachine}
+                  onChange={(e) => setSelectedMachine(e.target.value)}
+                  className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700"
+                >
+                  <option value="all">Semua Mesin</option>
+                  {availableMachines.map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
           <div className="flex gap-2 w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0">
             {months.map(m => (
@@ -126,36 +155,7 @@ export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4 bg-white rounded-2xl p-4 shadow-xl shadow-indigo-100/20 border border-indigo-50">
-          <div className="flex flex-col gap-1 w-full sm:w-1/3">
-            <label className="text-xs font-semibold text-slate-500 uppercase">Tanggal</label>
-            <select
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700"
-            >
-              <option value="all">Semua Tanggal</option>
-              {availableDates.map(d => {
-                const fd = new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).replace(/ /g, '-');
-                return <option key={d} value={d}>{fd}</option>
-              })}
-            </select>
-          </div>
-          <div className="flex flex-col gap-1 w-full sm:w-1/3">
-            <label className="text-xs font-semibold text-slate-500 uppercase">Mesin</label>
-            <select
-              value={selectedMachine}
-              onChange={(e) => setSelectedMachine(e.target.value)}
-              className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700"
-            >
-              <option value="all">Semua Mesin</option>
-              {availableMachines.map(m => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-            </select>
-          </div>
-        </div>
+
 
         {/* Data Table */}
         <div className="bg-white rounded-3xl shadow-xl shadow-indigo-100/20 border border-indigo-50 overflow-hidden">
