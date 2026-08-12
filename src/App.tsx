@@ -18,6 +18,7 @@ import { MonthlyLogData, ProductionData, SupplierData, OperatorData } from './ty
 const HomePage = lazy(() => import('./components/Pages/HomePage').then(module => ({ default: module.HomePage })));
 const PlanPage = lazy(() => import('./components/Pages/PlanPage').then(module => ({ default: module.PlanPage })));
 const AIPage = lazy(() => import('./components/Pages/AIPage').then(module => ({ default: module.AIPage })));
+const AnalisaOperatorPage = lazy(() => import('./components/Pages/AnalisaOperatorPage').then(module => ({ default: module.AnalisaOperatorPage })));
 const OverviewPage = lazy(() => import('./components/Pages/OverviewPage').then(module => ({ default: module.OverviewPage })));
 const AnalyticsPage = lazy(() => import('./components/Pages/AnalyticsPage').then(module => ({ default: module.AnalyticsPage })));
 const RankingPage = lazy(() => import('./components/Pages/RankingPage').then(module => ({ default: module.RankingPage })));
@@ -217,6 +218,7 @@ export default function App() {
         {activeTab === 'Performance' && <PerformancePage data={data} />}
         {activeTab === 'Plan' && <PlanPage todayStats={todayStats} data={data} />}
         {activeTab === 'AI' && <AIPage data={data} />}
+        {activeTab === 'AnalisaOperator' && <AnalisaOperatorPage data={data} />}
       </Suspense>
     </MobileLayout>
   );
