@@ -113,14 +113,14 @@ export function MobileLayout({
             onClick={handleSync}
             disabled={isSyncing}
             className={cn(
-              "flex items-center gap-2 px-3 py-2 rounded-xl transition-all active:scale-95 shadow-lg disabled:opacity-50",
+              "flex items-center justify-center p-2 rounded-xl transition-all active:scale-95 shadow-lg disabled:opacity-50",
               isSyncing 
                 ? "bg-white text-indigo-600 shadow-white/10" 
                 : "bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-indigo-500/20 border border-indigo-400/30"
             )}
+            title="Sinkron Data"
           >
-            <RefreshCw className={cn("w-3.5 h-3.5", isSyncing ? "animate-spin" : "")} />
-            <span className="text-[9px] font-black uppercase tracking-wider">{isSyncing ? 'Menyinkronkan...' : 'Sinkron Data'}</span>
+            <RefreshCw className={cn("w-4 h-4", isSyncing ? "animate-spin" : "")} />
           </button>
           {syncStatus && <span className="text-[7px] text-white/70 mt-1 max-w-[100px] truncate text-right absolute top-full right-0">{syncStatus}</span>}
         </div>

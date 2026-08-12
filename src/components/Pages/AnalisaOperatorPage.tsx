@@ -1,7 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { ProductionData } from '../../types';
 import { normalizeMachineName } from '../../services/dataService';
-import { ChevronDown, ChevronRight, User } from 'lucide-react';
+import { ChevronDown, ChevronRight, User, Download } from 'lucide-react';
+import { db, auth } from '../../firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { collection, addDoc, getDocs, query, serverTimestamp } from 'firebase/firestore';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface AnalisaOperatorPageProps {
   data: ProductionData[];
@@ -21,6 +26,67 @@ export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
   const [selectedDate, setSelectedDate] = useState<string>('all');
   const [selectedMachine, setSelectedMachine] = useState<string>('all');
+
+  const [noteTanggal, setNoteTanggal] = useState('');
+  const [noteMesin, setNoteMesin] = useState('');
+  const [noteText, setNoteText] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [customNotes, setCustomNotes] = useState<any[]>([]);
+
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(auth.currentUser?.email || null);
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, user => {
+      setCurrentUserEmail(user?.email || null);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const ALLOWED_EMAILS = ['jaizqiusy@gmail.com', 'chamdan918@gmail.com', 'jarmoyo121095@gmail.com'];
+  const canEditNotes = currentUserEmail && ALLOWED_EMAILS.includes(currentUserEmail);
+
+
+  useEffect(() => {
+    const fetchNotes = async () => {
+      try {
+        const q = query(collection(db, 'operator_notes'));
+        const snapshot = await getDocs(q);
+        const notes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setCustomNotes(notes);
+      } catch(e) {
+        console.error("Failed to fetch notes", e);
+      }
+    };
+    fetchNotes();
+  }, []);
+
+  const submitNote = async () => {
+    if (!noteTanggal || !noteMesin || !noteText) return alert('Mohon lengkapi Tanggal, Mesin, dan Catatan');
+    if (!auth.currentUser) return alert('Silakan login terlebih dahulu untuk menambahkan catatan');
+    if (!ALLOWED_EMAILS.includes(auth.currentUser.email || '')) return alert('Maaf, akun Anda tidak memiliki izin untuk menambahkan catatan.');
+    setIsSubmitting(true);
+    try {
+      await addDoc(collection(db, 'operator_notes'), {
+        tanggal: noteTanggal,
+        mesin: noteMesin,
+        note: noteText,
+        author: auth.currentUser.email || 'Unknown',
+        timestamp: serverTimestamp()
+      });
+      setNoteText('');
+      alert('Catatan berhasil ditambahkan');
+      // Refetch
+      const q = query(collection(db, 'operator_notes'));
+      const snapshot = await getDocs(q);
+      const notes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setCustomNotes(notes);
+    } catch(e: any) {
+      console.error(e);
+      alert('Gagal menambahkan catatan: ' + e.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
 
   const months = useMemo(() => {
     const m = new Set<number>();
@@ -65,7 +131,11 @@ export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
         mesin: mesin,
         yieldUtama: row.input > 0 ? (row.utama / row.input) : 0,
         yieldTotal: row.input > 0 ? (row.total / row.input) : 0,
-        catatan: row.downtime || '',
+        catatan: (() => {
+          const matchedNotes = customNotes.filter((n: any) => n.tanggal === row.tanggal && n.mesin === mesin);
+          const customStr = matchedNotes.map((n: any) => n.note).join(' | ');
+          return row.downtime ? (customStr ? `${row.downtime} | ${customStr}` : row.downtime) : (customStr || '');
+        })(),
         akumulasiUtama: accumulators[mesin].sumInput > 0 ? (accumulators[mesin].sumUtama / accumulators[mesin].sumInput) : 0,
         akumulasiTotal: accumulators[mesin].sumInput > 0 ? (accumulators[mesin].sumTotal / accumulators[mesin].sumInput) : 0,
       };
@@ -79,7 +149,7 @@ export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
     });
 
     return { processedData: processed, availableDates: dates, availableMachines: machines };
-  }, [data, selectedMonth]);
+  }, [data, selectedMonth, customNotes]);
 
   useEffect(() => {
     setSelectedDate('all');
@@ -94,6 +164,42 @@ export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
     });
   }, [processedData, selectedDate, selectedMachine]);
 
+    const handleDownloadPDF = () => {
+    const doc = new jsPDF();
+    const title = 'Laporan Analisa Operator';
+    doc.setFontSize(16);
+    doc.text(title, 14, 15);
+    
+    doc.setFontSize(10);
+    doc.text(`Bulan: ${monthNames[selectedMonth - 1]}`, 14, 22);
+
+    const tableColumn = ["Tanggal", "Mesin", "% Utama", "% Total", "Catatan", "Akm % Utama", "Akm % Total"];
+    const tableRows: any[] = [];
+
+    filteredData.forEach(row => {
+      const rowData = [
+        new Date(row.tanggal).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).replace(/ /g, '-'),
+        row.mesin,
+        formatPercent(row.yieldUtama),
+        formatPercent(row.yieldTotal),
+        row.catatan,
+        formatPercent(row.akumulasiUtama),
+        formatPercent(row.akumulasiTotal)
+      ];
+      tableRows.push(rowData);
+    });
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 28,
+      theme: 'grid',
+      headStyles: { fillColor: [79, 70, 229] }, // indigo-600
+    });
+
+    doc.save(`Analisa_Operator_${monthNames[selectedMonth - 1]}.pdf`);
+  };
+
   const formatPercent = (val: number) => (val * 100).toFixed(2) + '%';
 
   return (
@@ -107,6 +213,7 @@ export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
               <User className="w-8 h-8 text-indigo-600" />
               Analisa Operator
             </h1>
+            
             
             <div className="flex flex-row gap-4 mt-1">
               <div className="flex flex-col gap-1 w-full sm:w-48">
@@ -136,6 +243,16 @@ export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
                   ))}
                 </select>
               </div>
+              
+              <div className="flex flex-col justify-end">
+                <button
+                  onClick={handleDownloadPDF}
+                  title="Download PDF"
+                  className="flex items-center justify-center px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-sm transition-all"
+                >
+                  <Download className="w-5 h-5" />
+                </button>
+              </div>
             </div>
           </div>
           <div className="flex gap-2 w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0">
@@ -156,6 +273,49 @@ export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
         </div>
 
 
+
+                {/* Note Input Bar - Only visible to allowed emails */}
+        {canEditNotes && (
+                <div className="bg-white rounded-2xl p-4 shadow-xl shadow-indigo-100/20 border border-indigo-50 flex flex-col sm:flex-row gap-3 items-end sm:items-center mt-4">
+                  <div className="flex flex-col gap-1 w-full sm:w-auto">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase">Tgl Catatan</label>
+                    <input 
+                      type="date" 
+                      value={noteTanggal}
+                      onChange={e => setNoteTanggal(e.target.value)}
+                      className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1 w-full sm:w-auto">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase">Mesin</label>
+                    <select 
+                      value={noteMesin}
+                      onChange={e => setNoteMesin(e.target.value)}
+                      className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="">Pilih Mesin</option>
+                      {availableMachines.map(m => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1 w-full flex-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase">Isi Catatan Harian</label>
+                    <input 
+                      type="text" 
+                      placeholder="Ketik catatan di sini..."
+                      value={noteText}
+                      onChange={e => setNoteText(e.target.value)}
+                      className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full"
+                    />
+                  </div>
+                  <button 
+                    onClick={submitNote}
+                    disabled={isSubmitting}
+                    className="w-full sm:w-auto px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold shadow-sm transition-all disabled:opacity-50 mt-1 sm:mt-0"
+                  >
+                    {isSubmitting ? 'Menyimpan...' : 'Simpan Catatan'}
+                  </button>
+                </div>
+        )}
 
         {/* Data Table */}
         <div className="bg-white rounded-3xl shadow-xl shadow-indigo-100/20 border border-indigo-50 overflow-hidden">
