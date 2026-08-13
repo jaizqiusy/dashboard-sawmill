@@ -339,12 +339,109 @@ export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
         row.countHijauUtama ? `${row.countHijauUtama} Hari` : '-'
       ]);
 
+      doc.setFontSize(11);
+      doc.text("RENDEMEN UTAMA", 14, 28);
+
       autoTable(doc, {
         head: [head1],
         body: bodyUtama,
-        startY: 28,
+        startY: 32,
         theme: 'grid',
-        headStyles: { fillColor: [16, 185, 129] },
+        headStyles: { fillColor: [6, 95, 70] },
+        didParseCell: (data) => {
+          if (data.section === 'body' && data.column.index >= 1 && data.column.index <= datesHeaders.length) {
+            const raw = data.cell.raw as string;
+            if (raw && raw !== '0.00%') {
+              const val = parseFloat(raw.replace('%', ''));
+              if (!isNaN(val)) {
+                if (val < 30) {
+                  data.cell.styles.fillColor = [253, 230, 138];
+                  data.cell.styles.textColor = [120, 53, 15];
+                  data.cell.styles.fontStyle = 'bold';
+                } else {
+                  data.cell.styles.fillColor = [220, 252, 231];
+                  data.cell.styles.textColor = [20, 83, 45];
+                  data.cell.styles.fontStyle = 'bold';
+                }
+              }
+            }
+          }
+        }
+      });
+
+      // Rendemen Turunan Table
+      const head2 = ["Mesin", ...datesHeaders, "Akumulasi"];
+      const bodyTurunan = matrixWeekData.machineRows.map(row => [
+        row.mesin,
+        ...row.dayCells.map(c => (c.yieldTurunan * 100).toFixed(2) + '%'),
+        (row.akmTurunan * 100).toFixed(2) + '%'
+      ]);
+      
+      let finalY = (doc as any).lastAutoTable.finalY || 32;
+      
+      if (finalY > doc.internal.pageSize.getHeight() - 40) {
+        doc.addPage();
+        finalY = 15;
+      }
+      
+      doc.setFontSize(11);
+      doc.text("RENDEMEN TURUNAN", 14, finalY + 10);
+
+      autoTable(doc, {
+        head: [head2],
+        body: bodyTurunan,
+        startY: finalY + 14,
+        theme: 'grid',
+        headStyles: { fillColor: [6, 95, 70] },
+      });
+
+      // Rendemen Total Table
+      const head3 = ["Mesin", ...datesHeaders, "Akumulasi", "Target Fix", "% Performance", "Ket Orange", "Ket Hijau"];
+      const bodyTotal = matrixWeekData.machineRows.map(row => [
+        row.mesin,
+        ...row.dayCells.map(c => (c.yieldTotal * 100).toFixed(2) + '%'),
+        (row.akmTotal * 100).toFixed(2) + '%',
+        '65%',
+        row.perfTotal.toFixed(2) + '%',
+        row.countOrangeTotal ? `${row.countOrangeTotal} Hari` : '-',
+        row.countHijauTotal ? `${row.countHijauTotal} Hari` : '-'
+      ]);
+
+      finalY = (doc as any).lastAutoTable.finalY || finalY + 14;
+      
+      if (finalY > doc.internal.pageSize.getHeight() - 40) {
+        doc.addPage();
+        finalY = 15;
+      }
+
+      doc.setFontSize(11);
+      doc.text("RENDEMEN TOTAL", 14, finalY + 10);
+
+      autoTable(doc, {
+        head: [head3],
+        body: bodyTotal,
+        startY: finalY + 14,
+        theme: 'grid',
+        headStyles: { fillColor: [6, 95, 70] },
+        didParseCell: (data) => {
+          if (data.section === 'body' && data.column.index >= 1 && data.column.index <= datesHeaders.length) {
+            const raw = data.cell.raw as string;
+            if (raw && raw !== '0.00%') {
+              const val = parseFloat(raw.replace('%', ''));
+              if (!isNaN(val)) {
+                if (val < 65) {
+                  data.cell.styles.fillColor = [253, 230, 138];
+                  data.cell.styles.textColor = [120, 53, 15];
+                  data.cell.styles.fontStyle = 'bold';
+                } else {
+                  data.cell.styles.fillColor = [220, 252, 231];
+                  data.cell.styles.textColor = [20, 83, 45];
+                  data.cell.styles.fontStyle = 'bold';
+                }
+              }
+            }
+          }
+        }
       });
 
       doc.save(`Analisa_Operator_Matrix_${MONTH_NAMES[selectedMonth - 1]}.pdf`);

@@ -32,7 +32,7 @@ export function OrderUrgentUpdate() {
   
   const [sortConfig, setSortConfig] = useState<{ key: keyof OrderData, direction: 'asc' | 'desc' } | null>(null);
 
-  const sheetUrl = "https://docs.google.com/spreadsheets/d/1G7x3dtE2KFF338w6qdd4jrMkz-yrbThlzx5Vi0I8AqQ/edit?gid=1352797868#gid=1352797868";
+  const sheetUrl = "https://docs.google.com/spreadsheets/d/1G7x3dtE2KFF338w6qdd4jrMkz-yrbThlzx5Vi0I8AqQ/edit?gid=1726776473#gid=1726776473";
 
   const getCsvExportUrl = (url: string) => {
     try {
@@ -77,9 +77,9 @@ export function OrderUrgentUpdate() {
       const getMonthNames = (m: number) => {
          return [
             ['Jan', 'Januari'], ['Feb', 'Februari'], ['Mar', 'Maret'],
-            ['Apr', 'April'], ['Mei', 'Mei'], ['Jun', 'Juni'],
-            ['Jul', 'Juli'], ['Agt', 'Agustus'], ['Sep', 'September'],
-            ['Okt', 'Oktober'], ['Nov', 'November'], ['Des', 'Desember']
+            ['Apr', 'April'], ['Mei', 'May'], ['Jun', 'Juni'],
+            ['Jul', 'Juli'], ['Agt', 'Agustus', 'Aug'], ['Sep', 'September'],
+            ['Okt', 'Oktober', 'Oct'], ['Nov', 'November'], ['Des', 'Desember', 'Dec']
          ][m];
       };
       
@@ -445,7 +445,6 @@ export function OrderUrgentUpdate() {
                     <tr key={idx} className={cn("hover:bg-slate-50 transition-colors group", rowOpacity)}>
                       <td className="px-4 py-3 font-bold text-slate-900">
                          {row.ukuran}
-                         <span className="text-[10px] text-slate-400 font-normal ml-1 hidden sm:inline-block">{row.satuan}</span>
                       </td>
                       <td className="px-4 py-3 text-slate-500 font-mono text-xs">{row.panjang || '-'}</td>
                       <td className="px-4 py-3 text-slate-600 font-medium">{row.jo || '-'}</td>

@@ -3,6 +3,7 @@ import { Calendar, ClipboardList, Target, TrendingUp, Activity, Box, BarChart2 }
 import { ProductionData } from '../../types';
 import { WosSawmillUpdate } from './WosSawmillUpdate';
 import { OrderUrgentUpdate } from './OrderUrgentUpdate';
+import { PlaningBulanan } from './PlaningBulanan';
 
 interface PlanPageProps {
   todayStats: any;
@@ -108,35 +109,8 @@ export function PlanPage({ todayStats, data }: PlanPageProps) {
           </div>
         </div>
 
-        {/* Target Rendemen Card */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm space-y-5">
-           <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-             <div className="p-2 bg-indigo-100 rounded-lg">
-               <Activity className="w-5 h-5 text-indigo-600" />
-             </div>
-             <h3 className="font-bold text-slate-800">Target Rendemen</h3>
-           </div>
-           
-           <div className="grid grid-cols-2 gap-3">
-              <div className="bg-slate-50 rounded-xl px-3 py-4 border border-slate-100 flex flex-col relative overflow-hidden shadow-sm">
-                 <div className="absolute bottom-0 left-0 h-1 bg-sky-500 transition-all duration-500" style={{ width: `${calculatePct(curStats.rendemenUtama, targets.rendemenUtama)}%` }} />
-                 <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 truncate">Rendemen Utama</span>
-                 <div className="flex flex-col">
-                   <span className="text-[28px] sm:text-3xl font-black text-slate-800 tracking-tighter leading-none mb-1.5">{curStats.rendemenUtama.toFixed(1)}%</span>
-                   <p className="text-[9px] sm:text-[10px] font-bold text-sky-600 uppercase tracking-widest leading-none">Target: {targets.rendemenUtama}%</p>
-                 </div>
-              </div>
-
-              <div className="bg-slate-50 rounded-xl px-3 py-4 border border-slate-100 flex flex-col relative overflow-hidden shadow-sm">
-                 <div className="absolute bottom-0 left-0 h-1 bg-emerald-500 transition-all duration-500" style={{ width: `${calculatePct(curStats.rendemenTotal, targets.rendemenTotal)}%` }} />
-                 <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 truncate">Rendemen Total</span>
-                 <div className="flex flex-col">
-                   <span className="text-[28px] sm:text-3xl font-black text-slate-800 tracking-tighter leading-none mb-1.5">{curStats.rendemenTotal.toFixed(1)}%</span>
-                   <p className="text-[9px] sm:text-[10px] font-bold text-emerald-600 uppercase tracking-widest leading-none">Target: {targets.rendemenTotal}%</p>
-                 </div>
-              </div>
-           </div>
-        </div>
+        {/* Planing Bulanan */}
+        <PlaningBulanan />
 
         <WosSawmillUpdate />
         <OrderUrgentUpdate />
