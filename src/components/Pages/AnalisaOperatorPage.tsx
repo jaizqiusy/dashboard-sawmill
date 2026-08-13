@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { ProductionData } from '../../types';
 import { normalizeMachineName } from '../../services/dataService';
-import { ChevronDown, ChevronRight, User, Download } from 'lucide-react';
+import { User, Download, Table, LayoutList, Calendar, Sparkles } from 'lucide-react';
 import { db, auth } from '../../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { collection, addDoc, getDocs, query, serverTimestamp } from 'firebase/firestore';
@@ -22,10 +22,27 @@ interface ProcessedData {
   akumulasiTotal: number;
 }
 
+const MACHINES = ['Bs1', 'Bs2', 'Bs3', 'Bs4', 'Bs5', 'Bs6', 'Bs7', 'Bs8'];
+const DAY_NAMES = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jum'at", "Sabtu"];
+const MONTH_NAMES = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+
+function formatDateShort(dateStr: string): string {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  const day = String(d.getDate()).padStart(2, '0');
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const month = months[d.getMonth()];
+  const year = d.getFullYear();
+  return `${day}-${month}-${year}`;
+}
+
 export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
+  const [selectedWeek, setSelectedWeek] = useState<number | 'all'>('all');
   const [selectedDate, setSelectedDate] = useState<string>('all');
   const [selectedMachine, setSelectedMachine] = useState<string>('all');
+  const [viewMode, setViewMode] = useState<'matrix' | 'table'>('matrix');
 
   const [noteTanggal, setNoteTanggal] = useState('');
   const [noteMesin, setNoteMesin] = useState('');
@@ -42,8 +59,6 @@ export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
   }, []);
 
   const ALLOWED_EMAILS = ['jaizqiusy@gmail.com', 'chamdan918@gmail.com', 'jarmoyo121095@gmail.com'];
-  const canEditNotes = currentUserEmail && ALLOWED_EMAILS.includes(currentUserEmail);
-
 
   useEffect(() => {
     const fetchNotes = async () => {
@@ -52,7 +67,7 @@ export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
         const snapshot = await getDocs(q);
         const notes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setCustomNotes(notes);
-      } catch(e) {
+      } catch (e) {
         console.error("Failed to fetch notes", e);
       }
     };
@@ -62,7 +77,9 @@ export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
   const submitNote = async () => {
     if (!noteTanggal || !noteMesin || !noteText) return alert('Mohon lengkapi Tanggal, Mesin, dan Catatan');
     if (!auth.currentUser) return alert('Silakan login terlebih dahulu untuk menambahkan catatan');
-    if (!ALLOWED_EMAILS.includes(auth.currentUser.email || '')) return alert('Maaf, akun Anda tidak memiliki izin untuk menambahkan catatan.');
+    if (!ALLOWED_EMAILS.includes(auth.currentUser.email || '')) {
+      return alert('Maaf, akun Anda tidak memiliki izin untuk menambahkan catatan.');
+    }
     setIsSubmitting(true);
     try {
       await addDoc(collection(db, 'operator_notes'), {
@@ -74,12 +91,11 @@ export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
       });
       setNoteText('');
       alert('Catatan berhasil ditambahkan');
-      // Refetch
       const q = query(collection(db, 'operator_notes'));
       const snapshot = await getDocs(q);
       const notes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setCustomNotes(notes);
-    } catch(e: any) {
+    } catch (e: any) {
       console.error(e);
       alert('Gagal menambahkan catatan: ' + e.message);
     } finally {
@@ -87,25 +103,42 @@ export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
     }
   };
 
-
   const months = useMemo(() => {
     const m = new Set<number>();
     data.forEach(d => {
       if (d.month && !isNaN(d.month)) m.add(d.month);
     });
-    return Array.from(m).sort((a, b) => b - a); // descending
+    return Array.from(m).sort((a, b) => b - a);
   }, [data]);
 
-  const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+  // Extract weeks for the selected month
+  const availableWeeks = useMemo(() => {
+    const weeksSet = new Set<number>();
+    data.forEach(d => {
+      if (d.month === selectedMonth && d.week && !isNaN(d.week)) {
+        weeksSet.add(d.week);
+      }
+    });
+    return Array.from(weeksSet).sort((a, b) => a - b);
+  }, [data, selectedMonth]);
 
+  useEffect(() => {
+    if (availableWeeks.length > 0) {
+      // Default to the latest week or 'all'
+      setSelectedWeek(availableWeeks[availableWeeks.length - 1]);
+    } else {
+      setSelectedWeek('all');
+    }
+  }, [selectedMonth, availableWeeks]);
+
+  // Flat processed data for detail table
   const { processedData, availableDates, availableMachines } = useMemo(() => {
     const monthData = data.filter(d => {
       if (d.month !== selectedMonth || !d.mesin || d.input <= 0) return false;
       const name = normalizeMachineName(d.mesin);
-      return name.match(/^BS [1-8]$/);
+      return name.match(/^BS [1-8]$/i) || name.match(/^Bs[1-8]$/i);
     });
-    
-    // Sort by date then machine
+
     const sortedData = [...monthData].sort((a, b) => {
       const dateCmp = new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime();
       if (dateCmp !== 0) return dateCmp;
@@ -121,7 +154,7 @@ export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
       if (!accumulators[mesin]) {
         accumulators[mesin] = { sumUtama: 0, sumTotal: 0, sumInput: 0 };
       }
-      
+
       accumulators[mesin].sumInput += row.input;
       accumulators[mesin].sumUtama += row.utama;
       accumulators[mesin].sumTotal += row.total;
@@ -140,9 +173,9 @@ export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
         akumulasiTotal: accumulators[mesin].sumInput > 0 ? (accumulators[mesin].sumTotal / accumulators[mesin].sumInput) : 0,
       };
     });
-    
+
     const dates = Array.from(new Set(processed.map(r => r.tanggal))).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
-    const machines = Array.from(new Set(processed.map(r => r.mesin))).sort((a,b) => {
+    const machines = Array.from(new Set(processed.map(r => r.mesin))).sort((a, b) => {
       const numA = parseInt(a.replace(/\D/g, '')) || 0;
       const numB = parseInt(b.replace(/\D/g, '')) || 0;
       return numA - numB;
@@ -150,11 +183,6 @@ export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
 
     return { processedData: processed, availableDates: dates, availableMachines: machines };
   }, [data, selectedMonth, customNotes]);
-
-  useEffect(() => {
-    setSelectedDate('all');
-    setSelectedMachine('all');
-  }, [selectedMonth]);
 
   const filteredData = useMemo(() => {
     return processedData.filter(row => {
@@ -164,209 +192,656 @@ export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
     });
   }, [processedData, selectedDate, selectedMachine]);
 
-    const handleDownloadPDF = () => {
-    const doc = new jsPDF();
-    const title = 'Laporan Analisa Operator';
-    doc.setFontSize(16);
+  // Matrix calculation for 7 days of the selected week/month
+  const matrixWeekData = useMemo(() => {
+    let weekFiltered = data.filter(d => d.month === selectedMonth);
+    if (selectedWeek !== 'all') {
+      weekFiltered = weekFiltered.filter(d => d.week === selectedWeek);
+    }
+
+    // Get dates sorted
+    const rawDates = Array.from(new Set(weekFiltered.map(d => d.tanggal)))
+      .filter(Boolean)
+      .sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+
+    let datesToUse: string[] = [];
+
+    if (rawDates.length > 0) {
+      // Find starting Monday of the earliest date
+      const firstDate = new Date(rawDates[0]);
+      const dayOfWeek = firstDate.getDay(); // 0 is Sun, 1 is Mon
+      const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      const mondayDate = new Date(firstDate);
+      mondayDate.setDate(firstDate.getDate() + diffToMon);
+
+      // Generate 7 days (Mon to Sun)
+      for (let i = 0; i < 7; i++) {
+        const cur = new Date(mondayDate);
+        cur.setDate(mondayDate.getDate() + i);
+        const yyyy = cur.getFullYear();
+        const mm = String(cur.getMonth() + 1).padStart(2, '0');
+        const dd = String(cur.getDate()).padStart(2, '0');
+        datesToUse.push(`${yyyy}-${mm}-${dd}`);
+      }
+    } else {
+      // Fallback empty 7 days
+      datesToUse = ['2026-08-10', '2026-08-11', '2026-08-12', '2026-08-13', '2026-08-14', '2026-08-15', '2026-08-16'];
+    }
+
+    // Build machine rows
+    const machineRows = MACHINES.map(mName => {
+      // Normalize machine matching e.g. Bs1 -> BS 1 or Bs1
+      const normalizedTarget = mName.toLowerCase().replace(/\s/g, '');
+
+      let sumInput = 0;
+      let sumUtama = 0;
+      let sumTurunan = 0;
+      let sumTotal = 0;
+
+      let countOrangeUtama = 0;
+      let countHijauUtama = 0;
+      let countOrangeTotal = 0;
+      let countHijauTotal = 0;
+
+      const dayCells = datesToUse.map(dStr => {
+        const record = weekFiltered.find(d => {
+          const normD = d.mesin ? d.mesin.toLowerCase().replace(/\s/g, '') : '';
+          return (normD === normalizedTarget || normD === `bs${mName.replace(/\D/g, '')}`) && d.tanggal === dStr;
+        });
+
+        const input = record ? record.input : 0;
+        const utama = record ? record.utama : 0;
+        const turunan = record ? record.turunan : 0;
+        const total = record ? record.total : 0;
+
+        sumInput += input;
+        sumUtama += utama;
+        sumTurunan += turunan;
+        sumTotal += total;
+
+        const yieldUtama = input > 0 ? (utama / input) : 0;
+        const yieldTurunan = input > 0 ? (turunan / input) : 0;
+        const yieldTotal = input > 0 ? (total / input) : 0;
+
+        if (input > 0) {
+          if (yieldUtama < 0.30) countOrangeUtama++;
+          else countHijauUtama++;
+
+          if (yieldTotal < 0.65) countOrangeTotal++;
+          else countHijauTotal++;
+        }
+
+        // Get notes
+        const matchedNotes = customNotes.filter((n: any) => n.tanggal === dStr && (n.mesin?.toLowerCase().replace(/\s/g, '') === normalizedTarget));
+        const customStr = matchedNotes.map((n: any) => n.note).join(' | ');
+        const downtimeStr = record?.downtime || '';
+        const noteCombined = downtimeStr ? (customStr ? `${downtimeStr} | ${customStr}` : downtimeStr) : (customStr || '');
+
+        return {
+          tanggal: dStr,
+          input,
+          utama,
+          turunan,
+          total,
+          yieldUtama,
+          yieldTurunan,
+          yieldTotal,
+          noteCombined
+        };
+      });
+
+      const akmUtama = sumInput > 0 ? (sumUtama / sumInput) : 0;
+      const akmTurunan = sumInput > 0 ? (sumTurunan / sumInput) : 0;
+      const akmTotal = sumInput > 0 ? (sumTotal / sumInput) : 0;
+
+      const perfUtama = (akmUtama / 0.30) * 100;
+      const perfTotal = (akmTotal / 0.65) * 100;
+
+      return {
+        mesin: mName,
+        dayCells,
+        akmUtama,
+        akmTurunan,
+        akmTotal,
+        perfUtama,
+        perfTotal,
+        countOrangeUtama,
+        countHijauUtama,
+        countOrangeTotal,
+        countHijauTotal
+      };
+    });
+
+    return { dates: datesToUse, machineRows };
+  }, [data, selectedMonth, selectedWeek, customNotes]);
+
+  const handleDownloadPDF = () => {
+    const doc = new jsPDF('landscape');
+    const title = `Laporan Analisa Operator - ${MONTH_NAMES[selectedMonth - 1]} 2026`;
+    doc.setFontSize(14);
     doc.text(title, 14, 15);
-    
-    doc.setFontSize(10);
-    doc.text(`Bulan: ${monthNames[selectedMonth - 1]}`, 14, 22);
 
-    const tableColumn = ["Tanggal", "Mesin", "% Utama", "% Total", "Catatan", "Akm % Utama", "Akm % Total"];
-    const tableRows: any[] = [];
+    if (viewMode === 'matrix') {
+      doc.setFontSize(10);
+      doc.text(`Week: ${selectedWeek === 'all' ? 'Semua Week' : 'Week ' + selectedWeek}`, 14, 22);
 
-    filteredData.forEach(row => {
-      const rowData = [
-        new Date(row.tanggal).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).replace(/ /g, '-'),
+      // Rendemen Utama Table
+      const datesHeaders = matrixWeekData.dates.map(d => formatDateShort(d));
+      const head1 = ["Mesin", ...datesHeaders, "Akumulasi", "Target Fix", "% Performance", "Ket Orange", "Ket Hijau"];
+
+      const bodyUtama = matrixWeekData.machineRows.map(row => [
         row.mesin,
-        formatPercent(row.yieldUtama),
-        formatPercent(row.yieldTotal),
-        row.catatan,
-        formatPercent(row.akumulasiUtama),
-        formatPercent(row.akumulasiTotal)
-      ];
-      tableRows.push(rowData);
-    });
+        ...row.dayCells.map(c => (c.yieldUtama * 100).toFixed(2) + '%'),
+        (row.akmUtama * 100).toFixed(2) + '%',
+        '30%',
+        row.perfUtama.toFixed(2) + '%',
+        row.countOrangeUtama ? `${row.countOrangeUtama} Hari` : '-',
+        row.countHijauUtama ? `${row.countHijauUtama} Hari` : '-'
+      ]);
 
-    autoTable(doc, {
-      head: [tableColumn],
-      body: tableRows,
-      startY: 28,
-      theme: 'grid',
-      headStyles: { fillColor: [79, 70, 229] }, // indigo-600
-    });
+      autoTable(doc, {
+        head: [head1],
+        body: bodyUtama,
+        startY: 28,
+        theme: 'grid',
+        headStyles: { fillColor: [16, 185, 129] },
+      });
 
-    doc.save(`Analisa_Operator_${monthNames[selectedMonth - 1]}.pdf`);
+      doc.save(`Analisa_Operator_Matrix_${MONTH_NAMES[selectedMonth - 1]}.pdf`);
+    } else {
+      const tableColumn = ["Tanggal", "Mesin", "% Utama", "% Total", "Catatan", "Akm % Utama", "Akm % Total"];
+      const tableRows: any[] = [];
+
+      filteredData.forEach(row => {
+        const rowData = [
+          formatDateShort(row.tanggal),
+          row.mesin,
+          formatPercent(row.yieldUtama),
+          formatPercent(row.yieldTotal),
+          row.catatan,
+          formatPercent(row.akumulasiUtama),
+          formatPercent(row.akumulasiTotal)
+        ];
+        tableRows.push(rowData);
+      });
+
+      autoTable(doc, {
+        head: [tableColumn],
+        body: tableRows,
+        startY: 28,
+        theme: 'grid',
+        headStyles: { fillColor: [79, 70, 229] },
+      });
+
+      doc.save(`Analisa_Operator_Detail_${MONTH_NAMES[selectedMonth - 1]}.pdf`);
+    }
   };
 
   const formatPercent = (val: number) => (val * 100).toFixed(2) + '%';
 
   return (
-    <div className="min-h-full p-5 sm:p-6 lg:p-8 overflow-y-auto">
-      <div className="max-w-7xl mx-auto space-y-6">
-        
-        {/* Header */}
-        <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xl shadow-indigo-100/20 border border-indigo-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div className="flex flex-col gap-4">
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight flex items-center gap-3">
-              <User className="w-8 h-8 text-indigo-600" />
-              Analisa Operator
-            </h1>
-            
-            
-            <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-end w-full sm:w-auto mt-2">
-              <div className="grid grid-cols-2 gap-2.5 flex-1 sm:flex-none">
-                <div className="flex flex-col gap-1 w-full sm:w-44">
-                  <label className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Tanggal</label>
-                  <select
-                    value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 shadow-sm"
-                  >
-                    <option value="all">Semua Tanggal</option>
-                    {availableDates.map(d => {
-                      const fd = new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).replace(/ /g, '-');
-                      return <option key={d} value={d}>{fd}</option>
-                    })}
-                  </select>
-                </div>
-                <div className="flex flex-col gap-1 w-full sm:w-44">
-                  <label className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Mesin</label>
-                  <select
-                    value={selectedMachine}
-                    onChange={(e) => setSelectedMachine(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 shadow-sm"
-                  >
-                    <option value="all">Semua Mesin</option>
-                    {availableMachines.map(m => (
-                      <option key={m} value={m}>{m}</option>
-                    ))}
-                  </select>
-                </div>
+    <div className="min-h-full p-3 sm:p-6 lg:p-8 overflow-y-auto bg-slate-100 font-sans">
+      <div className="max-w-[1400px] mx-auto space-y-5">
+
+        {/* Top Header Card */}
+        <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-md border border-slate-200 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-indigo-600 text-white rounded-xl shadow-md">
+                <User className="w-6 h-6" />
               </div>
-              
-              <div className="flex justify-end items-end">
-                <button
-                  onClick={handleDownloadPDF}
-                  title="Download PDF"
-                  className="flex items-center justify-center p-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md shadow-indigo-600/20 transition-all active:scale-95"
-                >
-                  <Download className="w-5 h-5" />
-                </button>
+              <div>
+                <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                  SAWMILL {MONTH_NAMES[selectedMonth - 1]?.toUpperCase()} 2026
+                </h1>
+                <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">
+                  Matriks Evaluasi & Analisa Performa Operator
+                </p>
               </div>
             </div>
-          </div>
-          <div className="flex gap-2 w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0">
-            {months.map(m => (
+
+            {/* View Mode Toggle */}
+            <div className="flex items-center gap-2 mt-2">
               <button
-                key={m}
-                onClick={() => setSelectedMonth(m)}
-                className={`px-5 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all shadow-sm ${
-                  selectedMonth === m
-                    ? 'bg-indigo-600 text-white shadow-indigo-200'
-                    : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+                onClick={() => setViewMode('matrix')}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                  viewMode === 'matrix'
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >
-                {monthNames[m - 1]}
+                <Table className="w-4 h-4" />
+                Tampilan Matriks (Spreadsheet)
               </button>
-            ))}
+              <button
+                onClick={() => setViewMode('table')}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                  viewMode === 'table'
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                <LayoutList className="w-4 h-4" />
+                Tampilan Detail & Catatan
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full lg:w-auto">
+            {/* Month Filter */}
+            <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+              {months.map(m => (
+                <button
+                  key={m}
+                  onClick={() => setSelectedMonth(m)}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                    selectedMonth === m
+                      ? 'bg-slate-900 text-white shadow-sm'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {MONTH_NAMES[m - 1]}
+                </button>
+              ))}
+            </div>
+
+            {/* Download PDF Button */}
+            <button
+              onClick={handleDownloadPDF}
+              title="Download PDF"
+              className="flex items-center justify-center p-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md shadow-indigo-600/20 transition-all active:scale-95"
+            >
+              <Download className="w-5 h-5" />
+            </button>
           </div>
         </div>
 
-
-
-                {/* Note Input Bar */}
-        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-xl shadow-indigo-100/20 border border-indigo-50 flex flex-col gap-3.5 mt-4">
+        {/* Note Input Bar */}
+        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200 flex flex-col gap-3.5">
+          <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+            <Sparkles className="w-4 h-4 text-emerald-600" />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">Form Catatan Harian Operator</h3>
+          </div>
           <div className="grid grid-cols-2 gap-2.5 w-full sm:flex sm:flex-row sm:w-auto">
             <div className="flex flex-col gap-1 w-full sm:w-48">
               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tgl Catatan</label>
-              <input 
-                type="date" 
+              <input
+                type="date"
                 value={noteTanggal}
                 onChange={e => setNoteTanggal(e.target.value)}
-                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-700"
               />
             </div>
             <div className="flex flex-col gap-1 w-full sm:w-48">
               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Mesin</label>
-              <select 
+              <select
                 value={noteMesin}
                 onChange={e => setNoteMesin(e.target.value)}
-                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-700"
               >
                 <option value="">Pilih Mesin</option>
-                {availableMachines.map(m => <option key={m} value={m}>{m}</option>)}
+                {MACHINES.map(m => <option key={m} value={m}>{m}</option>)}
               </select>
             </div>
           </div>
 
           <div className="flex flex-col gap-1 w-full">
             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Isi Catatan Harian</label>
-            <textarea 
+            <textarea
               rows={2}
               placeholder="Ketik catatan di sini..."
               value={noteText}
               onChange={e => setNoteText(e.target.value)}
-              className="px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 w-full min-h-[64px] resize-y"
+              className="px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 w-full min-h-[64px] resize-y"
             />
           </div>
 
-          <button 
+          <button
             onClick={submitNote}
             disabled={isSubmitting}
-            className="w-full sm:w-auto px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold shadow-md shadow-emerald-600/20 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full sm:w-auto px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/20 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {isSubmitting ? 'Menyimpan...' : 'Simpan Catatan'}
           </button>
         </div>
 
-        {/* Data Table */}
-        <div className="bg-white rounded-3xl shadow-xl shadow-indigo-100/20 border border-indigo-50 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="text-xs text-slate-500 uppercase bg-slate-50/80 border-b border-slate-100">
-                <tr>
-                  <th className="px-6 py-4 font-bold tracking-wider">Tanggal</th>
-                  <th className="px-6 py-4 font-bold tracking-wider">Mesin</th>
-                  <th className="px-6 py-4 font-bold tracking-wider">% Utama</th>
-                  <th className="px-6 py-4 font-bold tracking-wider">% Total</th>
-                  <th className="px-6 py-4 font-bold tracking-wider">Catatan</th>
-                  <th className="px-6 py-4 font-bold tracking-wider">Akumulasi % Utama</th>
-                  <th className="px-6 py-4 font-bold tracking-wider">Akumulasi % Total</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredData.length > 0 ? (
-                  filteredData.map((row, i) => {
-                    const formatDate = new Date(row.tanggal).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).replace(/ /g, '-');
-                    return (
-                      <tr key={i} className="hover:bg-indigo-50/30 transition-colors">
-                        <td className="px-6 py-3 font-medium text-slate-700 whitespace-nowrap">{formatDate}</td>
-                        <td className="px-6 py-3 font-bold text-slate-800">{row.mesin}</td>
-                        <td className={`px-6 py-3 font-medium ${row.yieldUtama > 0 && row.yieldUtama < 0.28 ? 'bg-red-100 text-red-800' : 'text-slate-700'}`}>
+        {/* View Mode 1: Spreadsheet Matrix View */}
+        {viewMode === 'matrix' ? (
+          <div className="space-y-6">
+
+            {/* Week Tab Navigation */}
+            {availableWeeks.length > 0 && (
+              <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                <span className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1">
+                  <Calendar className="w-3.5 h-3.5" /> Week:
+                </span>
+                {availableWeeks.map(w => (
+                  <button
+                    key={w}
+                    onClick={() => setSelectedWeek(w)}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                      selectedWeek === w
+                        ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20 border border-blue-500'
+                        : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
+                    }`}
+                  >
+                    Evaluasi Week {w}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Matrix Section 1: RENDEMEN UTAMA */}
+            <div className="bg-white rounded-xl shadow-md border border-slate-300 overflow-hidden">
+              <div className="bg-emerald-800 text-white font-extrabold text-sm uppercase tracking-wider px-4 py-2.5 flex items-center justify-between border-b border-emerald-900">
+                <span>RENDEMEN UTAMA</span>
+                <span className="text-xs text-emerald-200 font-semibold">(Target Fix: 30%)</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-center border-collapse">
+                  <thead>
+                    {/* Sub-Header Row 1: Hari */}
+                    <tr className="bg-slate-200 text-slate-800 font-bold border-b border-slate-300">
+                      <th className="p-2 border-r border-slate-300 min-w-[70px]">Mesin</th>
+                      {matrixWeekData.dates.map((dStr, idx) => {
+                        const dayName = DAY_NAMES[new Date(dStr).getDay()];
+                        return (
+                          <th key={idx} className="p-2 border-r border-slate-300 min-w-[85px]">
+                            {dayName}
+                          </th>
+                        );
+                      })}
+                      <th className="p-2 border-r border-slate-300 bg-[#00b4d8] text-white min-w-[90px]">Akumulasi</th>
+                      <th className="p-2 border-r border-slate-300 bg-[#10b981] text-white min-w-[80px]">Target Fix</th>
+                      <th className="p-2 border-r border-slate-300 bg-[#00b4d8] text-white min-w-[95px]">% Performance</th>
+                      <th className="p-2 border-r border-slate-300 bg-[#f97316] text-white min-w-[80px]">Ket Orange</th>
+                      <th className="p-2 bg-[#22c55e] text-white min-w-[80px]">Ket Hijau</th>
+                    </tr>
+
+                    {/* Sub-Header Row 2: Tanggal */}
+                    <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-300 text-[11px]">
+                      <td className="p-1.5 border-r border-slate-300">Mesin</td>
+                      {matrixWeekData.dates.map((dStr, idx) => (
+                        <td key={idx} className="p-1.5 border-r border-slate-300 whitespace-nowrap">
+                          {formatDateShort(dStr)}
+                        </td>
+                      ))}
+                      <td className="p-1.5 border-r border-slate-300 bg-cyan-100 text-cyan-900 font-bold">Akumulasi</td>
+                      <td className="p-1.5 border-r border-slate-300 bg-emerald-100 text-emerald-900 font-bold">30%</td>
+                      <td className="p-1.5 border-r border-slate-300 bg-cyan-100 text-cyan-900 font-bold">% Performance</td>
+                      <td className="p-1.5 border-r border-slate-300 bg-amber-100 text-amber-900 font-bold">&lt; 30%</td>
+                      <td className="p-1.5 bg-emerald-100 text-emerald-900 font-bold">&gt;= 30%</td>
+                    </tr>
+                  </thead>
+
+                  <tbody className="divide-y divide-slate-200">
+                    {matrixWeekData.machineRows.map((row, rIdx) => (
+                      <tr key={rIdx} className="hover:bg-slate-50 transition-colors">
+                        <td className="p-2 font-bold bg-slate-100 text-slate-800 border-r border-slate-300">{row.mesin}</td>
+                        {row.dayCells.map((cell, cIdx) => {
+                          const val = cell.yieldUtama;
+                          const formatted = (val * 100).toFixed(2) + '%';
+                          const isOrange = cell.input > 0 && val < 0.30;
+                          const isGreen = cell.input > 0 && val >= 0.30;
+
+                          return (
+                            <td
+                              key={cIdx}
+                              title={cell.noteCombined || undefined}
+                              className={`p-2 border-r border-slate-200 font-medium ${
+                                isOrange
+                                  ? 'bg-[#fde68a] text-[#78350f] font-bold border-amber-300'
+                                  : isGreen
+                                  ? 'bg-[#dcfce7] text-[#14532d] font-bold border-emerald-200'
+                                  : 'text-slate-400'
+                              }`}
+                            >
+                              {cell.input > 0 ? formatted : '0.00%'}
+                            </td>
+                          );
+                        })}
+                        <td className="p-2 font-bold bg-[#e0f2fe] text-cyan-950 border-r border-slate-300">
+                          {(row.akmUtama * 100).toFixed(2)}%
+                        </td>
+                        <td className="p-2 font-bold bg-emerald-50 text-emerald-900 border-r border-slate-300">
+                          30%
+                        </td>
+                        <td className="p-2 font-bold bg-[#e0f2fe] text-cyan-950 border-r border-slate-300">
+                          {row.perfUtama.toFixed(2)}%
+                        </td>
+                        <td className="p-2 font-bold bg-amber-50 text-amber-900 border-r border-slate-300">
+                          {row.countOrangeUtama ? `${row.countOrangeUtama}` : '-'}
+                        </td>
+                        <td className="p-2 font-bold bg-emerald-50 text-emerald-900">
+                          {row.countHijauUtama ? `${row.countHijauUtama}` : '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Matrix Section 2: RENDEMEN TURUNAN */}
+            <div className="bg-white rounded-xl shadow-md border border-slate-300 overflow-hidden">
+              <div className="bg-emerald-800 text-white font-extrabold text-sm uppercase tracking-wider px-4 py-2.5 flex items-center justify-between border-b border-emerald-900">
+                <span>RENDEMEN TURUNAN</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-center border-collapse">
+                  <thead>
+                    <tr className="bg-slate-200 text-slate-800 font-bold border-b border-slate-300">
+                      <th className="p-2 border-r border-slate-300 min-w-[70px]">Mesin</th>
+                      {matrixWeekData.dates.map((dStr, idx) => {
+                        const dayName = DAY_NAMES[new Date(dStr).getDay()];
+                        return (
+                          <th key={idx} className="p-2 border-r border-slate-300 min-w-[85px]">
+                            {dayName}
+                          </th>
+                        );
+                      })}
+                      <th className="p-2 bg-[#00b4d8] text-white min-w-[90px]">Akumulasi</th>
+                    </tr>
+
+                    <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-300 text-[11px]">
+                      <td className="p-1.5 border-r border-slate-300">Mesin</td>
+                      {matrixWeekData.dates.map((dStr, idx) => (
+                        <td key={idx} className="p-1.5 border-r border-slate-300 whitespace-nowrap">
+                          {formatDateShort(dStr)}
+                        </td>
+                      ))}
+                      <td className="p-1.5 bg-cyan-100 text-cyan-900 font-bold">Akumulasi</td>
+                    </tr>
+                  </thead>
+
+                  <tbody className="divide-y divide-slate-200">
+                    {matrixWeekData.machineRows.map((row, rIdx) => (
+                      <tr key={rIdx} className="hover:bg-slate-50 transition-colors">
+                        <td className="p-2 font-bold bg-slate-100 text-slate-800 border-r border-slate-300">{row.mesin}</td>
+                        {row.dayCells.map((cell, cIdx) => {
+                          const formatted = (cell.yieldTurunan * 100).toFixed(2) + '%';
+                          return (
+                            <td key={cIdx} className="p-2 border-r border-slate-200 font-medium text-slate-700">
+                              {cell.input > 0 ? formatted : '0.00%'}
+                            </td>
+                          );
+                        })}
+                        <td className="p-2 font-bold bg-[#e0f2fe] text-cyan-950">
+                          {(row.akmTurunan * 100).toFixed(2)}%
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Matrix Section 3: RENDEMEN TOTAL */}
+            <div className="bg-white rounded-xl shadow-md border border-slate-300 overflow-hidden">
+              <div className="bg-emerald-800 text-white font-extrabold text-sm uppercase tracking-wider px-4 py-2.5 flex items-center justify-between border-b border-emerald-900">
+                <span>RENDEMEN TOTAL</span>
+                <span className="text-xs text-emerald-200 font-semibold">(Target Fix: 65%)</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-center border-collapse">
+                  <thead>
+                    <tr className="bg-slate-200 text-slate-800 font-bold border-b border-slate-300">
+                      <th className="p-2 border-r border-slate-300 min-w-[70px]">Mesin</th>
+                      {matrixWeekData.dates.map((dStr, idx) => {
+                        const dayName = DAY_NAMES[new Date(dStr).getDay()];
+                        return (
+                          <th key={idx} className="p-2 border-r border-slate-300 min-w-[85px]">
+                            {dayName}
+                          </th>
+                        );
+                      })}
+                      <th className="p-2 border-r border-slate-300 bg-[#00b4d8] text-white min-w-[90px]">Akumulasi</th>
+                      <th className="p-2 border-r border-slate-300 bg-[#10b981] text-white min-w-[80px]">Target Fix</th>
+                      <th className="p-2 border-r border-slate-300 bg-[#00b4d8] text-white min-w-[95px]">% Performance</th>
+                      <th className="p-2 border-r border-slate-300 bg-[#f97316] text-white min-w-[80px]">Ket Orange</th>
+                      <th className="p-2 bg-[#22c55e] text-white min-w-[80px]">Ket Hijau</th>
+                    </tr>
+
+                    <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-300 text-[11px]">
+                      <td className="p-1.5 border-r border-slate-300">Mesin</td>
+                      {matrixWeekData.dates.map((dStr, idx) => (
+                        <td key={idx} className="p-1.5 border-r border-slate-300 whitespace-nowrap">
+                          {formatDateShort(dStr)}
+                        </td>
+                      ))}
+                      <td className="p-1.5 border-r border-slate-300 bg-cyan-100 text-cyan-900 font-bold">Akumulasi</td>
+                      <td className="p-1.5 border-r border-slate-300 bg-emerald-100 text-emerald-900 font-bold">65%</td>
+                      <td className="p-1.5 border-r border-slate-300 bg-cyan-100 text-cyan-900 font-bold">% Performance</td>
+                      <td className="p-1.5 border-r border-slate-300 bg-amber-100 text-amber-900 font-bold">&lt; 65%</td>
+                      <td className="p-1.5 bg-emerald-100 text-emerald-900 font-bold">&gt;= 65%</td>
+                    </tr>
+                  </thead>
+
+                  <tbody className="divide-y divide-slate-200">
+                    {matrixWeekData.machineRows.map((row, rIdx) => (
+                      <tr key={rIdx} className="hover:bg-slate-50 transition-colors">
+                        <td className="p-2 font-bold bg-slate-100 text-slate-800 border-r border-slate-300">{row.mesin}</td>
+                        {row.dayCells.map((cell, cIdx) => {
+                          const val = cell.yieldTotal;
+                          const formatted = (val * 100).toFixed(2) + '%';
+                          const isOrange = cell.input > 0 && val < 0.65;
+                          const isGreen = cell.input > 0 && val >= 0.65;
+
+                          return (
+                            <td
+                              key={cIdx}
+                              title={cell.noteCombined || undefined}
+                              className={`p-2 border-r border-slate-200 font-medium ${
+                                isOrange
+                                  ? 'bg-[#fde68a] text-[#78350f] font-bold border-amber-300'
+                                  : isGreen
+                                  ? 'bg-[#dcfce7] text-[#14532d] font-bold border-emerald-200'
+                                  : 'text-slate-400'
+                              }`}
+                            >
+                              {cell.input > 0 ? formatted : '0.00%'}
+                            </td>
+                          );
+                        })}
+                        <td className="p-2 font-bold bg-[#e0f2fe] text-cyan-950 border-r border-slate-300">
+                          {(row.akmTotal * 100).toFixed(2)}%
+                        </td>
+                        <td className="p-2 font-bold bg-emerald-50 text-emerald-900 border-r border-slate-300">
+                          65%
+                        </td>
+                        <td className="p-2 font-bold bg-[#e0f2fe] text-cyan-950 border-r border-slate-300">
+                          {row.perfTotal.toFixed(2)}%
+                        </td>
+                        <td className="p-2 font-bold bg-amber-50 text-amber-900 border-r border-slate-300">
+                          {row.countOrangeTotal ? `${row.countOrangeTotal}` : '-'}
+                        </td>
+                        <td className="p-2 font-bold bg-emerald-50 text-emerald-900">
+                          {row.countHijauTotal ? `${row.countHijauTotal}` : '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        ) : (
+          /* View Mode 2: Detailed Line-By-Line Table View */
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden space-y-4 p-4">
+            <div className="grid grid-cols-2 gap-2.5 w-full sm:flex sm:flex-row sm:w-auto">
+              <div className="flex flex-col gap-1 w-full sm:w-44">
+                <label className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Tanggal</label>
+                <select
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700"
+                >
+                  <option value="all">Semua Tanggal</option>
+                  {availableDates.map(d => (
+                    <option key={d} value={d}>{formatDateShort(d)}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1 w-full sm:w-44">
+                <label className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Mesin</label>
+                <select
+                  value={selectedMachine}
+                  onChange={(e) => setSelectedMachine(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700"
+                >
+                  <option value="all">Semua Mesin</option>
+                  {availableMachines.map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left border-collapse">
+                <thead className="text-[11px] text-slate-600 uppercase bg-slate-100 border-b border-slate-200 font-bold">
+                  <tr>
+                    <th className="px-4 py-3 border-r border-slate-200">Tanggal</th>
+                    <th className="px-4 py-3 border-r border-slate-200">Mesin</th>
+                    <th className="px-4 py-3 border-r border-slate-200">% Utama</th>
+                    <th className="px-4 py-3 border-r border-slate-200">% Total</th>
+                    <th className="px-4 py-3 border-r border-slate-200">Catatan</th>
+                    <th className="px-4 py-3 border-r border-slate-200">Akumulasi % Utama</th>
+                    <th className="px-4 py-3">Akumulasi % Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredData.length > 0 ? (
+                    filteredData.map((row, i) => (
+                      <tr key={i} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-4 py-2.5 font-medium text-slate-700 whitespace-nowrap border-r border-slate-100">
+                          {formatDateShort(row.tanggal)}
+                        </td>
+                        <td className="px-4 py-2.5 font-bold text-slate-800 border-r border-slate-100">{row.mesin}</td>
+                        <td className={`px-4 py-2.5 font-medium border-r border-slate-100 ${row.yieldUtama > 0 && row.yieldUtama < 0.28 ? 'bg-amber-100 text-amber-900 font-bold' : 'text-slate-700'}`}>
                           {formatPercent(row.yieldUtama)}
                         </td>
-                        <td className={`px-6 py-3 font-medium ${row.yieldTotal > 0 && row.yieldTotal <= 0.64 ? 'bg-yellow-100 text-yellow-800' : 'text-slate-700'}`}>
+                        <td className={`px-4 py-2.5 font-medium border-r border-slate-100 ${row.yieldTotal > 0 && row.yieldTotal <= 0.64 ? 'bg-amber-100 text-amber-900 font-bold' : 'text-slate-700'}`}>
                           {formatPercent(row.yieldTotal)}
                         </td>
-                        <td className="px-6 py-3 text-slate-600 max-w-xs truncate" title={row.catatan}>{row.catatan}</td>
-                        <td className="px-6 py-3 font-medium text-indigo-700">{formatPercent(row.akumulasiUtama)}</td>
-                        <td className="px-6 py-3 font-medium text-teal-700">{formatPercent(row.akumulasiTotal)}</td>
+                        <td className="px-4 py-2.5 text-slate-600 max-w-xs truncate border-r border-slate-100" title={row.catatan}>{row.catatan || '-'}</td>
+                        <td className="px-4 py-2.5 font-bold text-indigo-700 border-r border-slate-100">{formatPercent(row.akumulasiUtama)}</td>
+                        <td className="px-4 py-2.5 font-bold text-teal-700">{formatPercent(row.akumulasiTotal)}</td>
                       </tr>
-                    );
-                  })
-                ) : (
-                  <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center text-slate-500 font-medium">
-                      Tidak ada data untuk bulan ini
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-8 text-center text-slate-500 font-medium">
+                        Tidak ada data untuk filter yang dipilih
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        )}
 
       </div>
     </div>
