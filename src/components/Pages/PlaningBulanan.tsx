@@ -46,6 +46,9 @@ export function PlaningBulanan() {
       // Process WOS Sawmill (Target)
       const wosTargets: any[] = [];
       let isDataSection = false;
+      let lastNo = '';
+      let lastBuyer = '';
+
       for (let i = 0; i < wosRes.length; i++) {
         const row = wosRes[i];
         if (!row || row.length === 0) continue;
@@ -62,15 +65,27 @@ export function PlaningBulanan() {
         if (isDataSection && (col1 !== "" || col2 !== "")) {
           if (col0 === '*' || col0.toLowerCase().includes('total')) continue;
           
+          const no = col0 !== '' ? col0 : lastNo;
+          const buyer = col1 !== '' ? col1 : lastBuyer;
+
+          lastNo = no;
+          lastBuyer = buyer;
+
+          // Skip rows where ST or NAMA BUYER indicates 'OK'
+          const isOk = col2.toLowerCase().startsWith('ok') || col1.toLowerCase().startsWith('ok');
+          if (isOk) continue;
+
           let vol = parseFloat(col3.replace(',', '.'));
           if (isNaN(vol)) vol = 0;
 
-          wosTargets.push({
-            no: col0,
-            buyer: col1,
-            st: col2,
-            target: vol
-          });
+          if (vol > 0 && col2 !== '') {
+            wosTargets.push({
+              no,
+              buyer,
+              st: col2,
+              target: vol
+            });
+          }
         }
       }
 
@@ -145,7 +160,7 @@ export function PlaningBulanan() {
       }
 
       // Merge data
-      const finalData: PlaningRow[] = wosTargets.map(wos => {
+      let finalData: PlaningRow[] = wosTargets.map(wos => {
         // Try to match WOS to INV
         // WOS buyer usually TK011802, INV JO usually S-TK011802
         // WOS st usually 55X215X3400
@@ -187,9 +202,6 @@ export function PlaningBulanan() {
 
         if (matchedRow) {
            // Calculate conversion factor BTG to M3
-           // Assuming it's in BTG for now, but wait, maybe the user just wants the exact values.
-           // Actually, let's just use the exact values from INV (it might be BTG, but user says 'mengurangi beban M3 atau BTG')
-           // We should try to convert to M3 if possible. T * L * P / 10^9
            const ukuran = (matchedRow[colUkuran] || '').toString().trim();
            const panjang = (matchedRow[colPanjang] || '').toString().trim();
            
@@ -204,7 +216,7 @@ export function PlaningBulanan() {
              const idx = dateColIndices[d];
              const rawVal = parseFloat((matchedRow[idx] || '').toString().replace(',', '.'));
              if (!isNaN(rawVal)) {
-                // If it's BTG, convert to M3. Let's just assume factor conversion
+                // If it's BTG, convert to M3
                 const m3Val = rawVal * factor;
                 dailyResults[d] = m3Val;
                 totalSelesai += m3Val;
@@ -222,6 +234,9 @@ export function PlaningBulanan() {
           kekurangan: Math.max(0, wos.target - totalSelesai)
         };
       });
+
+      // Filter to only show unfinished items
+      finalData = finalData.filter(row => row.kekurangan > 0.05);
 
       setDates(last7Dates);
       setData(finalData);
