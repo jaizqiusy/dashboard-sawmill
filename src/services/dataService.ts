@@ -313,6 +313,7 @@ export interface MachineRanking {
   score?: number;
   pilotLadder?: number;
   utamaNonPilotLadder?: number;
+  yieldTotal?: number;
 }
 
 export function getAvailablePeriods(data: ProductionData[]) {
@@ -485,13 +486,18 @@ export function getMachineRankings(data: ProductionData[], periodType: 'weekly' 
   }));
 
   return parsed.map(m => {
-    // perhitungan bobot rendemen utama x 50%
-    const scoreYield = (m.yield * 100) * 0.5;
-    // perhitungan bobot output total x 50%
-    const scoreTotal = m.total * 0.5;
+    // perhitungan bobot rendemen utama x 40%
+    const scoreUtama = (m.yield * 100) * 0.4;
     
-    const score = scoreYield + scoreTotal;
-    return { ...m, score };
+    // perhitungan bobot rendemen total x 30%
+    const yieldTotalPercent = m.input > 0 ? (m.total / m.input) * 100 : 0;
+    const scoreYTotal = yieldTotalPercent * 0.3;
+    
+    // perhitungan bobot output total x 30%
+    const scoreOutput = m.total * 0.3;
+    
+    const score = scoreUtama + scoreYTotal + scoreOutput;
+    return { ...m, yieldTotal: yieldTotalPercent, score };
   }).sort((a, b) => (b.score || 0) - (a.score || 0));
 }
 
