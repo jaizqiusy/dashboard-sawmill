@@ -11,7 +11,8 @@ export function getApiUrl(path: string): string {
   if (
     hp === 'localhost' || 
     hp === '127.0.0.1' || 
-    hp.endsWith('.run.app')
+    hp.endsWith('.run.app') ||
+    hp.endsWith('.vercel.app')
   ) {
     return path;
   }
