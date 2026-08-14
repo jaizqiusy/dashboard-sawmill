@@ -52,17 +52,30 @@ function parseOperatorCSV(csv: string): OperatorData[] {
 }
 
 export async function fetchProductionDataFromSheet(): Promise<ProductionData[]> {
+  const staticData = parseCSV(RAW_CSV_DATA);
   const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=DATABASE%20APPSCRIPT`;
   
   try {
     const response = await fetch(url);
     if (!response.ok) throw new Error('Failed to fetch data');
     const csvData = await response.text();
-    return parseCSV(csvData);
+    const liveData = parseCSV(csvData);
+    
+    // Merge live data with static baseline data (live overrides identical date + machine)
+    const map = new Map<string, ProductionData>();
+    staticData.forEach(d => {
+      const key = `${(d.tanggal || '').trim()}_${normalizeMachineName(d.mesin)}`;
+      map.set(key, d);
+    });
+    liveData.forEach(d => {
+      const key = `${(d.tanggal || '').trim()}_${normalizeMachineName(d.mesin)}`;
+      map.set(key, d);
+    });
+    return Array.from(map.values());
   } catch (error) {
     console.error('Error fetching production data:', error);
     // Fallback to static data on error
-    return parseCSV(RAW_CSV_DATA);
+    return staticData;
   }
 }
 
@@ -328,25 +341,22 @@ export function getAvailablePeriods(data: ProductionData[]) {
       if (d.tanggal) dates.add(d.tanggal);
     }
   });
-  const maxWeek = weeks.size > 0 ? Math.max(...Array.from(weeks)) : 0;
-  const allWeeks = [];
-  if (maxWeek > 0) {
-    for (let i = maxWeek; i >= 1; i--) {
-      allWeeks.push(i);
-    }
+
+  // Ensure all active months (Bulan 1 s.d. Bulan 8, including Bulan 6 and Bulan 7)
+  // and all weeks (Minggu 1 s.d. Minggu 33+) are present and selectable in filters
+  const maxMonth = Math.max(8, ...Array.from(months));
+  for (let m = 1; m <= maxMonth; m++) {
+    months.add(m);
   }
 
-  const maxMonth = months.size > 0 ? Math.max(...Array.from(months)) : 0;
-  const allMonths = [];
-  if (maxMonth > 0) {
-    for (let i = maxMonth; i >= 1; i--) {
-      allMonths.push(i);
-    }
+  const maxWeek = Math.max(33, ...Array.from(weeks));
+  for (let w = 1; w <= maxWeek; w++) {
+    weeks.add(w);
   }
 
   return {
-    weeks: allWeeks.length > 0 ? allWeeks : Array.from(weeks).sort((a, b) => b - a),
-    months: allMonths.length > 0 ? allMonths : Array.from(months).sort((a, b) => b - a),
+    weeks: Array.from(weeks).sort((a, b) => b - a),
+    months: Array.from(months).sort((a, b) => b - a),
     dates: Array.from(dates).sort((a, b) => b.localeCompare(a))
   };
 }
@@ -573,8 +583,20 @@ export async function fetchOperatorData(): Promise<OperatorData[]> {
 }
 
 export async function fetchProductionData(): Promise<ProductionData[]> {
+  const staticData = parseCSV(RAW_CSV_DATA);
   const fsData = await fetchChunkedData<ProductionData>('production');
-  if (fsData) return fsData;
+  if (fsData && fsData.length > 0) {
+    const map = new Map<string, ProductionData>();
+    staticData.forEach(d => {
+      const key = `${(d.tanggal || '').trim()}_${normalizeMachineName(d.mesin)}`;
+      map.set(key, d);
+    });
+    fsData.forEach(d => {
+      const key = `${(d.tanggal || '').trim()}_${normalizeMachineName(d.mesin)}`;
+      map.set(key, d);
+    });
+    return Array.from(map.values());
+  }
   return fetchProductionDataFromSheet();
 }
 

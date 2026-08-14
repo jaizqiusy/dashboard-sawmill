@@ -50,12 +50,40 @@ const getDefaultSvgAvatar = (mesin: string, name: string) => {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 };
 
+const INDONESIAN_MONTH_NAMES: Record<number, string> = {
+  1: 'Januari',
+  2: 'Februari',
+  3: 'Maret',
+  4: 'April',
+  5: 'Mei',
+  6: 'Juni',
+  7: 'Juli',
+  8: 'Agustus',
+  9: 'September',
+  10: 'Oktober',
+  11: 'November',
+  12: 'Desember'
+};
+
 export function RankingPage({ data, operatorData }: { data: any[], operatorData?: any[] }) {
   const [activeSubTab, setActiveSubTab] = useState<'ranks' | 'realtime'>('ranks');
-  const [periodType, setPeriodType] = useState('monthly');
+  const [periodType, setPeriodType] = useState<'weekly' | 'monthly'>('monthly');
   const periods = React.useMemo(() => getAvailablePeriods(data), [data]);
   const [periodValue, setPeriodValue] = useState(periods.months[0] || 0);
   const [selectedOperator, setSelectedOperator] = useState<any>(null);
+
+  // Synchronize periodValue when periodType or periods data changes
+  React.useEffect(() => {
+    if (periodType === 'monthly') {
+      if (periods.months.length > 0 && (!periodValue || !periods.months.includes(periodValue))) {
+        setPeriodValue(periods.months[0]);
+      }
+    } else if (periodType === 'weekly') {
+      if (periods.weeks.length > 0 && (!periodValue || !periods.weeks.includes(periodValue))) {
+        setPeriodValue(periods.weeks[0]);
+      }
+    }
+  }, [periods, periodType, periodValue]);
 
   const leaderboardRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -359,6 +387,12 @@ export function RankingPage({ data, operatorData }: { data: any[], operatorData?
   const top3 = React.useMemo(() => rankings.slice(0, 3), [rankings]);
   const rest = React.useMemo(() => rankings.slice(3, 8), [rankings]); // top 8
 
+  const activeOperatorData = React.useMemo(() => {
+    if (!selectedOperator) return null;
+    const currentRankItem = rankings.find(r => r.mesin === selectedOperator.mesin);
+    return currentRankItem || selectedOperator;
+  }, [selectedOperator, rankings]);
+
   const avatars: Record<string, { name: string; photoUrl?: string }> = React.useMemo(() => {
     const base: Record<string, { name: string; photoUrl?: string }> = {
       'BS 1': { name: 'Ahmad Khudlori', photoUrl: 'https://lh3.googleusercontent.com/d/1WnWk5nAfy21nGhcSXoSGnUapvOGQDWWQ' },
@@ -530,7 +564,9 @@ export function RankingPage({ data, operatorData }: { data: any[], operatorData?
                 onChange={(e) => setPeriodValue(parseInt(e.target.value))}
               >
                 {periodType === 'monthly' ? periods.months.map(m => (
-                  <option key={m} value={m} className="bg-[#0f172a]">Bulan {m}</option>
+                  <option key={m} value={m} className="bg-[#0f172a]">
+                    Bulan {m} ({INDONESIAN_MONTH_NAMES[m] || `Bulan ${m}`})
+                  </option>
                 )) : periods.weeks.map(w => (
                   <option key={w} value={w} className="bg-[#0f172a]">Minggu {w}</option>
                 ))}
@@ -617,9 +653,7 @@ export function RankingPage({ data, operatorData }: { data: any[], operatorData?
         </div>
       ) : (
         <BsAchievementUpdate />
-      )}
-
-      {selectedOperator && (
+      )}      {activeOperatorData && (
         <div 
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm transition-all"
           onClick={closeProfile}
@@ -642,11 +676,11 @@ export function RankingPage({ data, operatorData }: { data: any[], operatorData?
               <div className="relative mb-5 sm:mb-6 flex flex-col items-center">
                 <label 
                   className="w-40 h-40 sm:w-56 sm:h-56 md:w-64 md:h-64 rounded-full overflow-hidden shadow-xl border-4 sm:border-8 border-slate-50 bg-slate-100 flex items-center justify-center relative cursor-pointer group"
-                  title={avatarLocks[selectedOperator.mesin] ? "Foto Terkunci. Klik gembok di bawah untuk Membuka." : "Klik untuk mengubah foto"}
+                  title={avatarLocks[activeOperatorData.mesin] ? "Foto Terkunci. Klik gembok di bawah untuk Membuka." : "Klik untuk mengubah foto"}
                 >
-                    <img
-                      src={getAvatarImage(selectedOperator.mesin)}
-                      alt={selectedOperator.mesin}
+                    <img 
+                      src={getAvatarImage(activeOperatorData.mesin)} 
+                      alt={activeOperatorData.mesin} 
                       referrerPolicy="no-referrer"
                       className="w-full h-full object-cover object-center"
                       onError={handleImageError}
@@ -656,7 +690,7 @@ export function RankingPage({ data, operatorData }: { data: any[], operatorData?
                       className="text-slate-300 absolute fallback-icon" 
                       style={{ display: 'none' }}
                     />
-                    {!avatarLocks[selectedOperator.mesin] ? (
+                    {!avatarLocks[activeOperatorData.mesin] ? (
                       <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center">
                         <span className="text-white font-bold text-base sm:text-lg drop-shadow-md">Ganti Foto</span>
                         <span className="text-slate-200 text-xs sm:text-sm mt-1">Klik untuk unggah</span>
@@ -672,16 +706,16 @@ export function RankingPage({ data, operatorData }: { data: any[], operatorData?
                       accept="image/*" 
                       className="hidden" 
                       onClick={(e) => {
-                        if (avatarLocks[selectedOperator.mesin]) {
+                        if (avatarLocks[activeOperatorData.mesin]) {
                           e.preventDefault();
-                          alert(`Foto saat ini sedang dikunci. Silakan klik tombol gembok gembok untuk Membuka.`);
+                          alert(`Foto saat ini sedang dikunci. Silakan klik tombol gembok untuk Membuka.`);
                         } else {
                           e.stopPropagation();
                         }
                       }}
                       onChange={(e) => {
                           if (e.target.files?.[0]) {
-                              handleAvatarUpload(selectedOperator.mesin, e.target.files[0]);
+                              handleAvatarUpload(activeOperatorData.mesin, e.target.files[0]);
                           }
                       }} 
                     />
@@ -690,34 +724,34 @@ export function RankingPage({ data, operatorData }: { data: any[], operatorData?
                 {/* Padlock button under the avatar circle inside modal */}
                 <button
                   type="button"
-                  onClick={(e) => { e.stopPropagation(); toggleLock(selectedOperator.mesin); }}
+                  onClick={(e) => { e.stopPropagation(); toggleLock(activeOperatorData.mesin); }}
                   className={cn(
                     "absolute bottom-1 sm:bottom-2 right-1 sm:right-2 w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-95 border",
-                    avatarLocks[selectedOperator.mesin] 
+                    avatarLocks[activeOperatorData.mesin] 
                       ? "bg-slate-900 border-slate-700 text-amber-400" 
                       : "bg-white border-slate-200 text-slate-500 hover:text-slate-900"
                   )}
-                  title={avatarLocks[selectedOperator.mesin] ? "Foto terkunci. Klik untuk Buka Kunci" : "Klik untuk Mengunci Foto"}
+                  title={avatarLocks[activeOperatorData.mesin] ? "Foto terkunci. Klik untuk Buka Kunci" : "Klik untuk Mengunci Foto"}
                 >
-                  {avatarLocks[selectedOperator.mesin] ? <Lock className="w-4 h-4 sm:w-4.5 sm:h-4.5" /> : <Unlock className="w-4 h-4 sm:w-4.5 sm:h-4.5" />}
+                  {avatarLocks[activeOperatorData.mesin] ? <Lock className="w-4 h-4 sm:w-4.5 sm:h-4.5" /> : <Unlock className="w-4 h-4 sm:w-4.5 sm:h-4.5" />}
                 </button>
               </div>
 
               <div className="mt-1 mb-4 flex flex-col items-center gap-1.5 w-full">
                 <label className={cn(
                   "px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl font-bold text-[10px] sm:text-xs uppercase tracking-wider cursor-pointer shadow-xs border transition-colors flex items-center gap-1.5",
-                  avatarLocks[selectedOperator.mesin]
+                  avatarLocks[activeOperatorData.mesin]
                     ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
                     : "bg-blue-600 hover:bg-blue-700 text-white border-blue-500"
                 )}>
-                  {avatarLocks[selectedOperator.mesin] ? <Lock className="w-3.5 h-3.5" /> : <Upload className="w-3.5 h-3.5" />}
-                  {avatarLocks[selectedOperator.mesin] ? 'Foto Terkunci' : 'Unggah Foto Operator'}
+                  {avatarLocks[activeOperatorData.mesin] ? <Lock className="w-3.5 h-3.5" /> : <Upload className="w-3.5 h-3.5" />}
+                  {avatarLocks[activeOperatorData.mesin] ? 'Foto Terkunci' : 'Unggah Foto Operator'}
                   <input 
                     type="file" 
                     accept="image/*" 
                     className="hidden" 
                     onClick={(e) => {
-                      if (avatarLocks[selectedOperator.mesin]) {
+                      if (avatarLocks[activeOperatorData.mesin]) {
                         e.preventDefault();
                         alert(`Gagal: Foto dikunci. Klik tombol gembok di sebelah kanan bawah foto untuk membuka kunci.`);
                       } else {
@@ -726,31 +760,76 @@ export function RankingPage({ data, operatorData }: { data: any[], operatorData?
                     }}
                     onChange={(e) => {
                         if (e.target.files?.[0]) {
-                            handleAvatarUpload(selectedOperator.mesin, e.target.files[0]);
+                            handleAvatarUpload(activeOperatorData.mesin, e.target.files[0]);
                         }
                     }} 
                   />
                 </label>
                 <p className="text-[9px] sm:text-[10px] text-slate-500 font-semibold leading-none text-center">
-                  {avatarLocks[selectedOperator.mesin] ? 'Keamanan Aktif (Buka gembok untuk mengubah)' : 'Foto otomatis dikunci setelah Anda unggah'}
+                  {avatarLocks[activeOperatorData.mesin] ? 'Keamanan Aktif (Buka gembok untuk mengubah)' : 'Foto otomatis dikunci setelah Anda unggah'}
                 </p>
               </div>
               
-              <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 mb-2 text-center">
-                {avatars[selectedOperator.mesin]?.name || selectedOperator.mesin}
+              <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 mb-1 text-center">
+                {avatars[activeOperatorData.mesin]?.name || activeOperatorData.mesin}
               </h3>
-              <p className="text-xs sm:text-sm font-semibold text-blue-700 bg-blue-50 px-4 py-1.5 rounded-xl mb-5 sm:mb-6 text-center leading-none">
-                Operator Produksi ({selectedOperator.mesin})
-              </p>
-              
-              <div className="flex flex-col gap-2.5 w-full bg-slate-50 p-3.5 sm:p-4 rounded-2xl border border-slate-100">
-                <div className="flex justify-between items-center">
-                    <span className="text-slate-500 text-xs sm:text-sm font-medium">Pencapaian Yield</span>
-                    <span className="font-bold text-slate-800 text-sm sm:text-lg">{(selectedOperator.yield * 100).toFixed(1)}%</span>
+              <div className="flex flex-wrap items-center justify-center gap-1.5 mb-4">
+                <span className="text-xs font-semibold text-blue-700 bg-blue-50 px-3 py-1 rounded-lg">
+                  Operator {activeOperatorData.mesin} ({activeOperatorData.line || 'Line BS'})
+                </span>
+                <span className="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1 rounded-lg">
+                  Peringkat #{rankings.findIndex(r => r.mesin === activeOperatorData.mesin) + 1}
+                </span>
+                <span className="text-xs font-medium text-slate-600 bg-slate-100 px-3 py-1 rounded-lg">
+                  {periodType === 'monthly' ? `Bulan ${periodValue} (${INDONESIAN_MONTH_NAMES[periodValue] || `Bulan ${periodValue}`})` : `Minggu ${periodValue}`}
+                </span>
+              </div>
+
+              {/* Total Score Banner */}
+              <div className="w-full bg-gradient-to-r from-amber-500/10 via-amber-500/15 to-amber-500/10 border border-amber-300/60 rounded-2xl p-3 mb-3 text-center">
+                <div className="text-[10px] sm:text-xs uppercase font-extrabold tracking-wider text-amber-900">Total Skor Peringkat</div>
+                <div className="text-2xl sm:text-3xl font-black text-amber-600 tracking-tight mt-0.5">
+                  {(activeOperatorData.score || 0).toFixed(1)}
                 </div>
-                <div className="flex justify-between items-center">
-                    <span className="text-slate-500 text-xs sm:text-sm font-medium">Total Produksi</span>
-                    <span className="font-bold text-slate-800 text-sm sm:text-lg">{selectedOperator.total.toLocaleString('id-ID', { maximumFractionDigits: 1 })} M³</span>
+                <div className="text-[9px] sm:text-[10px] text-amber-800/80 font-medium mt-1">
+                  (Rendemen Utama 40% + Rendemen Total 30% + Output Total 30%)
+                </div>
+              </div>
+              
+              {/* Detailed Performance Metrics */}
+              <div className="flex flex-col gap-2 w-full bg-slate-50 p-3.5 sm:p-4 rounded-2xl border border-slate-100 text-xs sm:text-sm">
+                <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
+                  <span className="text-slate-600 font-medium">Rendemen Utama (Bobot 40%)</span>
+                  <span className="font-bold text-slate-900">{(activeOperatorData.yield * 100).toFixed(1)}%</span>
+                </div>
+                <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
+                  <span className="text-slate-600 font-medium">Rendemen Total (Bobot 30%)</span>
+                  <span className="font-bold text-slate-900">
+                    {(activeOperatorData.yieldTotal !== undefined 
+                      ? activeOperatorData.yieldTotal 
+                      : (activeOperatorData.input > 0 ? (activeOperatorData.total / activeOperatorData.input) * 100 : 0)
+                    ).toFixed(1)}%
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
+                  <span className="text-slate-600 font-medium">Output Total (Bobot 30%)</span>
+                  <span className="font-bold text-slate-900">{activeOperatorData.total.toLocaleString('id-ID', { maximumFractionDigits: 1 })} M³</span>
+                </div>
+                <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
+                  <span className="text-slate-600 font-medium">Input Log Kayu</span>
+                  <span className="font-semibold text-slate-800">{activeOperatorData.input.toLocaleString('id-ID', { maximumFractionDigits: 1 })} M³</span>
+                </div>
+                <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
+                  <span className="text-slate-600 font-medium">Output Kayu Utama</span>
+                  <span className="font-semibold text-slate-800">{activeOperatorData.utama.toLocaleString('id-ID', { maximumFractionDigits: 1 })} M³</span>
+                </div>
+                <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
+                  <span className="text-slate-600 font-medium">Output Kayu Turunan</span>
+                  <span className="font-semibold text-slate-800">{activeOperatorData.turunan.toLocaleString('id-ID', { maximumFractionDigits: 1 })} M³</span>
+                </div>
+                <div className="flex justify-between items-center py-1">
+                  <span className="text-slate-600 font-medium">Output Kayu Lokal</span>
+                  <span className="font-semibold text-slate-800">{activeOperatorData.lokal.toLocaleString('id-ID', { maximumFractionDigits: 1 })} M³</span>
                 </div>
               </div>
             </div>
