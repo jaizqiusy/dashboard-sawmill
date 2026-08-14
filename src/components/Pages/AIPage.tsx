@@ -141,13 +141,16 @@ export function AIPage({ data }: { data: ProductionData[] }) {
         }),
       });
 
-      if (!response.ok) throw new Error('Gagal memproses pesan');
-      
       const responseData = await response.json();
+
+      if (!response.ok) {
+        throw new Error(responseData.error || `Gagal memproses pesan: ${response.status}`);
+      }
+      
       setChatHistory(prev => [...prev, { role: 'model', content: responseData.reply }]);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      setChatHistory(prev => [...prev, { role: 'model', content: 'Maaf, terjadi kesalahan saat menghubungi AI.' }]);
+      setChatHistory(prev => [...prev, { role: 'model', content: error.message || 'Maaf, terjadi kesalahan saat menghubungi AI.' }]);
     } finally {
       setIsLoading(false);
     }

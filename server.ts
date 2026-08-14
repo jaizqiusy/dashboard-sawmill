@@ -1,6 +1,8 @@
 import express from "express";
 import path from "path";
 import fs from "fs";
+import dotenv from "dotenv";
+dotenv.config({ override: true });
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 
@@ -105,9 +107,14 @@ async function startServer() {
   // API Route for Gemini
   app.post("/api/chat", async (req, res) => {
     try {
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey || apiKey === "MY_GEMINI_API_KEY") {
+        return res.status(401).json({ error: "API Key Gemini belum dikonfigurasi atau tidak valid. Silakan atur GEMINI_API_KEY di menu Settings > Secrets." });
+      }
+
       const { message, context } = req.body;
       const ai = new GoogleGenAI({ 
-        apiKey: process.env.GEMINI_API_KEY,
+        apiKey,
         httpOptions: {
           headers: {
             'User-Agent': 'aistudio-build',
@@ -116,14 +123,14 @@ async function startServer() {
       });
       
       const response = await ai.models.generateContent({
-        model: "gemini-2.0-flash",
+        model: "gemini-3.5-flash-lite",
         contents: `You are an AI assistant for a sawmill operations dashboard. Respond in Indonesian. Keep responses helpful, concise, and professional.\n\nContext:\n${JSON.stringify(context)}\n\nUser: ${message}`,
       });
 
       res.json({ reply: response.text });
-    } catch (error) {
+    } catch (error: any) {
       console.error("AI chat error:", error);
-      res.status(500).json({ error: "Gagal menghubungkan ke AI." });
+      res.status(500).json({ error: error.message || "Gagal menghubungkan ke AI." });
     }
   });
 
