@@ -91,7 +91,12 @@ export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
     return () => unsubscribe();
   }, []);
 
-  const ALLOWED_EMAILS = ['jaizqiusy@gmail.com', 'chamdan918@gmail.com', 'jarmoyo121095@gmail.com'];
+  const ALLOWED_EMAILS = [
+    'jaizqiusy@gmail.com',
+    'chamdan918@gmail.com',
+    'jarmoyo121095@gmail.com',
+    'm.muhlisin@buanatriarta.com'
+  ];
 
   // Real-time synchronization with Firestore operator_notes collection
   useEffect(() => {
