@@ -9,7 +9,7 @@ service cloud.firestore {
 
     // Global Hardened Helpers
     function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-\\s]+$');
+      return id is string && id.size() <= 128;
     }
 
     function incoming() {
@@ -52,6 +52,20 @@ service cloud.firestore {
 
       allow delete: if isSignedIn()
         && !existing().locked;
+    }
+
+    // Operator Notes rules
+    match /operator_notes/{noteId} {
+      // Allow read to everyone so the app can display notes in the table and matrix
+      allow read: if true;
+      // Allow write to authenticated users
+      allow create, update, delete: if isSignedIn();
+    }
+
+    // Dashboard Data cache rules
+    match /dashboard_data/{chunkId} {
+      allow read: if true;
+      allow write: if isSignedIn();
     }
   }
 }

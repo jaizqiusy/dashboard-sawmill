@@ -24,12 +24,61 @@
         }
       },
       "required": ["mesin", "avatar", "locked", "updatedAt"]
+    },
+    "OperatorNote": {
+      "title": "Operator Note",
+      "description": "Daily notes entered by sawmill operators or supervisors for specific date and machine",
+      "type": "object",
+      "properties": {
+        "tanggal": {
+          "type": "string",
+          "description": "Date of note (YYYY-MM-DD)"
+        },
+        "mesin": {
+          "type": "string",
+          "description": "Machine identifier"
+        },
+        "note": {
+          "type": "string",
+          "description": "Note content description"
+        },
+        "author": {
+          "type": "string",
+          "description": "Author email or identifier"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp"
+        }
+      },
+      "required": ["tanggal", "mesin", "note"]
+    },
+    "DashboardChunk": {
+      "title": "Dashboard Chunk",
+      "description": "Chunked production and operator dataset cache for high speed access",
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "array",
+          "description": "Array of records",
+          "items": { "type": "object" }
+        }
+      }
     }
   },
   "firestore": {
     "/operators/{operatorId}": {
       "schema": "Operator",
       "description": "Stores operator public profiles, avatars, and custom photo-locking status"
+    },
+    "/operator_notes/{noteId}": {
+      "schema": "OperatorNote",
+      "description": "Stores operator daily notes categorized by date and machine"
+    },
+    "/dashboard_data/{chunkId}": {
+      "schema": "DashboardChunk",
+      "description": "Stores chunked cached data from sheets"
     }
   }
 }

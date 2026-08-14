@@ -1,10 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { ProductionData } from '../../types';
 import { normalizeMachineName } from '../../services/dataService';
-import { User, Download, Table, LayoutList, Calendar, Sparkles } from 'lucide-react';
+import { User, Download, Table, LayoutList, Calendar, Sparkles, CheckCircle2, MessageSquare } from 'lucide-react';
 import { db, auth } from '../../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { collection, addDoc, getDocs, query, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, query, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -26,6 +26,32 @@ const MACHINES = ['Bs1', 'Bs2', 'Bs3', 'Bs4', 'Bs5', 'Bs6', 'Bs7', 'Bs8'];
 const DAY_NAMES = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jum'at", "Sabtu"];
 const MONTH_NAMES = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 
+function normalizeMachineKey(m: string | undefined | null): string {
+  if (!m) return '';
+  return m.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function normalizeDateKey(d: string | undefined | null): string {
+  if (!d) return '';
+  const str = String(d).trim();
+  const parts = str.split(/[-/]/);
+  if (parts.length === 3) {
+    if (parts[0].length === 4) {
+      return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+    } else if (parts[2].length === 4) {
+      return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+    }
+  }
+  const dt = new Date(str);
+  if (!isNaN(dt.getTime())) {
+    const y = dt.getFullYear();
+    const m = String(dt.getMonth() + 1).padStart(2, '0');
+    const day = String(dt.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+  return str;
+}
+
 function formatDateShort(dateStr: string): string {
   if (!dateStr) return '';
   const d = new Date(dateStr);
@@ -44,10 +70,17 @@ export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
   const [selectedMachine, setSelectedMachine] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'matrix' | 'table'>('matrix');
 
-  const [noteTanggal, setNoteTanggal] = useState('');
+  const [noteTanggal, setNoteTanggal] = useState<string>(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  });
   const [noteMesin, setNoteMesin] = useState('');
   const [noteText, setNoteText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [savedSuccessMessage, setSavedSuccessMessage] = useState<string | null>(null);
   const [customNotes, setCustomNotes] = useState<any[]>([]);
 
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(auth.currentUser?.email || null);
@@ -60,41 +93,46 @@ export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
 
   const ALLOWED_EMAILS = ['jaizqiusy@gmail.com', 'chamdan918@gmail.com', 'jarmoyo121095@gmail.com'];
 
+  // Real-time synchronization with Firestore operator_notes collection
   useEffect(() => {
-    const fetchNotes = async () => {
-      try {
-        const q = query(collection(db, 'operator_notes'));
-        const snapshot = await getDocs(q);
-        const notes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setCustomNotes(notes);
-      } catch (e) {
-        console.error("Failed to fetch notes", e);
-      }
-    };
-    fetchNotes();
+    const q = query(collection(db, 'operator_notes'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const notes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setCustomNotes(notes);
+    }, (error) => {
+      console.error("Failed to listen to operator notes:", error);
+    });
+    return () => unsubscribe();
   }, []);
 
   const submitNote = async () => {
-    if (!noteTanggal || !noteMesin || !noteText) return alert('Mohon lengkapi Tanggal, Mesin, dan Catatan');
-    if (!auth.currentUser) return alert('Silakan login terlebih dahulu untuk menambahkan catatan');
-    if (!ALLOWED_EMAILS.includes(auth.currentUser.email || '')) {
+    if (!noteTanggal || !noteMesin || !noteText.trim()) {
+      return alert('Mohon lengkapi Tanggal, Mesin, dan Catatan');
+    }
+    if (!auth.currentUser) {
+      return alert('Silakan login terlebih dahulu untuk menambahkan catatan');
+    }
+    
+    const userEmail = (auth.currentUser.email || '').toLowerCase();
+    const isAllowed = ALLOWED_EMAILS.some(email => email.toLowerCase() === userEmail);
+    if (!isAllowed) {
       return alert('Maaf, akun Anda tidak memiliki izin untuk menambahkan catatan.');
     }
+
     setIsSubmitting(true);
     try {
       await addDoc(collection(db, 'operator_notes'), {
-        tanggal: noteTanggal,
+        tanggal: normalizeDateKey(noteTanggal),
         mesin: noteMesin,
-        note: noteText,
+        note: noteText.trim(),
         author: auth.currentUser.email || 'Unknown',
         timestamp: serverTimestamp()
       });
       setNoteText('');
-      alert('Catatan berhasil ditambahkan');
-      const q = query(collection(db, 'operator_notes'));
-      const snapshot = await getDocs(q);
-      const notes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setCustomNotes(notes);
+      setSavedSuccessMessage(`Catatan untuk ${noteMesin} (${formatDateShort(noteTanggal)}) berhasil disimpan!`);
+      setTimeout(() => {
+        setSavedSuccessMessage(null);
+      }, 4000);
     } catch (e: any) {
       console.error(e);
       alert('Gagal menambahkan catatan: ' + e.message);
@@ -159,16 +197,20 @@ export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
       accumulators[mesin].sumUtama += row.utama;
       accumulators[mesin].sumTotal += row.total;
 
+      const targetDateKey = normalizeDateKey(row.tanggal);
+      const targetMachineKey = normalizeMachineKey(mesin);
+      const matchedNotes = customNotes.filter((n: any) => 
+        normalizeDateKey(n.tanggal) === targetDateKey && 
+        normalizeMachineKey(n.mesin) === targetMachineKey
+      );
+      const customStr = matchedNotes.map((n: any) => n.note).filter(Boolean).join(' | ');
+
       return {
         tanggal: row.tanggal,
         mesin: mesin,
         yieldUtama: row.input > 0 ? (row.utama / row.input) : 0,
         yieldTotal: row.input > 0 ? (row.total / row.input) : 0,
-        catatan: (() => {
-          const matchedNotes = customNotes.filter((n: any) => n.tanggal === row.tanggal && n.mesin === mesin);
-          const customStr = matchedNotes.map((n: any) => n.note).join(' | ');
-          return row.downtime ? (customStr ? `${row.downtime} | ${customStr}` : row.downtime) : (customStr || '');
-        })(),
+        catatan: customStr,
         akumulasiUtama: accumulators[mesin].sumInput > 0 ? (accumulators[mesin].sumUtama / accumulators[mesin].sumInput) : 0,
         akumulasiTotal: accumulators[mesin].sumInput > 0 ? (accumulators[mesin].sumTotal / accumulators[mesin].sumInput) : 0,
       };
@@ -271,11 +313,13 @@ export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
           else countHijauTotal++;
         }
 
-        // Get notes
-        const matchedNotes = customNotes.filter((n: any) => n.tanggal === dStr && (n.mesin?.toLowerCase().replace(/\s/g, '') === normalizedTarget));
-        const customStr = matchedNotes.map((n: any) => n.note).join(' | ');
-        const downtimeStr = record?.downtime || '';
-        const noteCombined = downtimeStr ? (customStr ? `${downtimeStr} | ${customStr}` : downtimeStr) : (customStr || '');
+        // Get notes from Firestore operator_notes
+        const targetDateKey = normalizeDateKey(dStr);
+        const matchedNotes = customNotes.filter((n: any) => 
+          normalizeDateKey(n.tanggal) === targetDateKey && 
+          normalizeMachineKey(n.mesin) === normalizedTarget
+        );
+        const noteCombined = matchedNotes.map((n: any) => n.note).filter(Boolean).join(' | ');
 
         return {
           tanggal: dStr,
@@ -593,13 +637,27 @@ export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
             />
           </div>
 
-          <button
-            onClick={submitNote}
-            disabled={isSubmitting}
-            className="w-full sm:w-auto px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/20 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-          >
-            {isSubmitting ? 'Menyimpan...' : 'Simpan Catatan'}
-          </button>
+          {savedSuccessMessage && (
+            <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-semibold">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>{savedSuccessMessage}</span>
+            </div>
+          )}
+
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <button
+              onClick={submitNote}
+              disabled={isSubmitting}
+              className="w-full sm:w-auto px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/20 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {isSubmitting ? 'Menyimpan...' : 'Simpan Catatan'}
+            </button>
+            {customNotes.length > 0 && (
+              <span className="text-[11px] text-slate-500 font-medium text-center sm:text-left">
+                {customNotes.length} catatan operator tersimpan di sistem
+              </span>
+            )}
+          </div>
         </div>
 
         {/* View Mode 1: Spreadsheet Matrix View */}
@@ -922,7 +980,16 @@ export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
                         <td className={`px-4 py-2.5 font-medium border-r border-slate-100 ${row.yieldTotal > 0 && row.yieldTotal <= 0.64 ? 'bg-amber-100 text-amber-900 font-bold' : 'text-slate-700'}`}>
                           {formatPercent(row.yieldTotal)}
                         </td>
-                        <td className="px-4 py-2.5 text-slate-600 max-w-xs truncate border-r border-slate-100" title={row.catatan}>{row.catatan || '-'}</td>
+                        <td className="px-4 py-2.5 text-slate-700 max-w-sm border-r border-slate-100" title={row.catatan}>
+                          {row.catatan ? (
+                            <div className="flex items-start gap-1.5">
+                              <MessageSquare className="w-3.5 h-3.5 text-emerald-600 mt-0.5 shrink-0" />
+                              <span className="font-semibold text-slate-800 break-words">{row.catatan}</span>
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 italic text-xs">-</span>
+                          )}
+                        </td>
                         <td className="px-4 py-2.5 font-bold text-indigo-700 border-r border-slate-100">{formatPercent(row.akumulasiUtama)}</td>
                         <td className="px-4 py-2.5 font-bold text-teal-700">{formatPercent(row.akumulasiTotal)}</td>
                       </tr>
