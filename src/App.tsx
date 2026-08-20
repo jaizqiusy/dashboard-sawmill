@@ -8,11 +8,13 @@ import {
   fetchSupplierData,
   fetchMonthlyLogData,
   fetchOperatorData,
+  fetchAnalisaOperatorDetailData,
   getSummaryStats,
   getTodayMachineStats,
-  normalizeMachineName
+  normalizeMachineName,
+  autoSyncSpreadsheetUpdates
 } from './services/dataService';
-import { MonthlyLogData, ProductionData, SupplierData, OperatorData } from './types';
+import { MonthlyLogData, ProductionData, SupplierData, OperatorData, AnalisaOperatorDetailData } from './types';
 
 // Lazy loading pages for a lightweight initial load
 const HomePage = lazy(() => import('./components/Pages/HomePage').then(module => ({ default: module.HomePage })));
@@ -35,6 +37,7 @@ export default function App() {
   const [supplierData, setSupplierData] = useState<SupplierData[]>([]);
   const [monthlyLogData, setMonthlyLogData] = useState<MonthlyLogData[]>([]);
   const [operatorData, setOperatorData] = useState<OperatorData[]>([]);
+  const [analisaOperatorDetailData, setAnalisaOperatorDetailData] = useState<AnalisaOperatorDetailData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Firebase state
@@ -106,19 +109,71 @@ export default function App() {
     }
   };
 
+  const latestDataRef = React.useRef({ data, supplierData, monthlyLogData, operatorData });
   useEffect(() => {
-    Promise.all([
-      fetchProductionData(),
-      fetchSupplierData(),
-      fetchMonthlyLogData(),
-      fetchOperatorData()
-    ]).then(([prodData, suppData, monthlyLog, opData]) => {
-      setData(prodData);
-      setSupplierData(suppData);
-      setMonthlyLogData(monthlyLog);
-      setOperatorData(opData);
-      setIsLoading(false);
-    });
+    latestDataRef.current = { data, supplierData, monthlyLogData, operatorData, analisaOperatorDetailData };
+  }, [data, supplierData, monthlyLogData, operatorData, analisaOperatorDetailData]);
+
+  useEffect(() => {
+    let isMounted = true;
+    
+    const loadData = () => {
+      Promise.all([
+        fetchProductionData(),
+        fetchSupplierData(),
+        fetchMonthlyLogData(),
+        fetchOperatorData(),
+        fetchAnalisaOperatorDetailData()
+      ]).then(([prodData, suppData, monthlyLog, opData, analisaDetailData]) => {
+        if (!isMounted) return;
+        setData(prodData);
+        setSupplierData(suppData);
+        setMonthlyLogData(monthlyLog);
+        setOperatorData(opData);
+        setAnalisaOperatorDetailData(analisaDetailData);
+        setIsLoading(false);
+
+        // Perform a background check to auto-sync if there are new updates in spreadsheet
+        autoSyncSpreadsheetUpdates(
+          prodData,
+          suppData,
+          monthlyLog,
+          opData,
+          analisaDetailData,
+          (newProd, newSupp, newMonth, newOp, newAnalisaDetail) => {
+            if (isMounted) {
+              setData(newProd);
+              setSupplierData(newSupp);
+              setMonthlyLogData(newMonth);
+              setOperatorData(newOp);
+              setAnalisaOperatorDetailData(newAnalisaDetail);
+            }
+          }
+        );
+      });
+    };
+
+    loadData();
+
+    // Auto-sync every 3 minutes (180000ms) to detect changes in Google Sheets
+    const intervalId = setInterval(() => {
+      if (!isMounted) return;
+      const { data: d, supplierData: s, monthlyLogData: m, operatorData: o, analisaOperatorDetailData: a } = latestDataRef.current;
+      autoSyncSpreadsheetUpdates(d, s, m, o, a, (newProd, newSupp, newMonth, newOp, newAnalisaDetail) => {
+        if (isMounted) {
+          setData(newProd);
+          setSupplierData(newSupp);
+          setMonthlyLogData(newMonth);
+          setOperatorData(newOp);
+          setAnalisaOperatorDetailData(newAnalisaDetail);
+        }
+      });
+    }, 180000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(intervalId);
+    };
   }, []);
 
   const stats = useMemo(() => getSummaryStats(data), [data]);
@@ -218,7 +273,7 @@ export default function App() {
         {activeTab === 'Performance' && <PerformancePage data={data} />}
         {activeTab === 'Plan' && <PlanPage todayStats={todayStats} data={data} />}
         {activeTab === 'AI' && <AIPage data={data} />}
-        {activeTab === 'AnalisaOperator' && <AnalisaOperatorPage data={data} />}
+        {activeTab === 'AnalisaOperator' && <AnalisaOperatorPage data={data} detailData={analisaOperatorDetailData} />}
       </Suspense>
     </MobileLayout>
   );

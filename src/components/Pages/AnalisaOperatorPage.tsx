@@ -10,8 +10,11 @@ import autoTable from 'jspdf-autotable';
 import { PhotoCaptureModal, compressImage } from '../PhotoCaptureModal';
 import { PhotoLightboxModal, PhotoLightboxData } from '../PhotoLightboxModal';
 
+import { AnalisaOperatorDetailData } from '../../types';
+
 interface AnalisaOperatorPageProps {
   data: ProductionData[];
+  detailData?: AnalisaOperatorDetailData[];
 }
 
 interface NotePhotoItem {
@@ -76,12 +79,12 @@ function formatDateShort(dateStr: string): string {
   return `${day}-${month}-${year}`;
 }
 
-export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
+export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPageProps) {
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
   const [selectedWeek, setSelectedWeek] = useState<number | 'all'>('all');
   const [selectedDate, setSelectedDate] = useState<string>('all');
   const [selectedMachine, setSelectedMachine] = useState<string>('all');
-  const [viewMode, setViewMode] = useState<'matrix' | 'table'>('matrix');
+  const [viewMode, setViewMode] = useState<'matrix' | 'table' | 'detail'>('matrix');
 
   const [noteTanggal, setNoteTanggal] = useState<string>(() => {
     const now = new Date();
@@ -283,6 +286,7 @@ export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
     return { processedData: processed, availableDates: dates, availableMachines: machines };
   }, [data, selectedMonth, customNotes]);
 
+
   const filteredData = useMemo(() => {
     return processedData.filter(row => {
       if (selectedDate !== 'all' && row.tanggal !== selectedDate) return false;
@@ -290,6 +294,25 @@ export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
       return true;
     });
   }, [processedData, selectedDate, selectedMachine]);
+
+  const filteredDetailData = useMemo(() => {
+    if (!detailData) return [];
+    return detailData.filter(row => {
+      const d = new Date(row.tanggal);
+      if (d.getMonth() + 1 !== selectedMonth) return false;
+      if (selectedDate !== 'all' && row.tanggal !== selectedDate) return false;
+      const normalizedRowMachine = normalizeMachineName(row.mesin);
+      if (selectedMachine !== 'all' && normalizedRowMachine !== selectedMachine) return false;
+      return true;
+    }).sort((a, b) => {
+      const dateCmp = new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime();
+      if (dateCmp !== 0) return dateCmp;
+      const numA = parseInt(a.mesin.replace(/\D/g, '')) || 0;
+      const numB = parseInt(b.mesin.replace(/\D/g, '')) || 0;
+      return numA - numB;
+    });
+  }, [detailData, selectedMonth, selectedDate, selectedMachine]);
+
 
   // Matrix calculation for 7 days of the selected week/month
   const matrixWeekData = useMemo(() => {
@@ -633,6 +656,17 @@ export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
               >
                 <LayoutList className="w-4 h-4" />
                 Tampilan Detail & Catatan
+              </button>
+              <button
+                onClick={() => setViewMode('detail')}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                  viewMode === 'detail'
+                    ? 'bg-sky-600 text-white shadow-md shadow-sky-600/20'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                <LayoutList className="w-4 h-4" />
+                Tampilan Data Detail
               </button>
             </div>
           </div>
@@ -1147,7 +1181,7 @@ export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
             </div>
 
           </div>
-        ) : (
+        ) : viewMode === 'table' ? (
           /* View Mode 2: Detailed Line-By-Line Table View */
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden space-y-4 p-4">
             <div className="grid grid-cols-2 gap-2.5 w-full sm:flex sm:flex-row sm:w-auto">
@@ -1200,10 +1234,10 @@ export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
                           {formatDateShort(row.tanggal)}
                         </td>
                         <td className="px-4 py-2.5 font-bold text-slate-800 border-r border-slate-100">{row.mesin}</td>
-                        <td className={`px-4 py-2.5 font-medium border-r border-slate-100 ${row.yieldUtama > 0 && row.yieldUtama < 0.28 ? 'bg-amber-100 text-amber-900 font-bold' : 'text-slate-700'}`}>
+                        <td className={`px-4 py-2.5 font-medium border-r border-slate-100 ${row.yieldUtama > 0 && row.yieldUtama < 0.30 ? 'bg-amber-100 text-amber-900 font-bold' : 'text-slate-700'}`}>
                           {formatPercent(row.yieldUtama)}
                         </td>
-                        <td className={`px-4 py-2.5 font-medium border-r border-slate-100 ${row.yieldTotal > 0 && row.yieldTotal <= 0.64 ? 'bg-amber-100 text-amber-900 font-bold' : 'text-slate-700'}`}>
+                        <td className={`px-4 py-2.5 font-medium border-r border-slate-100 ${row.yieldTotal > 0 && row.yieldTotal < 0.65 ? 'bg-amber-100 text-amber-900 font-bold' : 'text-slate-700'}`}>
                           {formatPercent(row.yieldTotal)}
                         </td>
                         <td className="px-4 py-2.5 text-slate-700 max-w-sm border-r border-slate-100" title={row.catatan}>
@@ -1258,7 +1292,126 @@ export function AnalisaOperatorPage({ data }: AnalisaOperatorPageProps) {
               </table>
             </div>
           </div>
-        )}
+
+        ) : viewMode === 'detail' ? (
+          /* View Mode 3: Data Detail View */
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden space-y-4 p-4">
+            <div className="grid grid-cols-2 gap-2.5 w-full sm:flex sm:flex-row sm:w-auto">
+              <div className="flex flex-col gap-1 w-full sm:w-44">
+                <label className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Tanggal</label>
+                <select
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700"
+                >
+                  <option value="all">Semua Tanggal</option>
+                  {availableDates.map(d => (
+                    <option key={d} value={d}>{formatDateShort(d)}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1 w-full sm:w-44">
+                <label className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Mesin</label>
+                <select
+                  value={selectedMachine}
+                  onChange={(e) => setSelectedMachine(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700"
+                >
+                  <option value="all">Semua Mesin</option>
+                  {availableMachines.map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            
+            <div className="overflow-x-auto w-full border border-slate-300">
+              <table className="w-full text-xs text-left border-collapse min-w-[1500px]">
+                <thead className="bg-slate-100 sticky top-0 z-10">
+                  <tr>
+                    <th className="px-2 py-2 font-bold text-slate-700 border border-slate-300 text-center whitespace-nowrap">Tanggal</th>
+                    <th className="px-2 py-2 font-bold text-slate-700 border border-slate-300 text-center whitespace-nowrap">Mesin</th>
+                    <th className="px-2 py-2 font-bold text-slate-700 border border-slate-300 text-center whitespace-nowrap">% Utama</th>
+                    <th className="px-2 py-2 font-bold text-slate-700 border border-slate-300 text-center whitespace-nowrap">% Total</th>
+                    <th className="px-3 py-2 font-bold text-slate-700 border border-slate-300 text-center min-w-[200px]">Catatan</th>
+                    <th className="px-2 py-2 font-bold text-slate-700 border border-slate-300 text-center whitespace-nowrap">Akumulasi % Utama</th>
+                    <th className="px-2 py-2 font-bold text-slate-700 border border-slate-300 text-center whitespace-nowrap">Akumulasi % Total</th>
+                    <th className="px-3 py-2 font-bold text-slate-700 border border-slate-300 text-center min-w-[150px]">RK / Orderan</th>
+                    <th className="px-3 py-2 font-bold text-slate-700 border border-slate-300 text-center min-w-[150px]">Komposisi Log</th>
+                    <th className="px-3 py-2 font-bold text-slate-700 border border-slate-300 text-center min-w-[200px]">Komposisi Diameter Log</th>
+                    <th className="px-3 py-2 font-bold text-slate-700 border border-slate-300 text-center min-w-[200px]">Komposisi Panjang Log</th>
+                    <th className="px-3 py-2 font-bold text-slate-700 border border-slate-300 text-center min-w-[120px]">Pot Ujung (pot C sd G)</th>
+                    <th className="px-3 py-2 font-bold text-slate-700 border border-slate-300 text-center min-w-[150px]">Foto Bahan Baku</th>
+                    <th className="px-3 py-2 font-bold text-slate-700 border border-slate-300 text-center min-w-[150px]">Foto Bahan Baku</th>
+                    <th className="px-3 py-2 font-bold text-slate-700 border border-slate-300 text-center min-w-[150px]">Foto Bahan Baku</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white">
+                  {filteredData.length > 0 ? (
+                    filteredData.map((row, idx) => {
+                      const d = filteredDetailData.find(detail => detail.tanggal === row.tanggal && detail.mesin === row.mesin);
+                      return (
+                        <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-2 py-2 text-slate-600 font-medium border border-slate-300 text-center whitespace-nowrap">
+                            {formatDateShort(row.tanggal)}
+                          </td>
+                          <td className="px-2 py-2 text-slate-700 font-bold border border-slate-300 text-center whitespace-nowrap">
+                            {row.mesin}
+                          </td>
+                          <td className={`px-2 py-2 font-bold text-center border border-slate-300 ${row.yieldUtama >= 0.30 ? 'bg-green-500 text-white' : row.yieldUtama > 0 ? 'bg-red-200 text-red-900' : 'text-slate-700'}`}>
+                            {formatPercent(row.yieldUtama)}
+                          </td>
+                          <td className={`px-2 py-2 font-bold text-center border border-slate-300 ${row.yieldTotal >= 0.70 ? 'bg-emerald-200 text-emerald-900' : row.yieldTotal > 0 ? 'bg-orange-200 text-orange-900' : 'text-slate-700'}`}>
+                            {formatPercent(row.yieldTotal)}
+                          </td>
+                          <td className="px-3 py-2 text-slate-600 border border-slate-300 whitespace-pre-line text-[11px]">
+                            {row.catatan || '-'}
+                          </td>
+                          <td className="px-2 py-2 font-bold text-indigo-700 text-center border border-slate-300">
+                            {formatPercent(row.akumulasiUtama)}
+                          </td>
+                          <td className="px-2 py-2 font-bold text-teal-700 text-center border border-slate-300">
+                            {formatPercent(row.akumulasiTotal)}
+                          </td>
+                          <td className="px-3 py-2 text-slate-700 border border-slate-300 whitespace-pre-line text-[11px]">
+                            {d?.rkOrderan || '-'}
+                          </td>
+                          <td className="px-3 py-2 text-slate-700 border border-slate-300 whitespace-pre-line text-[11px]">
+                            {d?.komposisiLog || '-'}
+                          </td>
+                          <td className="px-3 py-2 text-slate-700 border border-slate-300 whitespace-pre-line text-[11px]">
+                            {d?.komposisiDiameterLog || '-'}
+                          </td>
+                          <td className="px-3 py-2 text-slate-700 border border-slate-300 whitespace-pre-line text-[11px]">
+                            {d?.komposisiPanjangLog || '-'}
+                          </td>
+                          <td className="px-3 py-2 text-slate-700 border border-slate-300 text-center text-[11px]">
+                            {d?.potUjung || '-'}
+                          </td>
+                          <td className="px-3 py-2 border border-slate-300 text-center align-middle">
+                            {d?.fotoBahanBaku1 && d.fotoBahanBaku1.startsWith('http') ? <img src={d.fotoBahanBaku1} alt="Bahan Baku 1" className="h-20 w-auto object-cover mx-auto rounded shadow-sm border border-slate-200" referrerPolicy="no-referrer" /> : (d?.fotoBahanBaku1 || '-')}
+                          </td>
+                          <td className="px-3 py-2 border border-slate-300 text-center align-middle">
+                            {d?.fotoBahanBaku2 && d.fotoBahanBaku2.startsWith('http') ? <img src={d.fotoBahanBaku2} alt="Bahan Baku 2" className="h-20 w-auto object-cover mx-auto rounded shadow-sm border border-slate-200" referrerPolicy="no-referrer" /> : (d?.fotoBahanBaku2 || '-')}
+                          </td>
+                          <td className="px-3 py-2 border border-slate-300 text-center align-middle">
+                            {d?.fotoBahanBaku3 && d.fotoBahanBaku3.startsWith('http') ? <img src={d.fotoBahanBaku3} alt="Bahan Baku 3" className="h-20 w-auto object-cover mx-auto rounded shadow-sm border border-slate-200" referrerPolicy="no-referrer" /> : (d?.fotoBahanBaku3 || '-')}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={11} className="px-6 py-8 text-center text-slate-500 font-medium border border-slate-300">
+                        Tidak ada data untuk filter yang dipilih
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : null}
 
         {/* Dedicated Section: Riwayat & Galeri Foto Catatan Analisa Operator */}
         {customNotes.some((n: any) => Boolean(n.photo)) && (

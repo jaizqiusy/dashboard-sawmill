@@ -90,3 +90,16 @@ export interface OperatorData {
   volume_alltime: number | null;
 }
 
+
+export interface AnalisaOperatorDetailData {
+  tanggal: string; // Will store as YYYY-MM-DD
+  mesin: string;
+  rkOrderan: string;
+  komposisiLog: string;
+  komposisiDiameterLog: string;
+  komposisiPanjangLog: string;
+  potUjung: string;
+  fotoBahanBaku1: string;
+  fotoBahanBaku2: string;
+  fotoBahanBaku3: string;
+}

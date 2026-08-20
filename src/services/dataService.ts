@@ -576,6 +576,62 @@ async function fetchChunkedData<T>(collectionName: string): Promise<T[] | null> 
   }
 }
 
+
+export async function fetchAnalisaOperatorDetailDataFromSheet(): Promise<import('../types').AnalisaOperatorDetailData[]> {
+  const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=analisa%20operator`;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Failed to fetch analisa operator detail');
+    const csvData = await response.text();
+    const parsed = Papa.parse(csvData, { skipEmptyLines: true });
+    if (!parsed.data || parsed.data.length < 3) return [];
+    
+    // mapping Indonesian month abbreviation to number
+    const monthMap: Record<string, string> = {
+      'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Mei': '05',
+      'Jun': '06', 'Jul': '07', 'Aug': '08', 'Agu': '08', 'Sep': '09', 'Oct': '10', 'Okt': '10',
+      'Nov': '11', 'Dec': '12', 'Des': '12'
+    };
+
+    return parsed.data.slice(2).map((values: any) => {
+      // Date format is DD-MMM-YYYY e.g., 27-Jul-2026
+      let formattedDate = values[1] || '';
+      if (formattedDate) {
+        const parts = formattedDate.split('-');
+        if (parts.length === 3) {
+          const day = parts[0].padStart(2, '0');
+          const monthStr = parts[1];
+          const year = parts[2];
+          const monthNum = monthMap[monthStr] || '01';
+          formattedDate = `${year}-${monthNum}-${day}`;
+        }
+      }
+      
+      return {
+        tanggal: formattedDate,
+        mesin: normalizeMachineName(values[2] || ''),
+        rkOrderan: values[14] || '',
+        komposisiLog: values[15] || '',
+        komposisiDiameterLog: values[16] || '',
+        komposisiPanjangLog: values[17] || '',
+        potUjung: values[18] || '',
+        fotoBahanBaku1: values[19] || '',
+        fotoBahanBaku2: values[20] || '',
+        fotoBahanBaku3: values[21] || ''
+      };
+    }).filter((r: any) => r.tanggal && r.mesin);
+  } catch (error) {
+    console.error('Error fetching analisa operator detail:', error);
+    return [];
+  }
+}
+
+export async function fetchAnalisaOperatorDetailData(): Promise<import('../types').AnalisaOperatorDetailData[]> {
+  const fsData = await fetchChunkedData<import('../types').AnalisaOperatorDetailData>('analisaOperatorDetail');
+  if (fsData) return fsData;
+  return fetchAnalisaOperatorDetailDataFromSheet();
+}
+
 export async function fetchOperatorData(): Promise<OperatorData[]> {
   const fsData = await fetchChunkedData<OperatorData>('operator');
   if (fsData) return fsData;
@@ -612,53 +668,103 @@ export async function fetchMonthlyLogData(): Promise<MonthlyLogData[]> {
   return fetchMonthlyLogDataFromSheet();
 }
 
-export async function syncSpreadsheetToFirestore(onProgress?: (msg: string) => void) {
-  const CHUNK_SIZE = 500;
-  
-  async function saveInChunks(collectionName: string, dataArray: any[]) {
-    if (onProgress) onProgress('Saving ' + collectionName + ' (' + dataArray.length + ' rows)...');
-    
-    const numChunks = Math.ceil(dataArray.length / CHUNK_SIZE);
-    
-    // Save info doc
-    await setDoc(doc(db, 'dashboard_data', collectionName + '_info'), { 
-      numChunks, 
-      lastUpdated: new Date().toISOString(),
-      totalRows: dataArray.length
-    });
-    
-    // We can use a batch for chunks since there are max ~8 chunks (4000 rows / 500)
-    // Firestore batch limit is 500 operations. We are doing max 10 operations here.
-    const batch = writeBatch(db);
-    for (let i = 0; i < numChunks; i++) {
-      const chunkData = dataArray.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-      const chunkRef = doc(db, 'dashboard_data', collectionName + '_chunk_' + i);
-      batch.set(chunkRef, { data: chunkData });
-    }
-    await batch.commit();
-  }
+const CHUNK_SIZE = 500;
 
+async function saveInChunks(collectionName: string, dataArray: any[], onProgress?: (msg: string) => void) {
+  if (onProgress) onProgress('Saving ' + collectionName + ' (' + dataArray.length + ' rows)...');
+  
+  const numChunks = Math.ceil(dataArray.length / CHUNK_SIZE);
+  
+  // Save info doc
+  await setDoc(doc(db, 'dashboard_data', collectionName + '_info'), { 
+    numChunks, 
+    lastUpdated: new Date().toISOString(),
+    totalRows: dataArray.length
+  });
+  
+  // We can use a batch for chunks since there are max ~8 chunks (4000 rows / 500)
+  // Firestore batch limit is 500 operations. We are doing max 10 operations here.
+  const batch = writeBatch(db);
+  for (let i = 0; i < numChunks; i++) {
+    const chunkData = dataArray.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+    const chunkRef = doc(db, 'dashboard_data', collectionName + '_chunk_' + i);
+    batch.set(chunkRef, { data: chunkData });
+  }
+  await batch.commit();
+}
+
+export async function syncSpreadsheetToFirestore(onProgress?: (msg: string) => void) {
   try {
     if (onProgress) onProgress('Fetching Production Data from Sheet...');
     const prod = await fetchProductionDataFromSheet();
-    await saveInChunks('production', prod);
+    await saveInChunks('production', prod, onProgress);
 
     if (onProgress) onProgress('Fetching Operator Data from Sheet...');
     const op = await fetchOperatorDataFromSheet();
-    await saveInChunks('operator', op);
+    await saveInChunks('operator', op, onProgress);
 
     if (onProgress) onProgress('Fetching Supplier Data from Sheet...');
     const supp = await fetchSupplierDataFromSheet();
-    await saveInChunks('supplier', supp);
+    await saveInChunks('supplier', supp, onProgress);
 
     if (onProgress) onProgress('Fetching Monthly Log Data from Sheet...');
     const monthly = await fetchMonthlyLogDataFromSheet();
-    await saveInChunks('monthlyLog', monthly);
+    await saveInChunks('monthlyLog', monthly, onProgress);
+
+    if (onProgress) onProgress('Fetching Analisa Operator Detail from Sheet...');
+    const analisaDetail = await fetchAnalisaOperatorDetailDataFromSheet();
+    await saveInChunks('analisaOperatorDetail', analisaDetail, onProgress);
 
     if (onProgress) onProgress('Sync Complete!');
   } catch (error: any) {
     console.error("Sync Error:", error);
     if (onProgress) onProgress('Error: ' + error.message);
     throw error;
+  }
+}
+
+export async function autoSyncSpreadsheetUpdates(
+  currentProd: ProductionData[], 
+  currentSupp: SupplierData[], 
+  currentMonth: MonthlyLogData[], 
+  currentOp: OperatorData[],
+  currentAnalisaDetail: import('../types').AnalisaOperatorDetailData[],
+  onUpdateDetected: (prod: ProductionData[], supp: SupplierData[], month: MonthlyLogData[], op: OperatorData[], analisaDetail: import('../types').AnalisaOperatorDetailData[]) => void
+) {
+  try {
+    const [newProd, newSupp, newMonth, newOp, newAnalisaDetail] = await Promise.all([
+      fetchProductionDataFromSheet(),
+      fetchSupplierDataFromSheet(),
+      fetchMonthlyLogDataFromSheet(),
+      fetchOperatorDataFromSheet(),
+      fetchAnalisaOperatorDetailDataFromSheet()
+    ]);
+
+    // Fast stringify check
+    const isDifferent = 
+      JSON.stringify(currentProd) !== JSON.stringify(newProd) ||
+      JSON.stringify(currentSupp) !== JSON.stringify(newSupp) ||
+      JSON.stringify(currentMonth) !== JSON.stringify(newMonth) ||
+      JSON.stringify(currentOp) !== JSON.stringify(newOp) ||
+      JSON.stringify(currentAnalisaDetail) !== JSON.stringify(newAnalisaDetail);
+
+    if (isDifferent) {
+      console.log('Update detected in spreadsheet! Updating UI and syncing to Firestore...');
+      // Update UI state immediately for responsive experience
+      onUpdateDetected(newProd, newSupp, newMonth, newOp, newAnalisaDetail);
+
+      // Now save the new data to Firestore in chunks in the background
+      await saveInChunks('production', newProd);
+      await saveInChunks('operator', newOp);
+      await saveInChunks('supplier', newSupp);
+      await saveInChunks('monthlyLog', newMonth);
+      await saveInChunks('analisaOperatorDetail', newAnalisaDetail);
+      
+      console.log('Auto-sync to Firestore complete.');
+    } else {
+      console.log('Spreadsheet is up-to-date.');
+    }
+  } catch (error) {
+    console.error('Auto-sync background check failed:', error);
   }
 }
