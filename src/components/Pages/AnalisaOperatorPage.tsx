@@ -359,11 +359,34 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
       let sumUtama = 0;
       let sumTurunan = 0;
       let sumTotal = 0;
-
       let countOrangeUtama = 0;
       let countHijauUtama = 0;
       let countOrangeTotal = 0;
       let countHijauTotal = 0;
+
+      // Accumulate across all days in the filtered data (full month if Rekap, or specific week)
+      weekFiltered.forEach(d => {
+        const normD = d.mesin ? d.mesin.toLowerCase().replace(/\s/g, '') : '';
+        if (normD === normalizedTarget || normD === `bs${mName.replace(/\D/g, '')}`) {
+          const d_input = d.input || 0;
+          const d_utama = d.utama || 0;
+          const d_turunan = d.turunan || 0;
+          const d_total = d.total || 0;
+          sumInput += d_input;
+          sumUtama += d_utama;
+          sumTurunan += d_turunan;
+          sumTotal += d_total;
+          
+          if (d_input > 0) {
+            const yUtama = d_utama / d_input;
+            const yTotal = d_total / d_input;
+            if (yUtama < 0.30) countOrangeUtama++;
+            else countHijauUtama++;
+            if (yTotal < 0.65) countOrangeTotal++;
+            else countHijauTotal++;
+          }
+        }
+      });
 
       const dayCells = datesToUse.map(dStr => {
         const record = weekFiltered.find(d => {
@@ -376,22 +399,9 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
         const turunan = record ? record.turunan : 0;
         const total = record ? record.total : 0;
 
-        sumInput += input;
-        sumUtama += utama;
-        sumTurunan += turunan;
-        sumTotal += total;
-
         const yieldUtama = input > 0 ? (utama / input) : 0;
         const yieldTurunan = input > 0 ? (turunan / input) : 0;
         const yieldTotal = input > 0 ? (total / input) : 0;
-
-        if (input > 0) {
-          if (yieldUtama < 0.30) countOrangeUtama++;
-          else countHijauUtama++;
-
-          if (yieldTotal < 0.65) countOrangeTotal++;
-          else countHijauTotal++;
-        }
 
         // Get notes from Firestore operator_notes
         const targetDateKey = normalizeDateKey(dStr);
@@ -463,11 +473,11 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
 
       // Rendemen Utama Table
       const datesHeaders = matrixWeekData.dates.map(d => formatDateShort(d));
-      const head1 = ["Mesin", ...datesHeaders, "Akumulasi", "Target Fix", "% Performance", "Ket Orange", "Ket Hijau"];
+      const head1 = ["Mesin", ...(selectedWeek === 'all' ? [] : datesHeaders), "Akumulasi", "Target Fix", "% Performance", "Ket Orange", "Ket Hijau"];
 
       const bodyUtama = matrixWeekData.machineRows.map(row => [
         row.mesin,
-        ...row.dayCells.map(c => (c.yieldUtama * 100).toFixed(2) + '%'),
+        ...((selectedWeek === 'all') ? [] : row.dayCells.map(c => (c.yieldUtama * 100).toFixed(2) + '%')),
         (row.akmUtama * 100).toFixed(2) + '%',
         '30%',
         row.perfUtama.toFixed(2) + '%',
@@ -506,10 +516,10 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
       });
 
       // Rendemen Turunan Table
-      const head2 = ["Mesin", ...datesHeaders, "Akumulasi"];
+      const head2 = ["Mesin", ...(selectedWeek === 'all' ? [] : datesHeaders), "Akumulasi"];
       const bodyTurunan = matrixWeekData.machineRows.map(row => [
         row.mesin,
-        ...row.dayCells.map(c => (c.yieldTurunan * 100).toFixed(2) + '%'),
+        ...((selectedWeek === 'all') ? [] : row.dayCells.map(c => (c.yieldTurunan * 100).toFixed(2) + '%')),
         (row.akmTurunan * 100).toFixed(2) + '%'
       ]);
       
@@ -532,10 +542,10 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
       });
 
       // Rendemen Total Table
-      const head3 = ["Mesin", ...datesHeaders, "Akumulasi", "Target Fix", "% Performance", "Ket Orange", "Ket Hijau"];
+      const head3 = ["Mesin", ...(selectedWeek === 'all' ? [] : datesHeaders), "Akumulasi", "Target Fix", "% Performance", "Ket Orange", "Ket Hijau"];
       const bodyTotal = matrixWeekData.machineRows.map(row => [
         row.mesin,
-        ...row.dayCells.map(c => (c.yieldTotal * 100).toFixed(2) + '%'),
+        ...((selectedWeek === 'all') ? [] : row.dayCells.map(c => (c.yieldTotal * 100).toFixed(2) + '%')),
         (row.akmTotal * 100).toFixed(2) + '%',
         '65%',
         row.perfTotal.toFixed(2) + '%',
@@ -889,6 +899,16 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
                     Evaluasi Week {w}
                   </button>
                 ))}
+                <button
+                  onClick={() => setSelectedWeek('all')}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                    selectedWeek === 'all'
+                      ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20 border border-blue-500'
+                      : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
+                  }`}
+                >
+                  Rekap
+                </button>
               </div>
             )}
 
@@ -904,7 +924,7 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
                     {/* Sub-Header Row 1: Hari */}
                     <tr className="bg-slate-200 text-slate-800 font-bold border-b border-slate-300">
                       <th className="p-2 border-r border-slate-300 min-w-[70px]">Mesin</th>
-                      {matrixWeekData.dates.map((dStr, idx) => {
+                      {selectedWeek !== 'all' && matrixWeekData.dates.map((dStr, idx) => {
                         const dayName = DAY_NAMES[new Date(dStr).getDay()];
                         return (
                           <th key={idx} className="p-2 border-r border-slate-300 min-w-[85px]">
@@ -922,7 +942,7 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
                     {/* Sub-Header Row 2: Tanggal */}
                     <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-300 text-[11px]">
                       <td className="p-1.5 border-r border-slate-300">Mesin</td>
-                      {matrixWeekData.dates.map((dStr, idx) => (
+                      {selectedWeek !== 'all' && matrixWeekData.dates.map((dStr, idx) => (
                         <td key={idx} className="p-1.5 border-r border-slate-300 whitespace-nowrap">
                           {formatDateShort(dStr)}
                         </td>
@@ -939,7 +959,7 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
                     {matrixWeekData.machineRows.map((row, rIdx) => (
                       <tr key={rIdx} className="hover:bg-slate-50 transition-colors">
                         <td className="p-2 font-bold bg-slate-100 text-slate-800 border-r border-slate-300">{row.mesin}</td>
-                        {row.dayCells.map((cell, cIdx) => {
+                        {selectedWeek !== 'all' && row.dayCells.map((cell, cIdx) => {
                           const val = cell.yieldUtama;
                           const formatted = (val * 100).toFixed(2) + '%';
                           const isOrange = cell.input > 0 && val < 0.30;
@@ -1020,7 +1040,7 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
                   <thead>
                     <tr className="bg-slate-200 text-slate-800 font-bold border-b border-slate-300">
                       <th className="p-2 border-r border-slate-300 min-w-[70px]">Mesin</th>
-                      {matrixWeekData.dates.map((dStr, idx) => {
+                      {selectedWeek !== 'all' && matrixWeekData.dates.map((dStr, idx) => {
                         const dayName = DAY_NAMES[new Date(dStr).getDay()];
                         return (
                           <th key={idx} className="p-2 border-r border-slate-300 min-w-[85px]">
@@ -1033,7 +1053,7 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
 
                     <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-300 text-[11px]">
                       <td className="p-1.5 border-r border-slate-300">Mesin</td>
-                      {matrixWeekData.dates.map((dStr, idx) => (
+                      {selectedWeek !== 'all' && matrixWeekData.dates.map((dStr, idx) => (
                         <td key={idx} className="p-1.5 border-r border-slate-300 whitespace-nowrap">
                           {formatDateShort(dStr)}
                         </td>
@@ -1046,7 +1066,7 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
                     {matrixWeekData.machineRows.map((row, rIdx) => (
                       <tr key={rIdx} className="hover:bg-slate-50 transition-colors">
                         <td className="p-2 font-bold bg-slate-100 text-slate-800 border-r border-slate-300">{row.mesin}</td>
-                        {row.dayCells.map((cell, cIdx) => {
+                        {selectedWeek !== 'all' && row.dayCells.map((cell, cIdx) => {
                           const formatted = (cell.yieldTurunan * 100).toFixed(2) + '%';
                           return (
                             <td key={cIdx} className="p-2 border-r border-slate-200 font-medium text-slate-700">
@@ -1075,7 +1095,7 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
                   <thead>
                     <tr className="bg-slate-200 text-slate-800 font-bold border-b border-slate-300">
                       <th className="p-2 border-r border-slate-300 min-w-[70px]">Mesin</th>
-                      {matrixWeekData.dates.map((dStr, idx) => {
+                      {selectedWeek !== 'all' && matrixWeekData.dates.map((dStr, idx) => {
                         const dayName = DAY_NAMES[new Date(dStr).getDay()];
                         return (
                           <th key={idx} className="p-2 border-r border-slate-300 min-w-[85px]">
@@ -1092,7 +1112,7 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
 
                     <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-300 text-[11px]">
                       <td className="p-1.5 border-r border-slate-300">Mesin</td>
-                      {matrixWeekData.dates.map((dStr, idx) => (
+                      {selectedWeek !== 'all' && matrixWeekData.dates.map((dStr, idx) => (
                         <td key={idx} className="p-1.5 border-r border-slate-300 whitespace-nowrap">
                           {formatDateShort(dStr)}
                         </td>
@@ -1109,7 +1129,7 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
                     {matrixWeekData.machineRows.map((row, rIdx) => (
                       <tr key={rIdx} className="hover:bg-slate-50 transition-colors">
                         <td className="p-2 font-bold bg-slate-100 text-slate-800 border-r border-slate-300">{row.mesin}</td>
-                        {row.dayCells.map((cell, cIdx) => {
+                        {selectedWeek !== 'all' && row.dayCells.map((cell, cIdx) => {
                           const val = cell.yieldTotal;
                           const formatted = (val * 100).toFixed(2) + '%';
                           const isOrange = cell.input > 0 && val < 0.65;
