@@ -1333,7 +1333,6 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
                     <th className="px-2 py-2 font-bold text-slate-700 border border-slate-300 text-center whitespace-nowrap">Mesin</th>
                     <th className="px-2 py-2 font-bold text-slate-700 border border-slate-300 text-center whitespace-nowrap">% Utama</th>
                     <th className="px-2 py-2 font-bold text-slate-700 border border-slate-300 text-center whitespace-nowrap">% Total</th>
-                    <th className="px-3 py-2 font-bold text-slate-700 border border-slate-300 text-center min-w-[200px]">Catatan</th>
                     <th className="px-2 py-2 font-bold text-slate-700 border border-slate-300 text-center whitespace-nowrap">Akumulasi % Utama</th>
                     <th className="px-2 py-2 font-bold text-slate-700 border border-slate-300 text-center whitespace-nowrap">Akumulasi % Total</th>
                     <th className="px-3 py-2 font-bold text-slate-700 border border-slate-300 text-center min-w-[150px]">RK / Orderan</th>
@@ -1361,11 +1360,8 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
                           <td className={`px-2 py-2 font-bold text-center border border-slate-300 ${row.yieldUtama >= 0.30 ? 'bg-green-500 text-white' : row.yieldUtama > 0 ? 'bg-red-200 text-red-900' : 'text-slate-700'}`}>
                             {formatPercent(row.yieldUtama)}
                           </td>
-                          <td className={`px-2 py-2 font-bold text-center border border-slate-300 ${row.yieldTotal >= 0.70 ? 'bg-emerald-200 text-emerald-900' : row.yieldTotal > 0 ? 'bg-orange-200 text-orange-900' : 'text-slate-700'}`}>
+                          <td className={`px-2 py-2 font-bold text-center border border-slate-300 ${row.yieldTotal >= 0.65 ? 'bg-emerald-200 text-emerald-900' : row.yieldTotal > 0 ? 'bg-orange-200 text-orange-900' : 'text-slate-700'}`}>
                             {formatPercent(row.yieldTotal)}
-                          </td>
-                          <td className="px-3 py-2 text-slate-600 border border-slate-300 whitespace-pre-line text-[11px]">
-                            {row.catatan || '-'}
                           </td>
                           <td className="px-2 py-2 font-bold text-indigo-700 text-center border border-slate-300">
                             {formatPercent(row.akumulasiUtama)}
@@ -1402,7 +1398,7 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
                     })
                   ) : (
                     <tr>
-                      <td colSpan={11} className="px-6 py-8 text-center text-slate-500 font-medium border border-slate-300">
+                      <td colSpan={14} className="px-6 py-8 text-center text-slate-500 font-medium border border-slate-300">
                         Tidak ada data untuk filter yang dipilih
                       </td>
                     </tr>
