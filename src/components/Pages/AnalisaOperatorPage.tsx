@@ -495,21 +495,51 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
         theme: 'grid',
         headStyles: { fillColor: [6, 95, 70] },
         didParseCell: (data) => {
-          if (data.section === 'body' && data.column.index >= 1 && data.column.index <= datesHeaders.length) {
-            const raw = data.cell.raw as string;
-            if (raw && raw !== '0.00%') {
-              const val = parseFloat(raw.replace('%', ''));
-              if (!isNaN(val)) {
-                if (val < 30) {
-                  data.cell.styles.fillColor = [253, 230, 138];
-                  data.cell.styles.textColor = [120, 53, 15];
-                  data.cell.styles.fontStyle = 'bold';
-                } else {
-                  data.cell.styles.fillColor = [220, 252, 231];
-                  data.cell.styles.textColor = [20, 83, 45];
-                  data.cell.styles.fontStyle = 'bold';
+          if (data.section === 'body') {
+            const offset = selectedWeek === 'all' ? 1 : datesHeaders.length + 1;
+            if (data.column.index >= 1 && data.column.index < offset) {
+              const raw = data.cell.raw as string;
+              if (raw && raw !== '0.00%') {
+                const val = parseFloat(raw.replace('%', ''));
+                if (!isNaN(val)) {
+                  if (val < 30) {
+                    data.cell.styles.fillColor = [253, 230, 138];
+                    data.cell.styles.textColor = [120, 53, 15];
+                    data.cell.styles.fontStyle = 'bold';
+                  } else {
+                    data.cell.styles.fillColor = [220, 252, 231];
+                    data.cell.styles.textColor = [20, 83, 45];
+                    data.cell.styles.fontStyle = 'bold';
+                  }
                 }
               }
+            } else if (data.column.index === offset) { // Akumulasi
+              const raw = data.cell.raw as string;
+              const val = parseFloat(raw.replace('%', ''));
+              if (!isNaN(val) && val < 65) {
+                data.cell.styles.fillColor = [253, 230, 138];
+                data.cell.styles.textColor = [120, 53, 15];
+              } else {
+                data.cell.styles.fillColor = [220, 252, 231];
+                data.cell.styles.textColor = [20, 83, 45];
+              }
+              data.cell.styles.fontStyle = 'bold';
+            } else if (data.column.index === offset + 1) { // Target Fix
+              data.cell.styles.fillColor = [220, 252, 231];
+              data.cell.styles.textColor = [20, 83, 45];
+              data.cell.styles.fontStyle = 'bold';
+            } else if (data.column.index === offset + 2) { // % Performance
+              data.cell.styles.fillColor = [220, 252, 231];
+              data.cell.styles.textColor = [20, 83, 45];
+              data.cell.styles.fontStyle = 'bold';
+            } else if (data.column.index === offset + 3) { // Ket Orange
+              data.cell.styles.fillColor = [253, 230, 138];
+              data.cell.styles.textColor = [120, 53, 15];
+              data.cell.styles.fontStyle = 'bold';
+            } else if (data.column.index === offset + 4) { // Ket Hijau
+              data.cell.styles.fillColor = [253, 230, 138];
+              data.cell.styles.textColor = [120, 53, 15];
+              data.cell.styles.fontStyle = 'bold';
             }
           }
         }
@@ -539,6 +569,16 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
         startY: finalY + 14,
         theme: 'grid',
         headStyles: { fillColor: [6, 95, 70] },
+        didParseCell: (data) => {
+          if (data.section === 'body') {
+            const offset = selectedWeek === 'all' ? 1 : datesHeaders.length + 1;
+            if (data.column.index === offset) { // Akumulasi
+              data.cell.styles.fillColor = [224, 242, 254]; // cyan-50
+              data.cell.styles.textColor = [8, 51, 68]; // cyan-950
+              data.cell.styles.fontStyle = 'bold';
+            }
+          }
+        }
       });
 
       // Rendemen Total Table
@@ -570,21 +610,51 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
         theme: 'grid',
         headStyles: { fillColor: [6, 95, 70] },
         didParseCell: (data) => {
-          if (data.section === 'body' && data.column.index >= 1 && data.column.index <= datesHeaders.length) {
-            const raw = data.cell.raw as string;
-            if (raw && raw !== '0.00%') {
-              const val = parseFloat(raw.replace('%', ''));
-              if (!isNaN(val)) {
-                if (val < 65) {
-                  data.cell.styles.fillColor = [253, 230, 138];
-                  data.cell.styles.textColor = [120, 53, 15];
-                  data.cell.styles.fontStyle = 'bold';
-                } else {
-                  data.cell.styles.fillColor = [220, 252, 231];
-                  data.cell.styles.textColor = [20, 83, 45];
-                  data.cell.styles.fontStyle = 'bold';
+          if (data.section === 'body') {
+            const offset = selectedWeek === 'all' ? 1 : datesHeaders.length + 1;
+            if (data.column.index >= 1 && data.column.index < offset) {
+              const raw = data.cell.raw as string;
+              if (raw && raw !== '0.00%') {
+                const val = parseFloat(raw.replace('%', ''));
+                if (!isNaN(val)) {
+                  if (val < 65) {
+                    data.cell.styles.fillColor = [253, 230, 138];
+                    data.cell.styles.textColor = [120, 53, 15];
+                    data.cell.styles.fontStyle = 'bold';
+                  } else {
+                    data.cell.styles.fillColor = [220, 252, 231];
+                    data.cell.styles.textColor = [20, 83, 45];
+                    data.cell.styles.fontStyle = 'bold';
+                  }
                 }
               }
+            } else if (data.column.index === offset) { // Akumulasi
+              const raw = data.cell.raw as string;
+              const val = parseFloat(raw.replace('%', ''));
+              if (!isNaN(val) && val < 30) {
+                data.cell.styles.fillColor = [253, 230, 138];
+                data.cell.styles.textColor = [120, 53, 15];
+              } else {
+                data.cell.styles.fillColor = [220, 252, 231];
+                data.cell.styles.textColor = [20, 83, 45];
+              }
+              data.cell.styles.fontStyle = 'bold';
+            } else if (data.column.index === offset + 1) { // Target Fix
+              data.cell.styles.fillColor = [220, 252, 231];
+              data.cell.styles.textColor = [20, 83, 45];
+              data.cell.styles.fontStyle = 'bold';
+            } else if (data.column.index === offset + 2) { // % Performance
+              data.cell.styles.fillColor = [220, 252, 231];
+              data.cell.styles.textColor = [20, 83, 45];
+              data.cell.styles.fontStyle = 'bold';
+            } else if (data.column.index === offset + 3) { // Ket Orange
+              data.cell.styles.fillColor = [253, 230, 138];
+              data.cell.styles.textColor = [120, 53, 15];
+              data.cell.styles.fontStyle = 'bold';
+            } else if (data.column.index === offset + 4) { // Ket Hijau
+              data.cell.styles.fillColor = [253, 230, 138];
+              data.cell.styles.textColor = [120, 53, 15];
+              data.cell.styles.fontStyle = 'bold';
             }
           }
         }
@@ -1008,20 +1078,20 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
                             </td>
                           );
                         })}
-                        <td className="p-2 font-bold bg-[#e0f2fe] text-cyan-950 border-r border-slate-300">
+                        <td className={`p-2 font-bold border-r border-slate-300 ${row.akmUtama < 0.30 ? 'bg-[#fde68a] text-[#78350f]' : 'bg-[#dcfce7] text-[#14532d]'}`}>
                           {(row.akmUtama * 100).toFixed(2)}%
                         </td>
-                        <td className="p-2 font-bold bg-emerald-50 text-emerald-900 border-r border-slate-300">
+                        <td className="p-2 font-bold border-r border-slate-300 bg-[#dcfce7] text-[#14532d]">
                           30%
                         </td>
-                        <td className="p-2 font-bold bg-[#e0f2fe] text-cyan-950 border-r border-slate-300">
+                        <td className="p-2 font-bold border-r border-slate-300 bg-[#dcfce7] text-[#14532d]">
                           {row.perfUtama.toFixed(2)}%
                         </td>
-                        <td className="p-2 font-bold bg-amber-50 text-amber-900 border-r border-slate-300">
-                          {row.countOrangeUtama ? `${row.countOrangeUtama}` : '-'}
+                        <td className="p-2 font-bold border-r border-slate-300 bg-[#fde68a] text-[#78350f]">
+                          {row.countOrangeUtama ? `${row.countOrangeUtama} Hari` : '-'}
                         </td>
-                        <td className="p-2 font-bold bg-emerald-50 text-emerald-900">
-                          {row.countHijauUtama ? `${row.countHijauUtama}` : '-'}
+                        <td className="p-2 font-bold bg-[#fde68a] text-[#78350f]">
+                          {row.countHijauUtama ? `${row.countHijauUtama} Hari` : '-'}
                         </td>
                       </tr>
                     ))}
@@ -1178,20 +1248,20 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
                             </td>
                           );
                         })}
-                        <td className="p-2 font-bold bg-[#e0f2fe] text-cyan-950 border-r border-slate-300">
+                        <td className={`p-2 font-bold border-r border-slate-300 ${row.akmTotal < 0.65 ? 'bg-[#fde68a] text-[#78350f]' : 'bg-[#dcfce7] text-[#14532d]'}`}>
                           {(row.akmTotal * 100).toFixed(2)}%
                         </td>
-                        <td className="p-2 font-bold bg-emerald-50 text-emerald-900 border-r border-slate-300">
+                        <td className="p-2 font-bold border-r border-slate-300 bg-[#dcfce7] text-[#14532d]">
                           65%
                         </td>
-                        <td className="p-2 font-bold bg-[#e0f2fe] text-cyan-950 border-r border-slate-300">
+                        <td className="p-2 font-bold border-r border-slate-300 bg-[#dcfce7] text-[#14532d]">
                           {row.perfTotal.toFixed(2)}%
                         </td>
-                        <td className="p-2 font-bold bg-amber-50 text-amber-900 border-r border-slate-300">
-                          {row.countOrangeTotal ? `${row.countOrangeTotal}` : '-'}
+                        <td className="p-2 font-bold border-r border-slate-300 bg-[#fde68a] text-[#78350f]">
+                          {row.countOrangeTotal ? `${row.countOrangeTotal} Hari` : '-'}
                         </td>
-                        <td className="p-2 font-bold bg-emerald-50 text-emerald-900">
-                          {row.countHijauTotal ? `${row.countHijauTotal}` : '-'}
+                        <td className="p-2 font-bold bg-[#fde68a] text-[#78350f]">
+                          {row.countHijauTotal ? `${row.countHijauTotal} Hari` : '-'}
                         </td>
                       </tr>
                     ))}
