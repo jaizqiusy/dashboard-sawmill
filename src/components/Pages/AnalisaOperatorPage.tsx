@@ -545,6 +545,9 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
         }
       });
 
+      let finalY = (doc as any).lastAutoTable.finalY || 32;
+
+      if (selectedWeek !== 'all') {
       // Rendemen Turunan Table
       const head2 = ["Mesin", ...(selectedWeek === 'all' ? [] : datesHeaders), "Akumulasi"];
       const bodyTurunan = matrixWeekData.machineRows.map(row => [
@@ -552,8 +555,6 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
         ...((selectedWeek === 'all') ? [] : row.dayCells.map(c => (c.yieldTurunan * 100).toFixed(2) + '%')),
         (row.akmTurunan * 100).toFixed(2) + '%'
       ]);
-      
-      let finalY = (doc as any).lastAutoTable.finalY || 32;
       
       if (finalY > doc.internal.pageSize.getHeight() - 40) {
         doc.addPage();
@@ -580,6 +581,7 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
           }
         }
       });
+      } // End if (selectedWeek !== 'all') (Turunan)
 
       // Rendemen Total Table
       const head3 = ["Mesin", ...(selectedWeek === 'all' ? [] : datesHeaders), "Akumulasi", "Target Fix", "% Performance", "Ket Orange", "Ket Hijau"];
@@ -1101,6 +1103,7 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
             </div>
 
             {/* Matrix Section 2: RENDEMEN TURUNAN */}
+            {selectedWeek !== 'all' && (
             <div className="bg-white rounded-xl shadow-md border border-slate-300 overflow-hidden">
               <div className="bg-emerald-800 text-white font-extrabold text-sm uppercase tracking-wider px-4 py-2.5 flex items-center justify-between border-b border-emerald-900">
                 <span>RENDEMEN TURUNAN</span>
@@ -1153,6 +1156,7 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
                 </table>
               </div>
             </div>
+            )}
 
             {/* Matrix Section 3: RENDEMEN TOTAL */}
             <div className="bg-white rounded-xl shadow-md border border-slate-300 overflow-hidden">
