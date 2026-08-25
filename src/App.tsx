@@ -9,12 +9,13 @@ import {
   fetchMonthlyLogData,
   fetchOperatorData,
   fetchAnalisaOperatorDetailData,
+  fetchLogDikerjakan,
   getSummaryStats,
   getTodayMachineStats,
   normalizeMachineName,
   autoSyncSpreadsheetUpdates
 } from './services/dataService';
-import { MonthlyLogData, ProductionData, SupplierData, OperatorData, AnalisaOperatorDetailData } from './types';
+import { MonthlyLogData, ProductionData, SupplierData, OperatorData, AnalisaOperatorDetailData, LogDikerjakanData } from './types';
 
 // Lazy loading pages for a lightweight initial load
 const HomePage = lazy(() => import('./components/Pages/HomePage').then(module => ({ default: module.HomePage })));
@@ -26,6 +27,7 @@ const AnalyticsPage = lazy(() => import('./components/Pages/AnalyticsPage').then
 const RankingPage = lazy(() => import('./components/Pages/RankingPage').then(module => ({ default: module.RankingPage })));
 const OperatorProfilePage = lazy(() => import('./components/Pages/OperatorProfilePage').then(module => ({ default: module.OperatorProfilePage })));
 const ProductionPage = lazy(() => import('./components/Pages/ProductionPage').then(module => ({ default: module.ProductionPage })));
+const LogPage = lazy(() => import('./components/Pages/LogPage').then(module => ({ default: module.LogPage })));
 const RecapPage = lazy(() => import('./components/Pages/RecapPage').then(module => ({ default: module.RecapPage })));
 const DowntimePage = lazy(() => import('./components/Pages/DowntimePage').then(module => ({ default: module.DowntimePage })));
 const HistoryPage = lazy(() => import('./components/Pages/HistoryPage').then(module => ({ default: module.HistoryPage })));
@@ -38,6 +40,7 @@ export default function App() {
   const [monthlyLogData, setMonthlyLogData] = useState<MonthlyLogData[]>([]);
   const [operatorData, setOperatorData] = useState<OperatorData[]>([]);
   const [analisaOperatorDetailData, setAnalisaOperatorDetailData] = useState<AnalisaOperatorDetailData[]>([]);
+  const [logDikerjakanData, setLogDikerjakanData] = useState<LogDikerjakanData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Firebase state
@@ -109,10 +112,10 @@ export default function App() {
     }
   };
 
-  const latestDataRef = React.useRef({ data, supplierData, monthlyLogData, operatorData });
+  const latestDataRef = React.useRef({ data, supplierData, monthlyLogData, operatorData, analisaOperatorDetailData, logDikerjakanData });
   useEffect(() => {
-    latestDataRef.current = { data, supplierData, monthlyLogData, operatorData, analisaOperatorDetailData };
-  }, [data, supplierData, monthlyLogData, operatorData, analisaOperatorDetailData]);
+    latestDataRef.current = { data, supplierData, monthlyLogData, operatorData, analisaOperatorDetailData, logDikerjakanData };
+  }, [data, supplierData, monthlyLogData, operatorData, analisaOperatorDetailData, logDikerjakanData]);
 
   useEffect(() => {
     let isMounted = true;
@@ -123,14 +126,16 @@ export default function App() {
         fetchSupplierData(),
         fetchMonthlyLogData(),
         fetchOperatorData(),
-        fetchAnalisaOperatorDetailData()
-      ]).then(([prodData, suppData, monthlyLog, opData, analisaDetailData]) => {
+        fetchAnalisaOperatorDetailData(),
+        fetchLogDikerjakan()
+      ]).then(([prodData, suppData, monthlyLog, opData, analisaDetailData, logDikerjakan]) => {
         if (!isMounted) return;
         setData(prodData);
         setSupplierData(suppData);
         setMonthlyLogData(monthlyLog);
         setOperatorData(opData);
         setAnalisaOperatorDetailData(analisaDetailData);
+        setLogDikerjakanData(logDikerjakan);
         setIsLoading(false);
 
         // Perform a background check to auto-sync if there are new updates in spreadsheet
@@ -140,13 +145,15 @@ export default function App() {
           monthlyLog,
           opData,
           analisaDetailData,
-          (newProd, newSupp, newMonth, newOp, newAnalisaDetail) => {
+          logDikerjakan,
+          (newProd, newSupp, newMonth, newOp, newAnalisaDetail, newLogDikerjakan) => {
             if (isMounted) {
               setData(newProd);
               setSupplierData(newSupp);
               setMonthlyLogData(newMonth);
               setOperatorData(newOp);
               setAnalisaOperatorDetailData(newAnalisaDetail);
+              setLogDikerjakanData(newLogDikerjakan);
             }
           }
         );
@@ -158,14 +165,15 @@ export default function App() {
     // Auto-sync every 3 minutes (180000ms) to detect changes in Google Sheets
     const intervalId = setInterval(() => {
       if (!isMounted) return;
-      const { data: d, supplierData: s, monthlyLogData: m, operatorData: o, analisaOperatorDetailData: a } = latestDataRef.current;
-      autoSyncSpreadsheetUpdates(d, s, m, o, a, (newProd, newSupp, newMonth, newOp, newAnalisaDetail) => {
+      const { data: d, supplierData: s, monthlyLogData: m, operatorData: o, analisaOperatorDetailData: a, logDikerjakanData: ld } = latestDataRef.current;
+      autoSyncSpreadsheetUpdates(d, s, m, o, a, ld, (newProd, newSupp, newMonth, newOp, newAnalisaDetail, newLogDikerjakan) => {
         if (isMounted) {
           setData(newProd);
           setSupplierData(newSupp);
           setMonthlyLogData(newMonth);
           setOperatorData(newOp);
           setAnalisaOperatorDetailData(newAnalisaDetail);
+          setLogDikerjakanData(newLogDikerjakan);
         }
       });
     }, 180000);
@@ -267,6 +275,7 @@ export default function App() {
         {activeTab === 'Ranking' && <RankingPage data={data} operatorData={operatorData} />}
         {activeTab === 'OperatorProfile' && <OperatorProfilePage data={data} operatorData={operatorData} />}
         {activeTab === 'Production' && <ProductionPage todayStats={todayStats} />}
+        {activeTab === 'Log' && <LogPage logDikerjakanData={logDikerjakanData} />}
         {activeTab === 'Recap' && <RecapPage data={data} supplierData={supplierData} />}
         {activeTab === 'Downtime' && <DowntimePage data={data} />}
         {activeTab === 'History' && <HistoryPage data={data} monthlyLogData={monthlyLogData} />}

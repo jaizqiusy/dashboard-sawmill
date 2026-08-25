@@ -3,7 +3,7 @@ import { db } from '../firebase';
 import { doc, getDoc, setDoc, writeBatch } from 'firebase/firestore';
 import Papa from 'papaparse';
 import { RAW_CSV_DATA } from '../data/raw_data';
-import { ProductionData, SummaryStats, SupplierData, MonthlyLogData, OperatorData } from '../types';
+import { ProductionData, SummaryStats, SupplierData, MonthlyLogData, OperatorData, LogDikerjakanData } from '../types';
 
 const SPREADSHEET_ID = '1G7x3dtE2KFF338w6qdd4jrMkz-yrbThlzx5Vi0I8AqQ';
 
@@ -715,6 +715,10 @@ export async function syncSpreadsheetToFirestore(onProgress?: (msg: string) => v
     const analisaDetail = await fetchAnalisaOperatorDetailDataFromSheet();
     await saveInChunks('analisaOperatorDetail', analisaDetail, onProgress);
 
+    if (onProgress) onProgress('Fetching Log Dikerjakan from Sheet...');
+    const logDikerjakan = await fetchLogDikerjakanFromSheet();
+    await saveInChunks('logDikerjakan', logDikerjakan, onProgress);
+
     if (onProgress) onProgress('Sync Complete!');
   } catch (error: any) {
     console.error("Sync Error:", error);
@@ -729,15 +733,17 @@ export async function autoSyncSpreadsheetUpdates(
   currentMonth: MonthlyLogData[], 
   currentOp: OperatorData[],
   currentAnalisaDetail: import('../types').AnalisaOperatorDetailData[],
-  onUpdateDetected: (prod: ProductionData[], supp: SupplierData[], month: MonthlyLogData[], op: OperatorData[], analisaDetail: import('../types').AnalisaOperatorDetailData[]) => void
+  currentLogDikerjakan: import('../types').LogDikerjakanData[],
+  onUpdateDetected: (prod: ProductionData[], supp: SupplierData[], month: MonthlyLogData[], op: OperatorData[], analisaDetail: import('../types').AnalisaOperatorDetailData[], logDikerjakan: import('../types').LogDikerjakanData[]) => void
 ) {
   try {
-    const [newProd, newSupp, newMonth, newOp, newAnalisaDetail] = await Promise.all([
+    const [newProd, newSupp, newMonth, newOp, newAnalisaDetail, newLogDikerjakan] = await Promise.all([
       fetchProductionDataFromSheet(),
       fetchSupplierDataFromSheet(),
       fetchMonthlyLogDataFromSheet(),
       fetchOperatorDataFromSheet(),
-      fetchAnalisaOperatorDetailDataFromSheet()
+      fetchAnalisaOperatorDetailDataFromSheet(),
+      fetchLogDikerjakanFromSheet()
     ]);
 
     // Fast stringify check
@@ -746,12 +752,13 @@ export async function autoSyncSpreadsheetUpdates(
       JSON.stringify(currentSupp) !== JSON.stringify(newSupp) ||
       JSON.stringify(currentMonth) !== JSON.stringify(newMonth) ||
       JSON.stringify(currentOp) !== JSON.stringify(newOp) ||
-      JSON.stringify(currentAnalisaDetail) !== JSON.stringify(newAnalisaDetail);
+      JSON.stringify(currentAnalisaDetail) !== JSON.stringify(newAnalisaDetail) ||
+      JSON.stringify(currentLogDikerjakan) !== JSON.stringify(newLogDikerjakan);
 
     if (isDifferent) {
       console.log('Update detected in spreadsheet! Updating UI and syncing to Firestore...');
       // Update UI state immediately for responsive experience
-      onUpdateDetected(newProd, newSupp, newMonth, newOp, newAnalisaDetail);
+      onUpdateDetected(newProd, newSupp, newMonth, newOp, newAnalisaDetail, newLogDikerjakan);
 
       // Now save the new data to Firestore in chunks in the background
       await saveInChunks('production', newProd);
@@ -767,4 +774,67 @@ export async function autoSyncSpreadsheetUpdates(
   } catch (error) {
     console.error('Auto-sync background check failed:', error);
   }
+}
+
+export async function fetchLogDikerjakanFromSheet(): Promise<LogDikerjakanData[]> {
+  const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=Log_Dikerjakan`;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Failed to fetch data');
+    const csvData = await response.text();
+    return parseLogDikerjakanCSV(csvData);
+  } catch (error) {
+    console.error('Error fetching Log_dikerjakan data:', error);
+    return [];
+  }
+}
+
+function parseLogDikerjakanCSV(csv: string): LogDikerjakanData[] {
+  const parsed = Papa.parse<string[]>(csv.trim(), { skipEmptyLines: true });
+  if (!parsed.data || parsed.data.length <= 1) return [];
+  
+  // Find column indices based on possible headers
+  const headers = parsed.data[0].map(h => h.trim().toLowerCase());
+  const idxMesin = headers.findIndex(h => h.includes('mesin'));
+  const idxNomerLog = headers.findIndex(h => h.includes('nomor') || h.includes('nomer'));
+  const idxPanjang = headers.findIndex(h => h.includes('panjang'));
+  const idxDiameter = headers.findIndex(h => h.includes('diameter'));
+  const idxVolume = headers.findIndex(h => h.includes('volume'));
+  
+  return parsed.data.slice(1).map(values => {
+    // Extract raw strings
+    const rawMesin = idxMesin !== -1 ? values[idxMesin] : (values[7] || '');
+    const mNomerLog = idxNomerLog !== -1 ? values[idxNomerLog] : (values[2] || '');
+    const mPanjang = idxPanjang !== -1 ? values[idxPanjang] : (values[5] || '');
+    const mDiameter = idxDiameter !== -1 ? values[idxDiameter] : (values[4] || '');
+    const rawVolume = idxVolume !== -1 ? values[idxVolume] : (values[6] || '0');
+    
+    // Clean Mesin name (e.g. "Mesin BS 1 / Jaiz Qiusy" -> "Mesin BS 1")
+    let mMesin = rawMesin;
+    if (mMesin.includes('/')) {
+      mMesin = mMesin.split('/')[0].trim();
+    }
+    
+    // Fix comma decimals if any, then parse
+    const mVolume = parseFloat(rawVolume.replace(',', '.')) || 0;
+    
+    // Potongan logic: letter at the end of nomer log
+    const match = mNomerLog.match(/([a-zA-Z])$/);
+    const mPotongan = match ? match[1].toUpperCase() : '';
+
+    return {
+      mesin: mMesin,
+      nomer_log: mNomerLog,
+      panjang: mPanjang,
+      diameter: mDiameter,
+      volume: mVolume,
+      potongan: mPotongan
+    };
+  }).filter(row => row.mesin && row.nomer_log);
+}
+
+export async function fetchLogDikerjakan(): Promise<import('../types').LogDikerjakanData[]> {
+  const fsData = await fetchChunkedData<import('../types').LogDikerjakanData>('logDikerjakan');
+  if (fsData && fsData.length > 0) return fsData;
+  return fetchLogDikerjakanFromSheet();
 }

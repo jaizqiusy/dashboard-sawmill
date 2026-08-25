@@ -33,137 +33,81 @@ export function ProductionPage({ todayStats }) {
         <p className="text-[11px] text-slate-500 mt-1 uppercase tracking-widest font-bold">Monitoring mesin hari ini</p>
       </div>
 
-      <div className="space-y-4">
-        {machines.map((mName, i) => {
-          const stat = todayStats?.stats?.find(s => normalizeMachineName(s.mesin) === mName);
-          const isDown = stat?.downtime && stat.downtime.length > 0;
-          const hasData = !!stat;
-          const borderColor = MACHINE_THEMES[i % MACHINE_THEMES.length];
-
-          return (
-            <div key={i} className={cn(
-              "bg-white rounded-2xl shadow-sm overflow-hidden group transition-all",
-              hasData ? `border-[3px] ${borderColor}` : "border-2 border-slate-200 opacity-60"
-            )}>
-              <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/40">
-                <div className="flex items-center gap-3.5">
-                  <div className={cn(
-                    "w-11 h-11 rounded-xl flex items-center justify-center font-black text-sm border shadow-sm transition-all",
-                    isDown ? "bg-rose-50 text-rose-600 border-rose-200" : 
-                    hasData ? "bg-emerald-50 text-emerald-600 border-emerald-200" : 
-                    "bg-slate-100 text-slate-400 border-slate-200"
-                  )}>
-                    {mName === 'Breakdown' ? 'BD' : mName.replace('BS ', 'BS').replace('Pony ', 'P')}
-                  </div>
-                  <div>
-                    <h3 className="text-slate-900 font-black text-base leading-none mb-1">{mName}</h3>
-                    <div className="flex items-center gap-1.5">
-                      {isDown ? (
-                        <>
-                          <div className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
-                          <span className="text-[9px] text-rose-600 font-black uppercase tracking-widest">Downtime</span>
-                        </>
-                      ) : hasData ? (
-                        <>
-                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                          <span className="text-[9px] text-emerald-600 font-bold uppercase tracking-widest">Kondisi: Jalan</span>
-                        </>
-                      ) : (
-                        <>
-                          <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />
-                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Off / No Data</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
+      <div className="bg-[#f5f7ff] rounded-2xl shadow-sm border border-indigo-100 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-center border-collapse">
+            <thead className="bg-[#eef2ff]">
+              <tr>
+                <th className="px-4 py-3 border border-indigo-100 text-indigo-800 font-bold uppercase tracking-wider text-xs whitespace-nowrap text-left">Mesin</th>
+                <th className="px-4 py-3 border border-indigo-100 text-indigo-800 font-bold uppercase tracking-wider text-xs whitespace-nowrap">Input</th>
+                <th className="px-4 py-3 border border-indigo-100 text-indigo-800 font-bold uppercase tracking-wider text-xs whitespace-nowrap">Utama</th>
+                <th className="px-4 py-3 border border-indigo-100 text-indigo-800 font-bold uppercase tracking-wider text-xs whitespace-nowrap">Rend Utama</th>
+                <th className="px-4 py-3 border border-indigo-100 text-indigo-800 font-bold uppercase tracking-wider text-xs whitespace-nowrap">Turunan</th>
+                <th className="px-4 py-3 border border-indigo-100 text-indigo-800 font-bold uppercase tracking-wider text-xs whitespace-nowrap">Rend Turunan</th>
+                <th className="px-4 py-3 border border-indigo-100 text-indigo-800 font-bold uppercase tracking-wider text-xs whitespace-nowrap">Lokal</th>
+                <th className="px-4 py-3 border border-indigo-100 text-indigo-800 font-bold uppercase tracking-wider text-xs whitespace-nowrap">Rend Lokal</th>
+                <th className="px-4 py-3 border border-indigo-100 text-indigo-800 font-bold uppercase tracking-wider text-xs whitespace-nowrap">Total</th>
+                <th className="px-4 py-3 border border-indigo-100 text-indigo-800 font-bold uppercase tracking-wider text-xs whitespace-nowrap">Rend Total</th>
+                <th className="px-4 py-3 border border-indigo-100 text-indigo-800 font-bold uppercase tracking-wider text-xs whitespace-nowrap">Downtime</th>
+              </tr>
+            </thead>
+            <tbody className="bg-[#f8faff]">
+              {machines.map((mName, i) => {
+                const stat = todayStats?.stats?.find(s => normalizeMachineName(s.mesin) === mName);
+                const isDown = stat?.downtime && stat.downtime.length > 0;
                 
-                {hasData && (
-                  <div className="text-right flex flex-col items-end">
-                    <span className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-0.5">Utama</span>
-                    <span className={cn(
-                      "text-base font-black font-mono px-2 py-0.5 rounded-lg leading-tight",
-                      stat.yield >= 0.30 ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
-                    )}>
-                      {(stat.yield * 100).toFixed(1)}%
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {hasData && (
-                <div className="p-3 bg-slate-50 border-t border-slate-100">
-                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
-                    <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-200">
-                      <span className="text-[9px] text-slate-500 uppercase tracking-widest block mb-1 font-black">Input Log</span>
-                      <span className="text-slate-800 font-mono text-lg font-black leading-none block">
-                        {stat.input.toFixed(1)} <span className="text-[10px] text-slate-400 font-bold">m³</span>
-                      </span>
-                    </div>
-                    
-                    <div className="bg-emerald-50 p-3 rounded-xl shadow-sm border border-emerald-200">
-                      <span className="text-[9px] text-emerald-600 uppercase tracking-widest block mb-1 font-black">Output Utama</span>
-                      <span className="text-emerald-700 font-mono text-xl font-black leading-none block tracking-tighter">
-                        {stat.utama.toFixed(1)} <span className="text-[10px] text-emerald-500 font-bold">m³</span>
-                      </span>
-                    </div>
-
-                    <div className="bg-sky-50 p-3 rounded-xl shadow-sm border border-sky-200">
-                      <span className="text-[9px] text-sky-600 uppercase tracking-widest block mb-1 font-black">Total Output</span>
-                      <span className="text-sky-700 font-mono text-xl font-black leading-none block tracking-tighter">
-                        {stat.total.toFixed(1)} <span className="text-[10px] text-sky-500 font-bold">m³</span>
-                      </span>
-                    </div>
-
-                    <div className="bg-amber-50 p-3 rounded-xl shadow-sm border border-amber-200">
-                      <span className="text-[9px] text-amber-600 uppercase tracking-widest block mb-1 font-black">Turunan</span>
-                      <span className="text-amber-700 font-mono text-lg font-black leading-none block">
-                        {stat.turunan.toFixed(1)} <span className="text-[10px] text-amber-500 font-bold">m³</span>
-                      </span>
-                    </div>
-
-                    <div className="bg-indigo-50 p-3 rounded-xl shadow-sm border border-indigo-200">
-                      <span className="text-[9px] text-indigo-600 uppercase tracking-widest block mb-1 font-black">Lokal</span>
-                      <span className="text-indigo-700 font-mono text-lg font-black leading-none block">
-                        {stat.lokal.toFixed(1)} <span className="text-[10px] text-indigo-500 font-bold">m³</span>
-                      </span>
-                    </div>
-
-                    <div className="bg-fuchsia-50 p-3 rounded-xl shadow-sm border border-fuchsia-200">
-                      <span className="text-[9px] text-fuchsia-600 uppercase tracking-widest block mb-1 font-black">Pilot Ladder</span>
-                      <span className="text-fuchsia-700 font-mono text-lg font-black leading-none block">
-                        {(stat.pilotLadder || 0).toFixed(1)} <span className="text-[10px] text-fuchsia-500 font-bold">m³</span>
-                      </span>
-                    </div>
-
-                    <div className="bg-teal-50 p-3 rounded-xl shadow-sm border border-teal-200">
-                      <span className="text-[9px] text-teal-600 uppercase tracking-widest block mb-1 font-black">Rendemen Utama Tanpa PL</span>
-                      <span className="text-teal-700 font-mono text-lg font-black leading-none block">
-                        {(stat.input > 0 ? ((stat.utamaNonPilotLadder || 0) / stat.input) * 100 : 0).toFixed(1)}%
-                      </span>
-                    </div>
-                  </div>
-                  
-                  {isDown && (
-                    <div className="mt-3 pt-3 border-t-2 border-rose-100 border-dashed">
-                      <div className="flex items-start gap-2.5">
-                        <AlertOctagon className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
-                        <div className="flex flex-wrap gap-2">
+                return (
+                  <tr key={i} className="hover:bg-[#f0f4ff] transition-colors">
+                    <td className="px-4 py-3 border border-indigo-100 font-black text-slate-800 whitespace-nowrap text-left">
+                      <span>{mName === 'Breakdown' ? 'BD' : mName.replace('BS ', 'BS').replace('Pony ', 'PONI ')}</span>
+                    </td>
+                    <td className="px-4 py-3 border border-indigo-100 font-black text-blue-600 whitespace-nowrap text-base">
+                      {stat ? stat.input.toFixed(2).replace('.', ',') : '-'}
+                    </td>
+                    <td className="px-4 py-3 border border-indigo-100 font-black text-emerald-600 whitespace-nowrap text-base">
+                      {stat ? stat.utama.toFixed(2).replace('.', ',') : '-'}
+                    </td>
+                    <td className="px-4 py-3 border border-indigo-100 font-black text-indigo-800 whitespace-nowrap text-base bg-indigo-50/30">
+                      {stat && stat.input > 0 ? ((stat.utama / stat.input) * 100).toFixed(2).replace('.', ',') + '%' : '-'}
+                    </td>
+                    <td className="px-4 py-3 border border-indigo-100 font-black text-emerald-600 whitespace-nowrap text-base">
+                      {stat ? stat.turunan.toFixed(2).replace('.', ',') : '-'}
+                    </td>
+                    <td className="px-4 py-3 border border-indigo-100 font-black text-indigo-800 whitespace-nowrap text-base bg-indigo-50/30">
+                      {stat && stat.input > 0 ? ((stat.turunan / stat.input) * 100).toFixed(2).replace('.', ',') + '%' : '-'}
+                    </td>
+                    <td className="px-4 py-3 border border-indigo-100 font-black text-emerald-600 whitespace-nowrap text-base">
+                      {stat ? stat.lokal.toFixed(2).replace('.', ',') : '-'}
+                    </td>
+                    <td className="px-4 py-3 border border-indigo-100 font-black text-indigo-800 whitespace-nowrap text-base bg-indigo-50/30">
+                      {stat && stat.input > 0 ? ((stat.lokal / stat.input) * 100).toFixed(2).replace('.', ',') + '%' : '-'}
+                    </td>
+                    <td className="px-4 py-3 border border-indigo-100 font-black text-emerald-600 whitespace-nowrap text-base">
+                      {stat ? stat.total.toFixed(2).replace('.', ',') : '-'}
+                    </td>
+                    <td className="px-4 py-3 border border-indigo-100 font-black text-indigo-800 whitespace-nowrap text-base bg-indigo-50/30">
+                      {stat && stat.input > 0 ? ((stat.total / stat.input) * 100).toFixed(2).replace('.', ',') + '%' : '-'}
+                    </td>
+                    <td className="px-4 py-3 border border-indigo-100 font-black text-slate-800 whitespace-nowrap text-left">
+                      {isDown && stat && (
+                        <div className="flex flex-wrap gap-1 max-w-[150px]">
                           {stat.downtime.map((dt, idx) => (
-                            <span key={idx} className="bg-rose-50 text-rose-700 text-[13px] sm:text-sm font-black px-3.5 py-1.5 rounded-lg border border-rose-100 shadow-sm uppercase tracking-tight">
+                            <span key={idx} className="bg-rose-100 text-rose-700 text-[9px] px-1.5 py-0.5 rounded leading-none uppercase tracking-wider">
                               {dt}
                             </span>
                           ))}
                         </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })}
+                      )}
+                      {!isDown && '-'}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
+
     </div>
   );
 }

@@ -103,3 +103,12 @@ export interface AnalisaOperatorDetailData {
   fotoBahanBaku2: string;
   fotoBahanBaku3: string;
 }
+
+export interface LogDikerjakanData {
+  mesin: string;
+  nomer_log: string;
+  panjang: string;
+  diameter: string;
+  volume: number;
+  potongan: string;
+}

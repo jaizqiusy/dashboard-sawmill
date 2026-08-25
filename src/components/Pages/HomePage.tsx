@@ -23,15 +23,16 @@ export function HomePage({ setActiveTab }: HomePageProps) {
     { id: 'Overview', icon: LayoutGrid, label: 'Overview', desc: 'Ringkasan performa', color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-100' },
     { id: 'Analytics', icon: BarChart3, label: 'Analytics', desc: 'Analisis detail', color: 'text-sky-600', bg: 'bg-sky-50', border: 'border-sky-100' },
     { id: 'Ranking', icon: Trophy, label: 'Ranking', desc: 'Peringkat mesin', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100' },
-    { id: 'OperatorProfile', icon: Users, label: 'Operator', desc: 'Profil operator', color: 'text-teal-600', bg: 'bg-teal-50', border: 'border-teal-100' },
+    { id: 'AnalisaOperator', icon: Users, label: 'Analisa Opr', desc: 'Performa operator harian', color: 'text-pink-600', bg: 'bg-pink-50', border: 'border-pink-100' },
+    { id: 'Log', icon: FileText, label: 'Log', desc: 'Log hari ini', color: 'text-lime-600', bg: 'bg-lime-50', border: 'border-lime-100' },
     { id: 'Production', icon: Factory, label: 'Live Prod', desc: 'Produksi realtime', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
+    { id: 'Performance', icon: Activity, label: 'Performance', desc: 'Analisa mingguan', color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-100' },
+    { id: 'Plan', icon: Calendar, label: 'Plan', desc: 'Rencana produksi', color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-100' },
     { id: 'Recap', icon: FileText, label: 'Rekap Data', desc: 'Data historis', color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100' },
     { id: 'Downtime', icon: AlertTriangle, label: 'Downtime', desc: 'Status mesin', color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-100' },
-    { id: 'Plan', icon: Calendar, label: 'Plan', desc: 'Rencana produksi', color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-100' },
-    { id: 'AI', icon: Sparkles, label: 'Laporan AI', desc: 'Analisa cerdas', color: 'text-fuchsia-600', bg: 'bg-fuchsia-50', border: 'border-fuchsia-100' },
     { id: 'History', icon: History, label: 'History', desc: 'Riwayat data', color: 'text-slate-600', bg: 'bg-slate-50', border: 'border-slate-100' },
-    { id: 'Performance', icon: Activity, label: 'Performance', desc: 'Analisa mingguan', color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-100' },
-    { id: 'AnalisaOperator', icon: Users, label: 'Analisa Opr', desc: 'Performa operator harian', color: 'text-pink-600', bg: 'bg-pink-50', border: 'border-pink-100' },
+    { id: 'AI', icon: Sparkles, label: 'Laporan AI', desc: 'Analisa cerdas', color: 'text-fuchsia-600', bg: 'bg-fuchsia-50', border: 'border-fuchsia-100' },
+    { id: 'OperatorProfile', icon: Users, label: 'Operator', desc: 'Profil operator', color: 'text-teal-600', bg: 'bg-teal-50', border: 'border-teal-100' },
   ];
 
   return (
