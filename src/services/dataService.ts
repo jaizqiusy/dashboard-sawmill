@@ -7,6 +7,40 @@ import { ProductionData, SummaryStats, SupplierData, MonthlyLogData, OperatorDat
 
 const SPREADSHEET_ID = '1G7x3dtE2KFF338w6qdd4jrMkz-yrbThlzx5Vi0I8AqQ';
 
+// Cached baseline data
+let memoizedStaticBaseline: ProductionData[] | null = null;
+function getStaticBaselineData(): ProductionData[] {
+  if (!memoizedStaticBaseline) {
+    memoizedStaticBaseline = parseCSV(RAW_CSV_DATA);
+  }
+  return memoizedStaticBaseline;
+}
+
+// Ultra-fast dataset comparison (bypasses heavy JSON.stringify of thousands of objects)
+export function isDatasetEqual<T extends Record<string, any>>(a: T[], b: T[]): boolean {
+  if (a === b) return true;
+  if (!a || !b) return a === b;
+  if (a.length !== b.length) return false;
+  if (a.length === 0) return true;
+
+  // Sample check: first, middle, last, and every 15th element
+  const checkIndices = [0, Math.floor(a.length / 2), a.length - 1];
+  const step = Math.max(1, Math.floor(a.length / 20));
+  for (let i = 0; i < a.length; i += step) {
+    checkIndices.push(i);
+  }
+
+  for (const idx of checkIndices) {
+    const itemA = a[idx];
+    const itemB = b[idx];
+    if (!itemA || !itemB) return false;
+    for (const key in itemA) {
+      if (itemA[key] !== itemB[key]) return false;
+    }
+  }
+  return true;
+}
+
 export async function fetchOperatorDataFromSheet(): Promise<OperatorData[]> {
   const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=Operstor%20bs`;
   try {
@@ -52,7 +86,7 @@ function parseOperatorCSV(csv: string): OperatorData[] {
 }
 
 export async function fetchProductionDataFromSheet(): Promise<ProductionData[]> {
-  const staticData = parseCSV(RAW_CSV_DATA);
+  const staticData = getStaticBaselineData();
   const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=DATABASE%20APPSCRIPT`;
   
   try {
@@ -560,13 +594,23 @@ async function fetchChunkedData<T>(collectionName: string): Promise<T[] | null> 
     const infoDoc = await getDoc(doc(db, 'dashboard_data', collectionName + '_info'));
     if (!infoDoc.exists()) return null;
     
-    const numChunks = infoDoc.data().numChunks;
-    let allData: T[] = [];
-    
+    const numChunks = infoDoc.data().numChunks || 0;
+    if (numChunks === 0) return null;
+
+    // Fetch all chunks in parallel for maximum speed
+    const chunkPromises = [];
     for (let i = 0; i < numChunks; i++) {
-      const chunkDoc = await getDoc(doc(db, 'dashboard_data', collectionName + '_chunk_' + i));
+      chunkPromises.push(getDoc(doc(db, 'dashboard_data', collectionName + '_chunk_' + i)));
+    }
+    
+    const chunkDocs = await Promise.all(chunkPromises);
+    let allData: T[] = [];
+    for (const chunkDoc of chunkDocs) {
       if (chunkDoc.exists()) {
-        allData = allData.concat(chunkDoc.data().data);
+        const chunkData = chunkDoc.data()?.data;
+        if (Array.isArray(chunkData)) {
+          allData = allData.concat(chunkData);
+        }
       }
     }
     return allData.length > 0 ? allData : null;
@@ -639,7 +683,7 @@ export async function fetchOperatorData(): Promise<OperatorData[]> {
 }
 
 export async function fetchProductionData(): Promise<ProductionData[]> {
-  const staticData = parseCSV(RAW_CSV_DATA);
+  const staticData = getStaticBaselineData();
   const fsData = await fetchChunkedData<ProductionData>('production');
   if (fsData && fsData.length > 0) {
     const map = new Map<string, ProductionData>();
@@ -746,14 +790,14 @@ export async function autoSyncSpreadsheetUpdates(
       fetchLogDikerjakanFromSheet()
     ]);
 
-    // Fast stringify check
+    // Ultra fast dataset comparison
     const isDifferent = 
-      JSON.stringify(currentProd) !== JSON.stringify(newProd) ||
-      JSON.stringify(currentSupp) !== JSON.stringify(newSupp) ||
-      JSON.stringify(currentMonth) !== JSON.stringify(newMonth) ||
-      JSON.stringify(currentOp) !== JSON.stringify(newOp) ||
-      JSON.stringify(currentAnalisaDetail) !== JSON.stringify(newAnalisaDetail) ||
-      JSON.stringify(currentLogDikerjakan) !== JSON.stringify(newLogDikerjakan);
+      !isDatasetEqual(currentProd, newProd) ||
+      !isDatasetEqual(currentSupp, newSupp) ||
+      !isDatasetEqual(currentMonth, newMonth) ||
+      !isDatasetEqual(currentOp, newOp) ||
+      !isDatasetEqual(currentAnalisaDetail, newAnalisaDetail) ||
+      !isDatasetEqual(currentLogDikerjakan, newLogDikerjakan);
 
     if (isDifferent) {
       console.log('Update detected in spreadsheet! Updating UI and syncing to Firestore...');
@@ -766,6 +810,7 @@ export async function autoSyncSpreadsheetUpdates(
       await saveInChunks('supplier', newSupp);
       await saveInChunks('monthlyLog', newMonth);
       await saveInChunks('analisaOperatorDetail', newAnalisaDetail);
+      await saveInChunks('logDikerjakan', newLogDikerjakan);
       
       console.log('Auto-sync to Firestore complete.');
     } else {

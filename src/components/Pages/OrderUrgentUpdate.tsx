@@ -192,7 +192,9 @@ export function OrderUrgentUpdate() {
       { index: 51, date: '24 Aug 26', sum: 951 }
     ]);
     const now = new Date();
-    setLastUpdate(now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' (Luring)');
+    const formattedDate = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    const formattedTime = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    setLastUpdate(`${formattedDate}, ${formattedTime} (Luring)`);
   };
 
   const syncData = useCallback((force = false) => {
@@ -218,7 +220,9 @@ export function OrderUrgentUpdate() {
           setDateCols(cols);
 
           const now = new Date();
-          cachedOrderLastUpdate = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          const formattedDate = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+          const formattedTime = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          cachedOrderLastUpdate = `${formattedDate}, ${formattedTime}`;
           setLastUpdate(cachedOrderLastUpdate);
         } catch (err: any) {
           console.error("Order Urgent Parse Error:", err);
@@ -241,12 +245,105 @@ export function OrderUrgentUpdate() {
     syncData();
   }, [syncData]);
 
-  // Recent 3 active dates with production
-  const recentActiveDateCols = useMemo(() => {
-    return dateCols.filter(d => d.sum > 0).slice(-3);
+  // Helper to parse date string like "26 Aug 26", "26 Agu", "26-Aug-2026"
+  const parseDateString = (str: string): { day: number; month: number; year?: number } | null => {
+    if (!str) return null;
+    const clean = str.trim().toLowerCase();
+    
+    // Pattern 1: Day Month Year (e.g. 26 Aug 26 or 26 Agu 2026 or 26 Aug)
+    const matchAlpha = clean.match(/(\d{1,2})[\s\-_/]+([a-z]{3,4})(?:[\s\-_/]+(\d{2,4}))?/i);
+    if (matchAlpha) {
+      const day = parseInt(matchAlpha[1], 10);
+      const mStr = matchAlpha[2].toLowerCase();
+      const monthMap: Record<string, number> = {
+        jan: 0, feb: 1, mar: 2, apr: 3, may: 4, mei: 4, jun: 5,
+        jul: 6, aug: 7, agu: 7, sep: 8, okt: 9, oct: 9, nov: 10, des: 11, dec: 11
+      };
+      const month = monthMap[mStr] !== undefined ? monthMap[mStr] : -1;
+      let year = matchAlpha[3] ? parseInt(matchAlpha[3], 10) : undefined;
+      if (year !== undefined && year < 100) year += 2000;
+      if (month !== -1 && !isNaN(day)) {
+        return { day, month, year };
+      }
+    }
+
+    // Pattern 2: DD/MM/YYYY
+    const matchNum = clean.match(/(\d{1,2})[\/\-.](\d{1,2})(?:[\/\-.](\d{2,4}))?/);
+    if (matchNum) {
+      const day = parseInt(matchNum[1], 10);
+      const month = parseInt(matchNum[2], 10) - 1;
+      let year = matchNum[3] ? parseInt(matchNum[3], 10) : undefined;
+      if (year !== undefined && year < 100) year += 2000;
+      if (!isNaN(day) && !isNaN(month)) {
+        return { day, month, year };
+      }
+    }
+
+    return null;
+  };
+
+  // Get the 2 target date columns synced with today's date: Hari Sebelumnya & Hari Ini
+  const displayDateCols = useMemo(() => {
+    if (!dateCols || dateCols.length === 0) return [];
+    
+    const today = new Date();
+    const todayDay = today.getDate();
+    const todayMonth = today.getMonth();
+    const todayYear = today.getFullYear();
+
+    // 1. Check if there is an exact column matching today's date
+    let todayColIdx = -1;
+    for (let i = 0; i < dateCols.length; i++) {
+      const parsed = parseDateString(dateCols[i].date);
+      if (parsed) {
+        const matchesDay = parsed.day === todayDay;
+        const matchesMonth = parsed.month === todayMonth;
+        const matchesYear = parsed.year ? parsed.year === todayYear : true;
+        if (matchesDay && matchesMonth && matchesYear) {
+          todayColIdx = i;
+          break;
+        }
+      }
+    }
+
+    // 2. If exact today not found, find the closest date <= today (to avoid picking future tomorrow dates)
+    if (todayColIdx === -1) {
+      for (let i = dateCols.length - 1; i >= 0; i--) {
+        const parsed = parseDateString(dateCols[i].date);
+        if (parsed) {
+          const colDate = new Date(parsed.year || todayYear, parsed.month, parsed.day);
+          const compToday = new Date(todayYear, todayMonth, todayDay);
+          if (colDate <= compToday) {
+            todayColIdx = i;
+            break;
+          }
+        }
+      }
+    }
+
+    // 3. If still not found, fallback to the last active column or last column
+    if (todayColIdx === -1) {
+      todayColIdx = dateCols.length - 1;
+    }
+
+    const todayCol = dateCols[todayColIdx];
+    const prevCol = todayColIdx > 0 ? dateCols[todayColIdx - 1] : null;
+
+    if (prevCol && todayCol) {
+      return [
+        { ...prevCol, label: 'Hari Sebelumnya' },
+        { ...todayCol, label: 'Hari Ini' }
+      ];
+    } else if (todayCol) {
+      return [
+        { ...todayCol, label: 'Hari Ini' }
+      ];
+    }
+
+    return [];
   }, [dateCols]);
 
-  // Summary KPIs
+  // Summary counts for filter badges
   const stats = useMemo(() => {
     let totalItems = data.length;
     let unfulfilledCount = 0;
@@ -301,8 +398,8 @@ export function OrderUrgentUpdate() {
         return item.kekurangan <= 0;
       }
       if (statusFilter === 'recent') {
-        // Items with production in recent active dates
-        return recentActiveDateCols.some(dc => (item.dailyProd[dc.date] || 0) > 0);
+        // Items with production in displayed date columns
+        return displayDateCols.some(dc => (item.dailyProd[dc.date] || 0) > 0);
       }
 
       return true;
@@ -326,7 +423,7 @@ export function OrderUrgentUpdate() {
     }
 
     return list;
-  }, [data, searchTerm, statusFilter, sortConfig, recentActiveDateCols]);
+  }, [data, searchTerm, statusFilter, sortConfig, displayDateCols]);
 
   const requestSort = (key: keyof OrderUrgentItem) => {
     let direction: 'asc' | 'desc' = 'asc';
@@ -348,42 +445,40 @@ export function OrderUrgentUpdate() {
   };
 
   return (
-    <div id="order-urgent-container" className="w-full bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-sm p-4 sm:p-6 lg:p-7 space-y-6">
+    <div id="order-urgent-container" className="w-full bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-sm p-4 sm:p-6 lg:p-7 space-y-5">
       {/* Header Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
-        <div className="flex items-start gap-3.5">
-          <div className="p-3 bg-gradient-to-br from-rose-500 to-red-600 text-white rounded-2xl shadow-md shadow-rose-500/20 shrink-0">
-            <AlertCircle className="w-6 h-6" />
+      <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="p-2 sm:p-2.5 bg-gradient-to-br from-rose-500 to-red-600 text-white rounded-xl shadow-md shadow-rose-500/20 shrink-0">
+            <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-base sm:text-xl font-black tracking-tight text-slate-900 truncate">
                 Order Urgent
               </h2>
-              <span className="bg-rose-100 text-rose-700 text-xs font-bold px-2.5 py-0.5 rounded-full border border-rose-200/60">
+              <span className="bg-rose-100 text-rose-700 text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded-full border border-rose-200/60 shrink-0">
                 Live Spreadsheets
               </span>
             </div>
-            <p className="text-xs sm:text-sm text-slate-500 mt-1 font-medium">
-              Pemantauan target kebutuhan, alokasi Job Order (JO), serta status pemenuhan material urgent.
-            </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 self-end md:self-auto">
-          <div className="text-right hidden sm:block">
-            <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400">Pembaruan Terakhir</p>
-            <p className="text-xs font-bold text-slate-700 font-mono">{lastUpdate}</p>
+        <div className="flex items-center gap-2.5 ml-auto sm:ml-0 shrink-0">
+          <div className="text-right">
+            <p className="text-[9px] sm:text-[10px] uppercase tracking-wider font-bold text-slate-400">Update Terakhir</p>
+            <p className="text-[11px] sm:text-xs font-bold text-slate-700 font-mono whitespace-nowrap">{lastUpdate}</p>
           </div>
 
           <button
             id="sync-order-urgent-btn"
             disabled={loading}
             onClick={() => syncData(true)}
-            className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 active:scale-95 text-white px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+            title="Sinkronkan Data Spreadsheet"
+            aria-label="Sinkronkan Data Spreadsheet"
+            className="flex items-center justify-center bg-slate-900 hover:bg-slate-800 active:scale-95 text-white p-2 sm:p-2.5 rounded-xl text-sm font-bold transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer shrink-0"
           >
             <RefreshCw className={cn('w-4 h-4', loading ? 'animate-spin text-rose-400' : '')} />
-            <span>{loading ? 'Menarik Data...' : 'Sinkronkan'}</span>
           </button>
         </div>
       </div>
@@ -395,87 +490,6 @@ export function OrderUrgentUpdate() {
           <div className="flex-1">{error}</div>
         </div>
       )}
-
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {/* Total Item */}
-        <div className="bg-slate-50 border border-slate-200/70 rounded-2xl p-4 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase tracking-wider">
-            <span>Total Item</span>
-            <Layers className="w-4 h-4 text-slate-400" />
-          </div>
-          <div className="mt-2">
-            <div className="text-2xl sm:text-3xl font-black text-slate-900">{stats.totalItems}</div>
-            <div className="text-[11px] text-slate-500 mt-0.5 font-medium">Ukuran & JO Terdaftar</div>
-          </div>
-        </div>
-
-        {/* Belum Terpenuhi (Kurang) */}
-        <div 
-          onClick={() => setStatusFilter(statusFilter === 'unfulfilled' ? 'all' : 'unfulfilled')}
-          className={cn(
-            "border rounded-2xl p-4 flex flex-col justify-between cursor-pointer transition-all",
-            statusFilter === 'unfulfilled'
-              ? "bg-rose-500 text-white border-rose-600 shadow-md shadow-rose-500/20"
-              : "bg-rose-50/70 border-rose-200/80 hover:bg-rose-100/60"
-          )}
-        >
-          <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider">
-            <span className={statusFilter === 'unfulfilled' ? "text-rose-100" : "text-rose-700"}>Belum Terpenuhi</span>
-            <AlertCircle className={cn("w-4 h-4", statusFilter === 'unfulfilled' ? "text-white" : "text-rose-600")} />
-          </div>
-          <div className="mt-2">
-            <div className={cn("text-2xl sm:text-3xl font-black", statusFilter === 'unfulfilled' ? "text-white" : "text-rose-700")}>
-              {stats.unfulfilledCount} <span className="text-xs font-bold opacity-80 font-normal">item</span>
-            </div>
-            <div className={cn("text-[11px] mt-0.5 font-medium", statusFilter === 'unfulfilled' ? "text-rose-100" : "text-rose-600")}>
-              Kurang {stats.totalKekuranganPcs.toLocaleString('id-ID')} Pcs
-            </div>
-          </div>
-        </div>
-
-        {/* Sudah Terpenuhi */}
-        <div 
-          onClick={() => setStatusFilter(statusFilter === 'fulfilled' ? 'all' : 'fulfilled')}
-          className={cn(
-            "border rounded-2xl p-4 flex flex-col justify-between cursor-pointer transition-all",
-            statusFilter === 'fulfilled'
-              ? "bg-emerald-600 text-white border-emerald-700 shadow-md shadow-emerald-600/20"
-              : "bg-emerald-50/70 border-emerald-200/80 hover:bg-emerald-100/60"
-          )}
-        >
-          <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider">
-            <span className={statusFilter === 'fulfilled' ? "text-emerald-100" : "text-emerald-700"}>Sudah Terpenuhi</span>
-            <CheckCircle2 className={cn("w-4 h-4", statusFilter === 'fulfilled' ? "text-white" : "text-emerald-600")} />
-          </div>
-          <div className="mt-2">
-            <div className={cn("text-2xl sm:text-3xl font-black", statusFilter === 'fulfilled' ? "text-white" : "text-emerald-700")}>
-              {stats.fulfilledCount} <span className="text-xs font-bold opacity-80 font-normal">item</span>
-            </div>
-            <div className={cn("text-[11px] mt-0.5 font-medium", statusFilter === 'fulfilled' ? "text-emerald-100" : "text-emerald-600")}>
-              Target telah tercapai
-            </div>
-          </div>
-        </div>
-
-        {/* Akumulasi Produksi */}
-        <div className="bg-slate-50 border border-slate-200/70 rounded-2xl p-4 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase tracking-wider">
-            <span>Akumulasi Produksi</span>
-            <TrendingUp className="w-4 h-4 text-slate-400" />
-          </div>
-          <div className="mt-2">
-            <div className="text-2xl sm:text-3xl font-black text-slate-900">
-              {stats.totalRealisasi.toLocaleString('id-ID')}
-              <span className="text-xs font-normal text-slate-500 ml-1">/ {stats.totalKebutuhan.toLocaleString('id-ID')}</span>
-            </div>
-            <div className="text-[11px] text-slate-500 mt-0.5 font-medium flex items-center gap-1.5">
-              <span>Pencapaian:</span>
-              <span className="font-bold text-slate-800">{stats.overallPct}%</span>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Filter, Search & Controls */}
       <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
@@ -503,11 +517,11 @@ export function OrderUrgentUpdate() {
         </div>
 
         {/* Status Filter Buttons */}
-        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl overflow-x-auto text-xs font-bold shrink-0">
+        <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl overflow-x-auto text-xs font-bold shrink-0">
           <button
             onClick={() => setStatusFilter('all')}
             className={cn(
-              "px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap",
+              "px-3 py-2 rounded-lg transition-all cursor-pointer whitespace-nowrap",
               statusFilter === 'all'
                 ? "bg-white text-slate-900 shadow-sm"
                 : "text-slate-600 hover:text-slate-900"
@@ -518,7 +532,7 @@ export function OrderUrgentUpdate() {
           <button
             onClick={() => setStatusFilter('unfulfilled')}
             className={cn(
-              "px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5",
+              "px-3 py-2 rounded-lg transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5",
               statusFilter === 'unfulfilled'
                 ? "bg-rose-500 text-white shadow-sm"
                 : "text-rose-700 hover:bg-rose-100/50"
@@ -530,7 +544,7 @@ export function OrderUrgentUpdate() {
           <button
             onClick={() => setStatusFilter('fulfilled')}
             className={cn(
-              "px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap",
+              "px-3 py-2 rounded-lg transition-all cursor-pointer whitespace-nowrap",
               statusFilter === 'fulfilled'
                 ? "bg-emerald-600 text-white shadow-sm"
                 : "text-emerald-700 hover:bg-emerald-100/50"
@@ -538,11 +552,11 @@ export function OrderUrgentUpdate() {
           >
             Selesai ({stats.fulfilledCount})
           </button>
-          {recentActiveDateCols.length > 0 && (
+          {displayDateCols.length > 0 && (
             <button
               onClick={() => setStatusFilter('recent')}
               className={cn(
-                "px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap flex items-center gap-1",
+                "px-3 py-2 rounded-lg transition-all cursor-pointer whitespace-nowrap flex items-center gap-1",
                 statusFilter === 'recent'
                   ? "bg-sky-600 text-white shadow-sm"
                   : "text-sky-700 hover:bg-sky-100/50"
@@ -553,23 +567,12 @@ export function OrderUrgentUpdate() {
             </button>
           )}
         </div>
-
-        {/* Toggle View Daily Columns */}
-        {recentActiveDateCols.length > 0 && (
-          <button
-            onClick={() => setShowDailyCols(!showDailyCols)}
-            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 border border-slate-200 hover:bg-slate-50 rounded-xl text-slate-700 transition-colors whitespace-nowrap cursor-pointer"
-          >
-            <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500" />
-            <span>{showDailyCols ? 'Sembunyikan Kolom Harian' : 'Tampilkan Kolom Harian'}</span>
-          </button>
-        )}
       </div>
 
       {/* Main Table */}
       <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-sm bg-white relative">
-        <div className="overflow-x-auto max-h-[620px] overflow-y-auto table-scrollbar">
-          <table className="w-full text-left text-xs sm:text-sm whitespace-nowrap min-w-[900px] border-collapse">
+        <div className="overflow-x-auto max-h-[650px] overflow-y-auto table-scrollbar">
+          <table className="w-full text-left text-xs sm:text-sm whitespace-nowrap min-w-[860px] border-collapse">
             <thead className="sticky top-0 z-20 bg-slate-900 text-white uppercase text-[11px] tracking-wider font-bold shadow-md">
               <tr>
                 <th
@@ -609,17 +612,16 @@ export function OrderUrgentUpdate() {
                   </div>
                 </th>
 
-                {/* Optional Recent Daily Columns */}
-                {showDailyCols &&
-                  recentActiveDateCols.map((dc) => (
-                    <th
-                      key={dc.date}
-                      className="px-3 py-3.5 text-center font-semibold text-slate-300 border-r border-slate-800 bg-slate-900/90 min-w-[85px]"
-                    >
-                      <div className="text-[10px] text-rose-400 font-bold">Produksi</div>
-                      <div className="text-xs">{dc.date}</div>
-                    </th>
-                  ))}
+                {/* Hari Sebelumnya & Hari Ini Date Columns */}
+                {displayDateCols.map((dc) => (
+                  <th
+                    key={dc.date}
+                    className="px-3.5 py-3 text-center font-semibold text-slate-300 border-r border-slate-800 bg-slate-900 min-w-[110px]"
+                  >
+                    <div className="text-[10px] text-rose-400 font-bold uppercase tracking-wider">{dc.label}</div>
+                    <div className="text-xs font-mono text-white mt-0.5">{dc.date}</div>
+                  </th>
+                ))}
 
                 <th
                   onClick={() => requestSort('total')}
@@ -654,7 +656,7 @@ export function OrderUrgentUpdate() {
             <tbody className="divide-y divide-slate-100 bg-white">
               {loading && data.length === 0 ? (
                 <tr>
-                  <td colSpan={7 + (showDailyCols ? recentActiveDateCols.length : 0)} className="py-16 text-center text-slate-500">
+                  <td colSpan={6 + displayDateCols.length} className="py-16 text-center text-slate-500">
                     <div className="flex flex-col items-center justify-center gap-3">
                       <Loader2 className="w-8 h-8 animate-spin text-rose-500" />
                       <p className="text-sm font-semibold text-slate-700">Menghubungkan ke Spreadsheet Order Urgent...</p>
@@ -664,7 +666,7 @@ export function OrderUrgentUpdate() {
                 </tr>
               ) : filteredData.length === 0 ? (
                 <tr>
-                  <td colSpan={7 + (showDailyCols ? recentActiveDateCols.length : 0)} className="py-16 text-center text-slate-500">
+                  <td colSpan={6 + displayDateCols.length} className="py-16 text-center text-slate-500">
                     <div className="flex flex-col items-center justify-center gap-2 max-w-md mx-auto">
                       <FileSearch className="w-10 h-10 text-slate-300 mb-1" />
                       <p className="text-base font-bold text-slate-800">Tidak ada data yang cocok</p>
@@ -714,7 +716,7 @@ export function OrderUrgentUpdate() {
 
                       {/* JO */}
                       <td className="px-3.5 py-3 font-semibold text-slate-700 border-r border-slate-100 text-xs">
-                        <span className="bg-slate-100 px-2 py-1 rounded-md text-slate-800 border border-slate-200/60">
+                        <span className="bg-slate-100 px-2 py-1 rounded-md text-slate-800 border border-slate-200/60 font-mono">
                           {row.jo || '-'}
                         </span>
                       </td>
@@ -728,22 +730,21 @@ export function OrderUrgentUpdate() {
                         )}
                       </td>
 
-                      {/* Daily Production Columns */}
-                      {showDailyCols &&
-                        recentActiveDateCols.map((dc) => {
-                          const val = row.dailyProd[dc.date] || 0;
-                          return (
-                            <td
-                              key={dc.date}
-                              className={cn(
-                                "px-3 py-3 text-center font-mono text-xs border-r border-slate-100 font-semibold",
-                                val > 0 ? "bg-rose-50/40 text-rose-700 font-bold" : "text-slate-300"
-                              )}
-                            >
-                              {val > 0 ? val.toLocaleString('id-ID') : '-'}
-                            </td>
-                          );
-                        })}
+                      {/* Hari Sebelumnya & Hari Ini Data Columns */}
+                      {displayDateCols.map((dc) => {
+                        const val = row.dailyProd[dc.date] || 0;
+                        return (
+                          <td
+                            key={dc.date}
+                            className={cn(
+                              "px-3.5 py-3 text-center font-mono text-xs border-r border-slate-100 font-semibold",
+                              val > 0 ? "bg-rose-50/50 text-rose-700 font-bold" : "text-slate-300"
+                            )}
+                          >
+                            {val > 0 ? `${val.toLocaleString('id-ID')} Pcs` : '-'}
+                          </td>
+                        );
+                      })}
 
                       {/* Total Realisasi */}
                       <td className="px-4 py-3 text-right font-black text-slate-900 border-r border-slate-100 text-sm">

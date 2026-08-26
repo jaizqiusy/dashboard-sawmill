@@ -33,15 +33,37 @@ const DowntimePage = lazy(() => import('./components/Pages/DowntimePage').then(m
 const HistoryPage = lazy(() => import('./components/Pages/HistoryPage').then(module => ({ default: module.HistoryPage })));
 const PerformancePage = lazy(() => import('./components/Pages/PerformancePage').then(module => ({ default: module.PerformancePage })));
 
+// Helper to get cached data from sessionStorage for instant zero-delay render
+function getSessionCache<T>(key: string): T | null {
+  try {
+    const raw = sessionStorage.getItem(`cache_${key}`);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (e) {
+    return null;
+  }
+}
+
+function setSessionCache<T>(key: string, data: T): void {
+  try {
+    sessionStorage.setItem(`cache_${key}`, JSON.stringify(data));
+  } catch (e) {
+    // Ignore storage quota limits
+  }
+}
+
 export default function App() {
   const [activeTab, setActiveTab] = useState('Home');
-  const [data, setData] = useState<ProductionData[]>([]);
-  const [supplierData, setSupplierData] = useState<SupplierData[]>([]);
-  const [monthlyLogData, setMonthlyLogData] = useState<MonthlyLogData[]>([]);
-  const [operatorData, setOperatorData] = useState<OperatorData[]>([]);
-  const [analisaOperatorDetailData, setAnalisaOperatorDetailData] = useState<AnalisaOperatorDetailData[]>([]);
-  const [logDikerjakanData, setLogDikerjakanData] = useState<LogDikerjakanData[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [data, setData] = useState<ProductionData[]>(() => getSessionCache<ProductionData[]>('prod') || []);
+  const [supplierData, setSupplierData] = useState<SupplierData[]>(() => getSessionCache<SupplierData[]>('supp') || []);
+  const [monthlyLogData, setMonthlyLogData] = useState<MonthlyLogData[]>(() => getSessionCache<MonthlyLogData[]>('month') || []);
+  const [operatorData, setOperatorData] = useState<OperatorData[]>(() => getSessionCache<OperatorData[]>('op') || []);
+  const [analisaOperatorDetailData, setAnalisaOperatorDetailData] = useState<AnalisaOperatorDetailData[]>(() => getSessionCache<AnalisaOperatorDetailData[]>('analisa') || []);
+  const [logDikerjakanData, setLogDikerjakanData] = useState<LogDikerjakanData[]>(() => getSessionCache<LogDikerjakanData[]>('log') || []);
+  const [isLoading, setIsLoading] = useState<boolean>(() => {
+    // If we have cached production data, do not block the UI with a full-screen loading spinner
+    return !getSessionCache<ProductionData[]>('prod');
+  });
 
   // Firebase state
   const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -119,6 +141,7 @@ export default function App() {
 
   useEffect(() => {
     let isMounted = true;
+    let autoSyncTimeout: NodeJS.Timeout;
     
     const loadData = () => {
       Promise.all([
@@ -138,25 +161,46 @@ export default function App() {
         setLogDikerjakanData(logDikerjakan);
         setIsLoading(false);
 
-        // Perform a background check to auto-sync if there are new updates in spreadsheet
-        autoSyncSpreadsheetUpdates(
-          prodData,
-          suppData,
-          monthlyLog,
-          opData,
-          analisaDetailData,
-          logDikerjakan,
-          (newProd, newSupp, newMonth, newOp, newAnalisaDetail, newLogDikerjakan) => {
-            if (isMounted) {
-              setData(newProd);
-              setSupplierData(newSupp);
-              setMonthlyLogData(newMonth);
-              setOperatorData(newOp);
-              setAnalisaOperatorDetailData(newAnalisaDetail);
-              setLogDikerjakanData(newLogDikerjakan);
+        // Cache in background
+        setSessionCache('prod', prodData);
+        setSessionCache('supp', suppData);
+        setSessionCache('month', monthlyLog);
+        setSessionCache('op', opData);
+        setSessionCache('analisa', analisaDetailData);
+        setSessionCache('log', logDikerjakan);
+
+        // Schedule background auto-sync check after initial load stabilizes
+        autoSyncTimeout = setTimeout(() => {
+          if (!isMounted) return;
+          autoSyncSpreadsheetUpdates(
+            prodData,
+            suppData,
+            monthlyLog,
+            opData,
+            analisaDetailData,
+            logDikerjakan,
+            (newProd, newSupp, newMonth, newOp, newAnalisaDetail, newLogDikerjakan) => {
+              if (isMounted) {
+                setData(newProd);
+                setSupplierData(newSupp);
+                setMonthlyLogData(newMonth);
+                setOperatorData(newOp);
+                setAnalisaOperatorDetailData(newAnalisaDetail);
+                setLogDikerjakanData(newLogDikerjakan);
+
+                setSessionCache('prod', newProd);
+                setSessionCache('supp', newSupp);
+                setSessionCache('month', newMonth);
+                setSessionCache('op', newOp);
+                setSessionCache('analisa', newAnalisaDetail);
+                setSessionCache('log', newLogDikerjakan);
+              }
             }
-          }
-        );
+          );
+        }, 5000);
+      }).catch(err => {
+        console.error("Initial load error:", err);
+        if (isMounted) setIsLoading(false);
       });
     };
 
@@ -174,12 +218,20 @@ export default function App() {
           setOperatorData(newOp);
           setAnalisaOperatorDetailData(newAnalisaDetail);
           setLogDikerjakanData(newLogDikerjakan);
+
+          setSessionCache('prod', newProd);
+          setSessionCache('supp', newSupp);
+          setSessionCache('month', newMonth);
+          setSessionCache('op', newOp);
+          setSessionCache('analisa', newAnalisaDetail);
+          setSessionCache('log', newLogDikerjakan);
         }
       });
     }, 180000);
 
     return () => {
       isMounted = false;
+      clearTimeout(autoSyncTimeout);
       clearInterval(intervalId);
     };
   }, []);
