@@ -798,24 +798,46 @@ export function RankingPage({ data, operatorData }: { data: any[], operatorData?
               
               {/* Detailed Performance Metrics */}
               <div className="flex flex-col gap-2 w-full bg-slate-50 p-3.5 sm:p-4 rounded-2xl border border-slate-100 text-xs sm:text-sm">
-                <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
-                  <span className="text-slate-600 font-medium">Rendemen Utama (Bobot 40%)</span>
-                  <span className="font-bold text-slate-900">{(activeOperatorData.yield * 100).toFixed(1)}%</span>
+                {/* Rincian Skor */}
+                <div className="flex justify-between items-center py-1.5 border-b border-slate-200/60">
+                  <div className="flex flex-col">
+                    <span className="text-slate-700 font-bold">Rendemen Utama</span>
+                    <span className="text-slate-500 text-[10px] mt-0.5">({(activeOperatorData.yield * 100).toFixed(1)}% / Target 30%) × Bobot 40</span>
+                  </div>
+                  <div className="text-right flex flex-col items-end">
+                    <span className="font-black text-amber-600 text-sm sm:text-base">+ {(((activeOperatorData.yield * 100) / 30) * 40).toFixed(1)}</span>
+                  </div>
                 </div>
-                <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
-                  <span className="text-slate-600 font-medium">Rendemen Total (Bobot 30%)</span>
-                  <span className="font-bold text-slate-900">
-                    {(activeOperatorData.yieldTotal !== undefined 
-                      ? activeOperatorData.yieldTotal 
-                      : (activeOperatorData.input > 0 ? (activeOperatorData.total / activeOperatorData.input) * 100 : 0)
-                    ).toFixed(1)}%
-                  </span>
+                <div className="flex justify-between items-center py-1.5 border-b border-slate-200/60">
+                  <div className="flex flex-col">
+                    <span className="text-slate-700 font-bold">Rendemen Total</span>
+                    <span className="text-slate-500 text-[10px] mt-0.5">
+                      ({(activeOperatorData.yieldTotal !== undefined 
+                        ? activeOperatorData.yieldTotal 
+                        : (activeOperatorData.input > 0 ? (activeOperatorData.total / activeOperatorData.input) * 100 : 0)
+                      ).toFixed(1)}% / Target 65%) × Bobot 30
+                    </span>
+                  </div>
+                  <div className="text-right flex flex-col items-end">
+                    <span className="font-black text-amber-600 text-sm sm:text-base">
+                      + {(((activeOperatorData.yieldTotal !== undefined 
+                        ? activeOperatorData.yieldTotal 
+                        : (activeOperatorData.input > 0 ? (activeOperatorData.total / activeOperatorData.input) * 100 : 0)) / 65) * 30).toFixed(1)}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
-                  <span className="text-slate-600 font-medium">Output Total (Bobot 30%)</span>
-                  <span className="font-bold text-slate-900">{activeOperatorData.total.toLocaleString('id-ID', { maximumFractionDigits: 1 })} M³</span>
+                <div className="flex justify-between items-center py-1.5 border-b border-slate-300">
+                  <div className="flex flex-col">
+                    <span className="text-slate-700 font-bold">Output Total</span>
+                    <span className="text-slate-500 text-[10px] mt-0.5">({activeOperatorData.total.toLocaleString('id-ID', { maximumFractionDigits: 1 })} M³ / Target 225) × Bobot 30</span>
+                  </div>
+                  <div className="text-right flex flex-col items-end">
+                    <span className="font-black text-amber-600 text-sm sm:text-base">+ {((activeOperatorData.total / 225) * 30).toFixed(1)}</span>
+                  </div>
                 </div>
-                <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
+
+                {/* Data Lainnya */}
+                <div className="flex justify-between items-center py-1 border-b border-slate-200/60 mt-1">
                   <span className="text-slate-600 font-medium">Input Log Kayu</span>
                   <span className="font-semibold text-slate-800">{activeOperatorData.input.toLocaleString('id-ID', { maximumFractionDigits: 1 })} M³</span>
                 </div>

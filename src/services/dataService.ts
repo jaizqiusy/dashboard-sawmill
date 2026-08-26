@@ -530,15 +530,15 @@ export function getMachineRankings(data: ProductionData[], periodType: 'weekly' 
   }));
 
   return parsed.map(m => {
-    // perhitungan bobot rendemen utama x 40%
-    const scoreUtama = (m.yield * 100) * 0.4;
+    // perhitungan bobot rendemen utama (target 30%) x 40%
+    const scoreUtama = ((m.yield * 100) / 30) * 40;
     
-    // perhitungan bobot rendemen total x 30%
+    // perhitungan bobot rendemen total (target 65%) x 30%
     const yieldTotalPercent = m.input > 0 ? (m.total / m.input) * 100 : 0;
-    const scoreYTotal = yieldTotalPercent * 0.3;
+    const scoreYTotal = (yieldTotalPercent / 65) * 30;
     
-    // perhitungan bobot output total x 30%
-    const scoreOutput = m.total * 0.3;
+    // perhitungan bobot output total (target 225) x 30%
+    const scoreOutput = (m.total / 225) * 30;
     
     const score = scoreUtama + scoreYTotal + scoreOutput;
     return { ...m, yieldTotal: yieldTotalPercent, score };
