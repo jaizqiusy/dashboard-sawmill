@@ -33,10 +33,10 @@ const DowntimePage = lazy(() => import('./components/Pages/DowntimePage').then(m
 const HistoryPage = lazy(() => import('./components/Pages/HistoryPage').then(module => ({ default: module.HistoryPage })));
 const PerformancePage = lazy(() => import('./components/Pages/PerformancePage').then(module => ({ default: module.PerformancePage })));
 
-// Helper to get cached data from sessionStorage for instant zero-delay render
-function getSessionCache<T>(key: string): T | null {
+// Helper to get cached data from localStorage for instant zero-delay render
+function getLocalCache<T>(key: string): T | null {
   try {
-    const raw = sessionStorage.getItem(`cache_${key}`);
+    const raw = localStorage.getItem(`cache_data_${key}`);
     if (!raw) return null;
     return JSON.parse(raw);
   } catch (e) {
@@ -44,9 +44,9 @@ function getSessionCache<T>(key: string): T | null {
   }
 }
 
-function setSessionCache<T>(key: string, data: T): void {
+function setLocalCache<T>(key: string, data: T): void {
   try {
-    sessionStorage.setItem(`cache_${key}`, JSON.stringify(data));
+    localStorage.setItem(`cache_data_${key}`, JSON.stringify(data));
   } catch (e) {
     // Ignore storage quota limits
   }
@@ -54,15 +54,15 @@ function setSessionCache<T>(key: string, data: T): void {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('Home');
-  const [data, setData] = useState<ProductionData[]>(() => getSessionCache<ProductionData[]>('prod') || []);
-  const [supplierData, setSupplierData] = useState<SupplierData[]>(() => getSessionCache<SupplierData[]>('supp') || []);
-  const [monthlyLogData, setMonthlyLogData] = useState<MonthlyLogData[]>(() => getSessionCache<MonthlyLogData[]>('month') || []);
-  const [operatorData, setOperatorData] = useState<OperatorData[]>(() => getSessionCache<OperatorData[]>('op') || []);
-  const [analisaOperatorDetailData, setAnalisaOperatorDetailData] = useState<AnalisaOperatorDetailData[]>(() => getSessionCache<AnalisaOperatorDetailData[]>('analisa') || []);
-  const [logDikerjakanData, setLogDikerjakanData] = useState<LogDikerjakanData[]>(() => getSessionCache<LogDikerjakanData[]>('log') || []);
+  const [data, setData] = useState<ProductionData[]>(() => getLocalCache<ProductionData[]>('prod') || []);
+  const [supplierData, setSupplierData] = useState<SupplierData[]>(() => getLocalCache<SupplierData[]>('supp') || []);
+  const [monthlyLogData, setMonthlyLogData] = useState<MonthlyLogData[]>(() => getLocalCache<MonthlyLogData[]>('month') || []);
+  const [operatorData, setOperatorData] = useState<OperatorData[]>(() => getLocalCache<OperatorData[]>('op') || []);
+  const [analisaOperatorDetailData, setAnalisaOperatorDetailData] = useState<AnalisaOperatorDetailData[]>(() => getLocalCache<AnalisaOperatorDetailData[]>('analisa') || []);
+  const [logDikerjakanData, setLogDikerjakanData] = useState<LogDikerjakanData[]>(() => getLocalCache<LogDikerjakanData[]>('log') || []);
   const [isLoading, setIsLoading] = useState<boolean>(() => {
     // If we have cached production data, do not block the UI with a full-screen loading spinner
-    return !getSessionCache<ProductionData[]>('prod');
+    return !getLocalCache<ProductionData[]>('prod');
   });
 
   // Firebase state
@@ -143,7 +143,31 @@ export default function App() {
     let isMounted = true;
     let autoSyncTimeout: NodeJS.Timeout;
     
-    const loadData = () => {
+    const performBackgroundSync = () => {
+      const { data: d, supplierData: s, monthlyLogData: m, operatorData: o, analisaOperatorDetailData: a, logDikerjakanData: ld } = latestDataRef.current;
+      autoSyncSpreadsheetUpdates(
+        d, s, m, o, a, ld,
+        (newProd, newSupp, newMonth, newOp, newAnalisaDetail, newLogDikerjakan) => {
+          if (isMounted) {
+            setData(newProd);
+            setSupplierData(newSupp);
+            setMonthlyLogData(newMonth);
+            setOperatorData(newOp);
+            setAnalisaOperatorDetailData(newAnalisaDetail);
+            setLogDikerjakanData(newLogDikerjakan);
+
+            setLocalCache('prod', newProd);
+            setLocalCache('supp', newSupp);
+            setLocalCache('month', newMonth);
+            setLocalCache('op', newOp);
+            setLocalCache('analisa', newAnalisaDetail);
+            setLocalCache('log', newLogDikerjakan);
+          }
+        }
+      );
+    };
+
+    const loadDataFromFirestore = () => {
       Promise.all([
         fetchProductionData(),
         fetchSupplierData(),
@@ -162,41 +186,16 @@ export default function App() {
         setIsLoading(false);
 
         // Cache in background
-        setSessionCache('prod', prodData);
-        setSessionCache('supp', suppData);
-        setSessionCache('month', monthlyLog);
-        setSessionCache('op', opData);
-        setSessionCache('analisa', analisaDetailData);
-        setSessionCache('log', logDikerjakan);
+        setLocalCache('prod', prodData);
+        setLocalCache('supp', suppData);
+        setLocalCache('month', monthlyLog);
+        setLocalCache('op', opData);
+        setLocalCache('analisa', analisaDetailData);
+        setLocalCache('log', logDikerjakan);
 
         // Schedule background auto-sync check after initial load stabilizes
         autoSyncTimeout = setTimeout(() => {
-          if (!isMounted) return;
-          autoSyncSpreadsheetUpdates(
-            prodData,
-            suppData,
-            monthlyLog,
-            opData,
-            analisaDetailData,
-            logDikerjakan,
-            (newProd, newSupp, newMonth, newOp, newAnalisaDetail, newLogDikerjakan) => {
-              if (isMounted) {
-                setData(newProd);
-                setSupplierData(newSupp);
-                setMonthlyLogData(newMonth);
-                setOperatorData(newOp);
-                setAnalisaOperatorDetailData(newAnalisaDetail);
-                setLogDikerjakanData(newLogDikerjakan);
-
-                setSessionCache('prod', newProd);
-                setSessionCache('supp', newSupp);
-                setSessionCache('month', newMonth);
-                setSessionCache('op', newOp);
-                setSessionCache('analisa', newAnalisaDetail);
-                setSessionCache('log', newLogDikerjakan);
-              }
-            }
-          );
+          if (isMounted) performBackgroundSync();
         }, 5000);
       }).catch(err => {
         console.error("Initial load error:", err);
@@ -204,29 +203,21 @@ export default function App() {
       });
     };
 
-    loadData();
+    // Fast-path: if we already have local cache, skip the heavy 48 parallel Firestore reads
+    // and just do a lightweight background sync from Google Sheets a few seconds later.
+    const hasCache = !!getLocalCache('prod');
+    if (hasCache) {
+      setIsLoading(false);
+      autoSyncTimeout = setTimeout(() => {
+        if (isMounted) performBackgroundSync();
+      }, 3000);
+    } else {
+      loadDataFromFirestore();
+    }
 
     // Auto-sync every 3 minutes (180000ms) to detect changes in Google Sheets
     const intervalId = setInterval(() => {
-      if (!isMounted) return;
-      const { data: d, supplierData: s, monthlyLogData: m, operatorData: o, analisaOperatorDetailData: a, logDikerjakanData: ld } = latestDataRef.current;
-      autoSyncSpreadsheetUpdates(d, s, m, o, a, ld, (newProd, newSupp, newMonth, newOp, newAnalisaDetail, newLogDikerjakan) => {
-        if (isMounted) {
-          setData(newProd);
-          setSupplierData(newSupp);
-          setMonthlyLogData(newMonth);
-          setOperatorData(newOp);
-          setAnalisaOperatorDetailData(newAnalisaDetail);
-          setLogDikerjakanData(newLogDikerjakan);
-
-          setSessionCache('prod', newProd);
-          setSessionCache('supp', newSupp);
-          setSessionCache('month', newMonth);
-          setSessionCache('op', newOp);
-          setSessionCache('analisa', newAnalisaDetail);
-          setSessionCache('log', newLogDikerjakan);
-        }
-      });
+      if (isMounted) performBackgroundSync();
     }, 180000);
 
     return () => {

@@ -19,20 +19,12 @@ function getStaticBaselineData(): ProductionData[] {
 // Ultra-fast dataset comparison (bypasses heavy JSON.stringify of thousands of objects)
 export function isDatasetEqual<T extends Record<string, any>>(a: T[], b: T[]): boolean {
   if (a === b) return true;
-  if (!a || !b) return a === b;
+  if (!a || !b) return false;
   if (a.length !== b.length) return false;
-  if (a.length === 0) return true;
 
-  // Sample check: first, middle, last, and every 15th element
-  const checkIndices = [0, Math.floor(a.length / 2), a.length - 1];
-  const step = Math.max(1, Math.floor(a.length / 20));
-  for (let i = 0; i < a.length; i += step) {
-    checkIndices.push(i);
-  }
-
-  for (const idx of checkIndices) {
-    const itemA = a[idx];
-    const itemB = b[idx];
+  for (let i = 0; i < a.length; i++) {
+    const itemA = a[i];
+    const itemB = b[i];
     if (!itemA || !itemB) return false;
     for (const key in itemA) {
       if (itemA[key] !== itemB[key]) return false;

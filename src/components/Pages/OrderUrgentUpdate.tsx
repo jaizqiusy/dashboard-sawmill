@@ -47,9 +47,35 @@ interface DateColInfo {
   sum: number;
 }
 
+
 let cachedOrderData: OrderUrgentItem[] | null = null;
 let cachedDateCols: DateColInfo[] = [];
 let cachedOrderLastUpdate: string = "-";
+
+// LocalStorage helpers for instant zero-delay render
+function getLocalOrderCache() {
+  try {
+    const raw = localStorage.getItem('cache_data_order_urgent');
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (e) {
+    return null;
+  }
+}
+
+function setLocalOrderCache(data: OrderUrgentItem[], cols: DateColInfo[], lastUpdate: string) {
+  try {
+    localStorage.setItem('cache_data_order_urgent', JSON.stringify({ data, cols, lastUpdate }));
+  } catch (e) {
+    // ignore
+  }
+}
+
+const getUnit = (jo: string) => {
+  const normalizedJo = (jo || '').trim().toUpperCase();
+  if (normalizedJo.startsWith('FJ')) return 'M³';
+  return 'Pcs';
+};
 
 export function OrderUrgentUpdate() {
   const [data, setData] = useState<OrderUrgentItem[]>([]);
@@ -57,7 +83,7 @@ export function OrderUrgentUpdate() {
   const [loading, setLoading] = useState(false);
   const [lastUpdate, setLastUpdate] = useState('-');
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'unfulfilled' | 'fulfilled' | 'recent'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'unfulfilled' | 'fulfilled' | 'recent'>('recent');
   const [error, setError] = useState<string | null>(null);
   const [selectedItemForDetail, setSelectedItemForDetail] = useState<OrderUrgentItem | null>(null);
   const [showDailyCols, setShowDailyCols] = useState<boolean>(true);
@@ -198,11 +224,27 @@ export function OrderUrgentUpdate() {
   };
 
   const syncData = useCallback((force = false) => {
-    if (!force && cachedOrderData && cachedOrderData.length > 0) {
-      setData(cachedOrderData);
-      setDateCols(cachedDateCols);
-      setLastUpdate(cachedOrderLastUpdate);
-      return;
+    if (!force) {
+      if (cachedOrderData && cachedOrderData.length > 0) {
+        setData(cachedOrderData);
+        setDateCols(cachedDateCols);
+        setLastUpdate(cachedOrderLastUpdate);
+        return;
+      }
+      
+      const localCache = getLocalOrderCache();
+      if (localCache) {
+        cachedOrderData = localCache.data;
+        cachedDateCols = localCache.cols;
+        cachedOrderLastUpdate = localCache.lastUpdate;
+        setData(localCache.data);
+        setDateCols(localCache.cols);
+        setLastUpdate(localCache.lastUpdate);
+        
+        // Background sync to keep data fresh without blocking UI
+        setTimeout(() => syncData(true), 3000);
+        return;
+      }
     }
 
     setLoading(true);
@@ -224,6 +266,8 @@ export function OrderUrgentUpdate() {
           const formattedTime = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
           cachedOrderLastUpdate = `${formattedDate}, ${formattedTime}`;
           setLastUpdate(cachedOrderLastUpdate);
+          
+          setLocalOrderCache(items, cols, cachedOrderLastUpdate);
         } catch (err: any) {
           console.error("Order Urgent Parse Error:", err);
           setError("Gagal memproses data spreadsheet: " + (err.message || 'Error'));
@@ -563,7 +607,7 @@ export function OrderUrgentUpdate() {
               )}
             >
               <Calendar className="w-3.5 h-3.5" />
-              <span>Produksi Terkini</span>
+              <span>Produksi Terkini (Hari Ini & H-1)</span>
             </button>
           )}
         </div>
@@ -724,7 +768,7 @@ export function OrderUrgentUpdate() {
                       {/* Kebutuhan */}
                       <td className="px-4 py-3 text-right font-bold text-slate-800 border-r border-slate-100">
                         {row.kebutuhan > 0 ? (
-                          <span>{row.kebutuhan.toLocaleString('id-ID')} <span className="text-[10px] text-slate-400 font-normal">Pcs</span></span>
+                          <span>{row.kebutuhan.toLocaleString('id-ID')} <span className="text-[10px] text-slate-400 font-normal">{getUnit(row.jo)}</span></span>
                         ) : (
                           <span className="text-slate-400">-</span>
                         )}
@@ -741,14 +785,14 @@ export function OrderUrgentUpdate() {
                               val > 0 ? "bg-rose-50/50 text-rose-700 font-bold" : "text-slate-300"
                             )}
                           >
-                            {val > 0 ? `${val.toLocaleString('id-ID')} Pcs` : '-'}
+                            {val > 0 ? `${val.toLocaleString('id-ID')} ${getUnit(row.jo)}` : '-'}
                           </td>
                         );
                       })}
 
                       {/* Total Realisasi */}
                       <td className="px-4 py-3 text-right font-black text-slate-900 border-r border-slate-100 text-sm">
-                        {row.total.toLocaleString('id-ID')} <span className="text-[10px] text-slate-400 font-normal">Pcs</span>
+                        {row.total.toLocaleString('id-ID')} <span className="text-[10px] text-slate-400 font-normal">{getUnit(row.jo)}</span>
                       </td>
 
                       {/* Status / Kekurangan Badge */}
@@ -864,11 +908,11 @@ export function OrderUrgentUpdate() {
             <div className="grid grid-cols-3 gap-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-100 text-center">
               <div>
                 <p className="text-[10px] uppercase font-bold text-slate-400">Target</p>
-                <p className="text-lg font-black text-slate-800">{selectedItemForDetail.kebutuhan} Pcs</p>
+                <p className="text-lg font-black text-slate-800">{selectedItemForDetail.kebutuhan} {getUnit(selectedItemForDetail.jo)}</p>
               </div>
               <div>
                 <p className="text-[10px] uppercase font-bold text-slate-400">Tercapai</p>
-                <p className="text-lg font-black text-slate-800">{selectedItemForDetail.total} Pcs</p>
+                <p className="text-lg font-black text-slate-800">{selectedItemForDetail.total} {getUnit(selectedItemForDetail.jo)}</p>
               </div>
               <div>
                 <p className="text-[10px] uppercase font-bold text-slate-400">Status</p>
@@ -895,7 +939,7 @@ export function OrderUrgentUpdate() {
                     <div key={date} className="flex justify-between items-center px-4 py-2.5 hover:bg-slate-50 text-xs">
                       <span className="font-semibold text-slate-700">{date}</span>
                       <span className="font-bold text-slate-900 bg-slate-100 px-2.5 py-1 rounded-lg">
-                        +{qty} Pcs
+                        +{qty} {getUnit(selectedItemForDetail.jo)}
                       </span>
                     </div>
                   ))}
