@@ -3,7 +3,6 @@ import { Calendar, ClipboardList, Target, TrendingUp, Activity, Box, BarChart2 }
 import { ProductionData } from '../../types';
 import { WosSawmillUpdate } from './WosSawmillUpdate';
 import { OrderUrgentUpdate } from './OrderUrgentUpdate';
-import { PlaningBulanan } from './PlaningBulanan';
 
 interface PlanPageProps {
   todayStats: any;
@@ -108,9 +107,6 @@ export function PlanPage({ todayStats, data }: PlanPageProps) {
             </div>
           </div>
         </div>
-
-        {/* Planing Bulanan */}
-        <PlaningBulanan />
 
         <WosSawmillUpdate />
         <OrderUrgentUpdate />
