@@ -832,24 +832,39 @@ function parseLogDikerjakanCSV(csv: string): LogDikerjakanData[] {
   
   // Find column indices based on possible headers
   const headers = parsed.data[0].map(h => h.trim().toLowerCase());
-  const idxMesin = headers.findIndex(h => h.includes('mesin'));
+  const idxSubBagian = headers.findIndex(h => h.includes('sub'));
+  const idxTanggal = headers.findIndex(h => h.includes('tanggal'));
   const idxNomerLog = headers.findIndex(h => h.includes('nomor') || h.includes('nomer'));
-  const idxPanjang = headers.findIndex(h => h.includes('panjang'));
+  const idxJenisKayu = headers.findIndex(h => h.includes('jenis'));
   const idxDiameter = headers.findIndex(h => h.includes('diameter'));
+  const idxPanjang = headers.findIndex(h => h.includes('panjang'));
   const idxVolume = headers.findIndex(h => h.includes('volume'));
-  
+  const idxMesin = headers.findIndex(h => h.includes('mesin'));
+  const idxCatatan = headers.findIndex(h => h.includes('catatan'));
+  const idxFoto = headers.findIndex(h => h.includes('foto'));
+  const idxTimestamp = headers.findIndex(h => h.includes('timestamp') || h.includes('waktu'));
+
   return parsed.data.slice(1).map(values => {
     // Extract raw strings
-    const rawMesin = idxMesin !== -1 ? values[idxMesin] : (values[7] || '');
-    const mNomerLog = idxNomerLog !== -1 ? values[idxNomerLog] : (values[2] || '');
-    const mPanjang = idxPanjang !== -1 ? values[idxPanjang] : (values[5] || '');
-    const mDiameter = idxDiameter !== -1 ? values[idxDiameter] : (values[4] || '');
-    const rawVolume = idxVolume !== -1 ? values[idxVolume] : (values[6] || '0');
+    const rawSubBagian = idxSubBagian !== -1 ? (values[idxSubBagian] || '') : (values[0] || '');
+    const rawTanggal = idxTanggal !== -1 ? (values[idxTanggal] || '') : (values[1] || '');
+    const mNomerLog = idxNomerLog !== -1 ? (values[idxNomerLog] || '') : (values[2] || '');
+    const mJenisKayu = idxJenisKayu !== -1 ? (values[idxJenisKayu] || '') : (values[3] || '');
+    const mDiameter = idxDiameter !== -1 ? (values[idxDiameter] || '') : (values[4] || '');
+    const mPanjang = idxPanjang !== -1 ? (values[idxPanjang] || '') : (values[5] || '');
+    const rawVolume = idxVolume !== -1 ? (values[idxVolume] || '0') : (values[6] || '0');
+    const rawMesin = idxMesin !== -1 ? (values[idxMesin] || '') : (values[7] || '');
+    const mCatatan = idxCatatan !== -1 ? (values[idxCatatan] || '') : (values[8] || '');
+    const mFotoLog = idxFoto !== -1 ? (values[idxFoto] || '') : (values[9] || '');
+    const mTimestamp = idxTimestamp !== -1 ? (values[idxTimestamp] || '') : (values[10] || '');
     
-    // Clean Mesin name (e.g. "Mesin BS 1 / Jaiz Qiusy" -> "Mesin BS 1")
-    let mMesin = rawMesin;
+    // Clean Mesin & parse Operator (e.g. "Mesin BS 5 / Sello Kencono" -> machine: "Mesin BS 5", operator: "Sello Kencono")
+    let mMesin = rawMesin.trim();
+    let mOperator = '';
     if (mMesin.includes('/')) {
-      mMesin = mMesin.split('/')[0].trim();
+      const parts = mMesin.split('/');
+      mMesin = parts[0].trim();
+      mOperator = parts.slice(1).join('/').trim();
     }
     
     // Fix comma decimals if any, then parse
@@ -859,13 +874,50 @@ function parseLogDikerjakanCSV(csv: string): LogDikerjakanData[] {
     const match = mNomerLog.match(/([a-zA-Z])$/);
     const mPotongan = match ? match[1].toUpperCase() : '';
 
+    // Standardize date to YYYY-MM-DD
+    let normalizedDate = '';
+    if (rawTanggal && rawTanggal.trim()) {
+      const s = rawTanggal.trim();
+      const parts = s.split(/[\/\-]/);
+      if (parts.length === 3) {
+        if (parts[0].length === 4) {
+          normalizedDate = `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+        } else {
+          let d = parts[0].padStart(2, '0');
+          let m = parts[1].padStart(2, '0');
+          let y = parts[2];
+          if (y.length === 2) y = '20' + y;
+          normalizedDate = `${y}-${m}-${d}`;
+        }
+      }
+    }
+    if (!normalizedDate && mTimestamp && mTimestamp.trim()) {
+      const datePart = mTimestamp.trim().split(' ')[0];
+      const parts = datePart.split(/[\/\-]/);
+      if (parts.length === 3) {
+        let m = parts[0].padStart(2, '0');
+        let d = parts[1].padStart(2, '0');
+        let y = parts[2];
+        if (y.length === 2) y = '20' + y;
+        normalizedDate = `${y}-${m}-${d}`;
+      }
+    }
+
     return {
       mesin: mMesin,
-      nomer_log: mNomerLog,
-      panjang: mPanjang,
-      diameter: mDiameter,
+      operator: mOperator,
+      nomer_log: mNomerLog.trim(),
+      tanggal: normalizedDate,
+      rawTanggal: rawTanggal.trim(),
+      subBagian: rawSubBagian.trim(),
+      jenisKayu: mJenisKayu.trim(),
+      panjang: mPanjang.trim(),
+      diameter: mDiameter.trim(),
       volume: mVolume,
-      potongan: mPotongan
+      potongan: mPotongan,
+      catatan: mCatatan.trim(),
+      fotoLog: mFotoLog.trim(),
+      timestamp: mTimestamp.trim()
     };
   }).filter(row => row.mesin && row.nomer_log);
 }

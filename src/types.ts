@@ -111,4 +111,12 @@ export interface LogDikerjakanData {
   diameter: string;
   volume: number;
   potongan: string;
+  tanggal?: string;
+  rawTanggal?: string;
+  subBagian?: string;
+  jenisKayu?: string;
+  operator?: string;
+  catatan?: string;
+  fotoLog?: string;
+  timestamp?: string;
 }

@@ -318,7 +318,15 @@ export default function App() {
         {activeTab === 'Ranking' && <RankingPage data={data} operatorData={operatorData} />}
         {activeTab === 'OperatorProfile' && <OperatorProfilePage data={data} operatorData={operatorData} />}
         {activeTab === 'Production' && <ProductionPage todayStats={todayStats} />}
-        {activeTab === 'Log' && <LogPage logDikerjakanData={logDikerjakanData} />}
+        {activeTab === 'Log' && (
+          <LogPage 
+            logDikerjakanData={logDikerjakanData} 
+            onUpdateLogData={(newData) => {
+              setLogDikerjakanData(newData);
+              setLocalCache('log', newData);
+            }} 
+          />
+        )}
         {activeTab === 'Recap' && <RecapPage data={data} supplierData={supplierData} />}
         {activeTab === 'Downtime' && <DowntimePage data={data} />}
         {activeTab === 'History' && <HistoryPage data={data} monthlyLogData={monthlyLogData} />}

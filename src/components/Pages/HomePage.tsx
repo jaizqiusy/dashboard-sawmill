@@ -31,7 +31,6 @@ export function HomePage({ setActiveTab }: HomePageProps) {
     { id: 'Recap', icon: FileText, label: 'Rekap Data', desc: 'Data historis', color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100' },
     { id: 'Downtime', icon: AlertTriangle, label: 'Downtime', desc: 'Status mesin', color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-100' },
     { id: 'History', icon: History, label: 'History', desc: 'Riwayat data', color: 'text-slate-600', bg: 'bg-slate-50', border: 'border-slate-100' },
-    { id: 'AI', icon: Sparkles, label: 'Laporan AI', desc: 'Analisa cerdas', color: 'text-fuchsia-600', bg: 'bg-fuchsia-50', border: 'border-fuchsia-100' },
     { id: 'OperatorProfile', icon: Users, label: 'Operator', desc: 'Profil operator', color: 'text-teal-600', bg: 'bg-teal-50', border: 'border-teal-100' },
   ];
 
