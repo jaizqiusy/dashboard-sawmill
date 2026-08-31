@@ -25,6 +25,23 @@ interface LogPageProps {
   onUpdateLogData?: (newData: LogDikerjakanData[]) => void;
 }
 
+// Block and filter duplicate log entries (same log number on the same date)
+function deduplicateLogs(logs: LogDikerjakanData[]): LogDikerjakanData[] {
+  if (!logs || !Array.isArray(logs)) return [];
+  const seen = new Set<string>();
+  return logs.filter(item => {
+    if (!item || !item.nomer_log || !item.mesin) return false;
+    const cleanLog = item.nomer_log.trim().toUpperCase();
+    const cleanDate = (item.tanggal || '').trim();
+    const key = cleanDate ? `${cleanDate}_${cleanLog}` : cleanLog;
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+}
+
 // Get today's ISO date string (YYYY-MM-DD) in Asia/Jakarta timezone
 function getTodayISO(): string {
   try {
@@ -53,7 +70,7 @@ function formatIndoDate(isoDate: string): string {
 }
 
 export function LogPage({ logDikerjakanData, onUpdateLogData }: LogPageProps) {
-  const [data, setData] = useState<LogDikerjakanData[]>(logDikerjakanData || []);
+  const [data, setData] = useState<LogDikerjakanData[]>(() => deduplicateLogs(logDikerjakanData || []));
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [lastSyncTime, setLastSyncTime] = useState<string>('');
   
@@ -72,7 +89,7 @@ export function LogPage({ logDikerjakanData, onUpdateLogData }: LogPageProps) {
   // Update local data if props change
   useEffect(() => {
     if (logDikerjakanData && logDikerjakanData.length > 0) {
-      setData(logDikerjakanData);
+      setData(deduplicateLogs(logDikerjakanData));
     }
   }, [logDikerjakanData]);
 
@@ -82,9 +99,10 @@ export function LogPage({ logDikerjakanData, onUpdateLogData }: LogPageProps) {
       setIsSyncing(true);
       const freshData = await fetchLogDikerjakanFromSheet();
       if (freshData && freshData.length > 0) {
-        setData(freshData);
+        const cleanData = deduplicateLogs(freshData);
+        setData(cleanData);
         if (onUpdateLogData) {
-          onUpdateLogData(freshData);
+          onUpdateLogData(cleanData);
         }
       }
       const now = new Date();

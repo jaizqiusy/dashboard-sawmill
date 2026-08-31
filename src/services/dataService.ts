@@ -919,7 +919,20 @@ function parseLogDikerjakanCSV(csv: string): LogDikerjakanData[] {
       fotoLog: mFotoLog.trim(),
       timestamp: mTimestamp.trim()
     };
-  }).filter(row => row.mesin && row.nomer_log);
+  }).filter(row => {
+    return Boolean(row.mesin && row.nomer_log);
+  }).filter((row, idx, self) => {
+    // Block / filter duplicate log numbers (exact same nomer_log on the same date or same log entry)
+    const key = row.tanggal
+      ? `${row.tanggal}_${row.nomer_log.toUpperCase()}`
+      : `${row.mesin.toUpperCase()}_${row.nomer_log.toUpperCase()}`;
+    return self.findIndex(r => {
+      const rKey = r.tanggal
+        ? `${r.tanggal}_${r.nomer_log.toUpperCase()}`
+        : `${r.mesin.toUpperCase()}_${r.nomer_log.toUpperCase()}`;
+      return rKey === key;
+    }) === idx;
+  });
 }
 
 export async function fetchLogDikerjakan(): Promise<import('../types').LogDikerjakanData[]> {
