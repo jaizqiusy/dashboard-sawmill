@@ -110,7 +110,8 @@ export function OrderUrgentUpdate() {
     const detectedDateCols: DateColInfo[] = [];
     for (let c = 0; c < maxCols; c++) {
       const headerCombined = `${(r1[c] || '').trim()} ${(r0[c] || '').trim()}`.trim();
-      const dateMatch = headerCombined.match(/(\d{1,2}\s+[A-Za-z]{3}(?:\s+\d{2,4})?)/);
+      const dateMatch = headerCombined.match(/(\d{1,2}\s+[A-Za-z]{3,9}(?:\s+\d{2,4})?)/i) ||
+                         headerCombined.match(/(\d{1,2}[\/\-\.]\d{1,2}(?:[\/\-\.]\d{2,4})?)/);
       if (dateMatch) {
         let colSum = 0;
         for (let r = 2; r < csvRows.length; r++) {
@@ -289,19 +290,29 @@ export function OrderUrgentUpdate() {
     syncData();
   }, [syncData]);
 
-  // Helper to parse date string like "26 Aug 26", "26 Agu", "26-Aug-2026"
+  // Helper to parse date string like "26 Aug 26", "26 Agu", "26-Aug-2026", "26 Agt 26"
   const parseDateString = (str: string): { day: number; month: number; year?: number } | null => {
     if (!str) return null;
     const clean = str.trim().toLowerCase();
     
-    // Pattern 1: Day Month Year (e.g. 26 Aug 26 or 26 Agu 2026 or 26 Aug)
-    const matchAlpha = clean.match(/(\d{1,2})[\s\-_/]+([a-z]{3,4})(?:[\s\-_/]+(\d{2,4}))?/i);
+    // Pattern 1: Day Month Year (e.g. 26 Aug 26 or 26 Agu 2026 or 26 Agt 26)
+    const matchAlpha = clean.match(/(\d{1,2})[\s\-_/]+([a-z]{3,9})(?:[\s\-_/]+(\d{2,4}))?/i);
     if (matchAlpha) {
       const day = parseInt(matchAlpha[1], 10);
       const mStr = matchAlpha[2].toLowerCase();
       const monthMap: Record<string, number> = {
-        jan: 0, feb: 1, mar: 2, apr: 3, may: 4, mei: 4, jun: 5,
-        jul: 6, aug: 7, agu: 7, sep: 8, okt: 9, oct: 9, nov: 10, des: 11, dec: 11
+        jan: 0, januari: 0,
+        feb: 1, februari: 1,
+        mar: 2, maret: 2,
+        apr: 3, april: 3,
+        may: 4, mei: 4,
+        jun: 5, juni: 5,
+        jul: 6, juli: 6,
+        aug: 7, agu: 7, ags: 7, agt: 7, agustus: 7,
+        sep: 8, sept: 8, september: 8,
+        okt: 9, oct: 9, oktober: 9, october: 9,
+        nov: 10, nop: 10, november: 10,
+        des: 11, dec: 11, desember: 11, december: 11
       };
       const month = monthMap[mStr] !== undefined ? monthMap[mStr] : -1;
       let year = matchAlpha[3] ? parseInt(matchAlpha[3], 10) : undefined;
@@ -311,14 +322,14 @@ export function OrderUrgentUpdate() {
       }
     }
 
-    // Pattern 2: DD/MM/YYYY
+    // Pattern 2: DD/MM/YYYY or DD-MM-YYYY
     const matchNum = clean.match(/(\d{1,2})[\/\-.](\d{1,2})(?:[\/\-.](\d{2,4}))?/);
     if (matchNum) {
       const day = parseInt(matchNum[1], 10);
       const month = parseInt(matchNum[2], 10) - 1;
       let year = matchNum[3] ? parseInt(matchNum[3], 10) : undefined;
       if (year !== undefined && year < 100) year += 2000;
-      if (!isNaN(day) && !isNaN(month)) {
+      if (!isNaN(day) && !isNaN(month) && month >= 0 && month <= 11) {
         return { day, month, year };
       }
     }
@@ -326,16 +337,34 @@ export function OrderUrgentUpdate() {
     return null;
   };
 
-  // Get the 2 target date columns synced with today's date: Hari Sebelumnya & Hari Ini
+  // Helper to get Jakarta date components
+  const getJakartaDate = (): { day: number; month: number; year: number } => {
+    try {
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Jakarta',
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric'
+      });
+      const parts = formatter.formatToParts(new Date());
+      const year = parseInt(parts.find(p => p.type === 'year')?.value || '2026', 10);
+      const month = parseInt(parts.find(p => p.type === 'month')?.value || '1', 10) - 1;
+      const day = parseInt(parts.find(p => p.type === 'day')?.value || '1', 10);
+      return { day, month, year };
+    } catch (e) {
+      const d = new Date();
+      return { day: d.getDate(), month: d.getMonth(), year: d.getFullYear() };
+    }
+  };
+
+  // Get the 2 target date columns synced with today's date: 1 Hari Sebelumnya & Hari Ini
   const displayDateCols = useMemo(() => {
     if (!dateCols || dateCols.length === 0) return [];
     
-    const today = new Date();
-    const todayDay = today.getDate();
-    const todayMonth = today.getMonth();
-    const todayYear = today.getFullYear();
+    const { day: todayDay, month: todayMonth, year: todayYear } = getJakartaDate();
+    const compToday = new Date(todayYear, todayMonth, todayDay);
 
-    // 1. Check if there is an exact column matching today's date
+    // 1. Check if there is an exact column matching today's calendar date
     let todayColIdx = -1;
     for (let i = 0; i < dateCols.length; i++) {
       const parsed = parseDateString(dateCols[i].date);
@@ -350,13 +379,12 @@ export function OrderUrgentUpdate() {
       }
     }
 
-    // 2. If exact today not found, find the closest date <= today (to avoid picking future tomorrow dates)
+    // 2. If exact today not found, find the closest date <= today (to avoid future dates)
     if (todayColIdx === -1) {
       for (let i = dateCols.length - 1; i >= 0; i--) {
         const parsed = parseDateString(dateCols[i].date);
         if (parsed) {
           const colDate = new Date(parsed.year || todayYear, parsed.month, parsed.day);
-          const compToday = new Date(todayYear, todayMonth, todayDay);
           if (colDate <= compToday) {
             todayColIdx = i;
             break;
@@ -365,7 +393,7 @@ export function OrderUrgentUpdate() {
       }
     }
 
-    // 3. If still not found, fallback to the last active column or last column
+    // 3. Fallback to the latest available column
     if (todayColIdx === -1) {
       todayColIdx = dateCols.length - 1;
     }
@@ -375,7 +403,7 @@ export function OrderUrgentUpdate() {
 
     if (prevCol && todayCol) {
       return [
-        { ...prevCol, label: 'Hari Sebelumnya' },
+        { ...prevCol, label: '1 Hari Sebelumnya' },
         { ...todayCol, label: 'Hari Ini' }
       ];
     } else if (todayCol) {
@@ -392,6 +420,7 @@ export function OrderUrgentUpdate() {
     let totalItems = data.length;
     let unfulfilledCount = 0;
     let fulfilledCount = 0;
+    let recentCount = 0;
     let totalKebutuhan = 0;
     let totalRealisasi = 0;
     let totalKekuranganPcs = 0;
@@ -405,6 +434,14 @@ export function OrderUrgentUpdate() {
       } else {
         fulfilledCount++;
       }
+
+      if (displayDateCols.length > 0) {
+        if (displayDateCols.some(dc => (item.dailyProd[dc.date] || 0) > 0)) {
+          recentCount++;
+        }
+      } else if (item.latestProdVal > 0) {
+        recentCount++;
+      }
     });
 
     const overallPct = totalKebutuhan > 0 ? ((totalRealisasi / totalKebutuhan) * 100).toFixed(1) : '0';
@@ -413,12 +450,13 @@ export function OrderUrgentUpdate() {
       totalItems,
       unfulfilledCount,
       fulfilledCount,
+      recentCount,
       totalKebutuhan,
       totalRealisasi,
       totalKekuranganPcs,
       overallPct
     };
-  }, [data]);
+  }, [data, displayDateCols]);
 
   // Filtering & Sorting
   const filteredData = useMemo(() => {
@@ -563,6 +601,20 @@ export function OrderUrgentUpdate() {
         {/* Status Filter Buttons */}
         <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl overflow-x-auto text-xs font-bold shrink-0">
           <button
+            id="filter-recent-btn"
+            onClick={() => setStatusFilter('recent')}
+            className={cn(
+              "px-3 py-2 rounded-lg transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5",
+              statusFilter === 'recent'
+                ? "bg-rose-600 text-white shadow-sm"
+                : "text-rose-700 hover:bg-rose-100/50"
+            )}
+          >
+            <Calendar className="w-3.5 h-3.5" />
+            <span>Produksi Terkini ({stats.recentCount})</span>
+          </button>
+          <button
+            id="filter-all-btn"
             onClick={() => setStatusFilter('all')}
             className={cn(
               "px-3 py-2 rounded-lg transition-all cursor-pointer whitespace-nowrap",
@@ -574,18 +626,20 @@ export function OrderUrgentUpdate() {
             Semua ({data.length})
           </button>
           <button
+            id="filter-unfulfilled-btn"
             onClick={() => setStatusFilter('unfulfilled')}
             className={cn(
               "px-3 py-2 rounded-lg transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5",
               statusFilter === 'unfulfilled'
-                ? "bg-rose-500 text-white shadow-sm"
-                : "text-rose-700 hover:bg-rose-100/50"
+                ? "bg-amber-600 text-white shadow-sm"
+                : "text-amber-700 hover:bg-amber-100/50"
             )}
           >
-            <span className="w-2 h-2 rounded-full bg-rose-400 inline-block animate-pulse"></span>
+            <span className="w-2 h-2 rounded-full bg-amber-400 inline-block animate-pulse"></span>
             Kurang ({stats.unfulfilledCount})
           </button>
           <button
+            id="filter-fulfilled-btn"
             onClick={() => setStatusFilter('fulfilled')}
             className={cn(
               "px-3 py-2 rounded-lg transition-all cursor-pointer whitespace-nowrap",
@@ -596,20 +650,6 @@ export function OrderUrgentUpdate() {
           >
             Selesai ({stats.fulfilledCount})
           </button>
-          {displayDateCols.length > 0 && (
-            <button
-              onClick={() => setStatusFilter('recent')}
-              className={cn(
-                "px-3 py-2 rounded-lg transition-all cursor-pointer whitespace-nowrap flex items-center gap-1",
-                statusFilter === 'recent'
-                  ? "bg-sky-600 text-white shadow-sm"
-                  : "text-sky-700 hover:bg-sky-100/50"
-              )}
-            >
-              <Calendar className="w-3.5 h-3.5" />
-              <span>Produksi Terkini (Hari Ini & H-1)</span>
-            </button>
-          )}
         </div>
       </div>
 
@@ -656,16 +696,27 @@ export function OrderUrgentUpdate() {
                   </div>
                 </th>
 
-                {/* Hari Sebelumnya & Hari Ini Date Columns */}
-                {displayDateCols.map((dc) => (
-                  <th
-                    key={dc.date}
-                    className="px-3.5 py-3 text-center font-semibold text-slate-300 border-r border-slate-800 bg-slate-900 min-w-[110px]"
-                  >
-                    <div className="text-[10px] text-rose-400 font-bold uppercase tracking-wider">{dc.label}</div>
-                    <div className="text-xs font-mono text-white mt-0.5">{dc.date}</div>
-                  </th>
-                ))}
+                {/* 1 Hari Sebelumnya & Hari Ini Date Columns */}
+                {displayDateCols.map((dc, dcIdx) => {
+                  const isToday = dcIdx === displayDateCols.length - 1;
+                  return (
+                    <th
+                      key={dc.date}
+                      className={cn(
+                        "px-3.5 py-3 text-center font-semibold border-r border-slate-800 min-w-[125px]",
+                        isToday ? "bg-slate-900" : "bg-slate-900/95"
+                      )}
+                    >
+                      <div className={cn(
+                        "text-[10px] font-extrabold uppercase tracking-wider",
+                        isToday ? "text-rose-400" : "text-sky-400"
+                      )}>
+                        {dc.label}
+                      </div>
+                      <div className="text-xs font-mono text-white mt-0.5 font-bold">{dc.date}</div>
+                    </th>
+                  );
+                })}
 
                 <th
                   onClick={() => requestSort('total')}
@@ -713,21 +764,37 @@ export function OrderUrgentUpdate() {
                   <td colSpan={6 + displayDateCols.length} className="py-16 text-center text-slate-500">
                     <div className="flex flex-col items-center justify-center gap-2 max-w-md mx-auto">
                       <FileSearch className="w-10 h-10 text-slate-300 mb-1" />
-                      <p className="text-base font-bold text-slate-800">Tidak ada data yang cocok</p>
-                      <p className="text-xs text-slate-500 leading-relaxed">
-                        Coba sesuaikan kata kunci pencarian atau ganti filter status untuk menampilkan data order lainnya.
+                      <p className="text-base font-bold text-slate-800">
+                        {statusFilter === 'recent' 
+                          ? 'Tidak ada order dengan produksi pada Hari Ini & 1 Hari Sebelumnya' 
+                          : 'Tidak ada data yang cocok'}
                       </p>
-                      {(searchTerm || statusFilter !== 'all') && (
-                        <button
-                          onClick={() => {
-                            setSearchTerm('');
-                            setStatusFilter('all');
-                          }}
-                          className="mt-3 text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-4 py-2 rounded-xl transition-colors"
-                        >
-                          Reset Semua Filter
-                        </button>
-                      )}
+                      <p className="text-xs text-slate-500 leading-relaxed">
+                        {statusFilter === 'recent'
+                          ? 'Pilih filter "Semua" untuk melihat seluruh daftar order urgent atau sesuaikan kata kunci pencarian.'
+                          : 'Coba sesuaikan kata kunci pencarian atau ganti filter status untuk menampilkan data order lainnya.'}
+                      </p>
+                      <div className="flex items-center justify-center gap-2 mt-3">
+                        {statusFilter === 'recent' && (
+                          <button
+                            onClick={() => setStatusFilter('all')}
+                            className="text-xs font-bold text-sky-700 hover:text-sky-800 bg-sky-50 hover:bg-sky-100 px-4 py-2 rounded-xl transition-colors cursor-pointer"
+                          >
+                            Lihat Semua Order ({data.length})
+                          </button>
+                        )}
+                        {(searchTerm || statusFilter !== 'all') && (
+                          <button
+                            onClick={() => {
+                              setSearchTerm('');
+                              setStatusFilter('all');
+                            }}
+                            className="text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-4 py-2 rounded-xl transition-colors cursor-pointer"
+                          >
+                            Reset Filter
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </td>
                 </tr>
@@ -774,18 +841,30 @@ export function OrderUrgentUpdate() {
                         )}
                       </td>
 
-                      {/* Hari Sebelumnya & Hari Ini Data Columns */}
-                      {displayDateCols.map((dc) => {
+                      {/* 1 Hari Sebelumnya & Hari Ini Data Columns */}
+                      {displayDateCols.map((dc, dcIdx) => {
                         const val = row.dailyProd[dc.date] || 0;
+                        const isToday = dcIdx === displayDateCols.length - 1;
                         return (
                           <td
                             key={dc.date}
                             className={cn(
                               "px-3.5 py-3 text-center font-mono text-xs border-r border-slate-100 font-semibold",
-                              val > 0 ? "bg-rose-50/50 text-rose-700 font-bold" : "text-slate-300"
+                              val > 0 
+                                ? (isToday ? "bg-rose-50/70 text-rose-700 font-bold" : "bg-sky-50/60 text-sky-700 font-bold")
+                                : "text-slate-300"
                             )}
                           >
-                            {val > 0 ? `${val.toLocaleString('id-ID')} ${getUnit(row.jo)}` : '-'}
+                            {val > 0 ? (
+                              <span className={cn(
+                                "inline-block px-2 py-0.5 rounded-md",
+                                isToday ? "bg-rose-100/90 text-rose-800 font-bold border border-rose-200/60" : "bg-sky-100/80 text-sky-800 font-bold border border-sky-200/60"
+                              )}>
+                                {val.toLocaleString('id-ID')} {getUnit(row.jo)}
+                              </span>
+                            ) : (
+                              <span className="text-slate-300">-</span>
+                            )}
                           </td>
                         );
                       })}
