@@ -337,6 +337,15 @@ export function OrderUrgentUpdate() {
     return null;
   };
 
+  // Helper to format Date into standard header "DD MMM YY" (e.g. "01 Sep 26", "31 Aug 26")
+  const formatDateHeader = (d: Date): string => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const dayStr = String(d.getDate()).padStart(2, '0');
+    const monthStr = months[d.getMonth()];
+    const yearStr = String(d.getFullYear()).slice(-2);
+    return `${dayStr} ${monthStr} ${yearStr}`;
+  };
+
   // Helper to get Jakarta date components
   const getJakartaDate = (): { day: number; month: number; year: number } => {
     try {
@@ -357,70 +366,95 @@ export function OrderUrgentUpdate() {
     }
   };
 
+  interface DisplayDateColInfo {
+    index: number;
+    date: string;
+    label: string;
+    sum: number;
+    dateKey?: string;
+    dateObj: Date;
+  }
+
   // Get the 2 target date columns synced with today's date: 1 Hari Sebelumnya & Hari Ini
-  const displayDateCols = useMemo(() => {
-    if (!dateCols || dateCols.length === 0) return [];
-    
+  const displayDateCols = useMemo<DisplayDateColInfo[]>(() => {
     const { day: todayDay, month: todayMonth, year: todayYear } = getJakartaDate();
-    const compToday = new Date(todayYear, todayMonth, todayDay);
+    const todayDate = new Date(todayYear, todayMonth, todayDay);
+    const prevDate = new Date(todayYear, todayMonth, todayDay - 1);
 
-    // 1. Check if there is an exact column matching today's calendar date
-    let todayColIdx = -1;
-    for (let i = 0; i < dateCols.length; i++) {
-      const parsed = parseDateString(dateCols[i].date);
-      if (parsed) {
-        const matchesDay = parsed.day === todayDay;
-        const matchesMonth = parsed.month === todayMonth;
-        const matchesYear = parsed.year ? parsed.year === todayYear : true;
-        if (matchesDay && matchesMonth && matchesYear) {
-          todayColIdx = i;
-          break;
-        }
-      }
-    }
+    const findMatch = (targetDate: Date) => {
+      const targetDay = targetDate.getDate();
+      const targetMonth = targetDate.getMonth();
+      const targetYear = targetDate.getFullYear();
 
-    // 2. If exact today not found, find the closest date <= today (to avoid future dates)
-    if (todayColIdx === -1) {
-      for (let i = dateCols.length - 1; i >= 0; i--) {
-        const parsed = parseDateString(dateCols[i].date);
-        if (parsed) {
-          const colDate = new Date(parsed.year || todayYear, parsed.month, parsed.day);
-          if (colDate <= compToday) {
-            todayColIdx = i;
-            break;
+      if (dateCols && dateCols.length > 0) {
+        for (const col of dateCols) {
+          const parsed = parseDateString(col.date);
+          if (parsed) {
+            const matchesDay = parsed.day === targetDay;
+            const matchesMonth = parsed.month === targetMonth;
+            const matchesYear = parsed.year ? parsed.year === targetYear : true;
+            if (matchesDay && matchesMonth && matchesYear) {
+              return col;
+            }
           }
         }
       }
-    }
+      return null;
+    };
 
-    // 3. Fallback to the latest available column
-    if (todayColIdx === -1) {
-      todayColIdx = dateCols.length - 1;
-    }
+    const prevMatch = findMatch(prevDate);
+    const todayMatch = findMatch(todayDate);
 
-    const todayCol = dateCols[todayColIdx];
-    const prevCol = todayColIdx > 0 ? dateCols[todayColIdx - 1] : null;
+    const prevDateStr = formatDateHeader(prevDate);
+    const todayDateStr = formatDateHeader(todayDate);
 
-    if (prevCol && todayCol) {
-      return [
-        { ...prevCol, label: '1 Hari Sebelumnya' },
-        { ...todayCol, label: 'Hari Ini' }
-      ];
-    } else if (todayCol) {
-      return [
-        { ...todayCol, label: 'Hari Ini' }
-      ];
-    }
+    const prevColInfo: DisplayDateColInfo = {
+      index: prevMatch ? prevMatch.index : -1,
+      date: prevDateStr,
+      label: '1 Hari Sebelumnya',
+      sum: prevMatch ? prevMatch.sum : 0,
+      dateKey: prevMatch?.date,
+      dateObj: prevDate
+    };
 
-    return [];
+    const todayColInfo: DisplayDateColInfo = {
+      index: todayMatch ? todayMatch.index : -1,
+      date: todayDateStr,
+      label: 'Hari Ini',
+      sum: todayMatch ? todayMatch.sum : 0,
+      dateKey: todayMatch?.date,
+      dateObj: todayDate
+    };
+
+    return [prevColInfo, todayColInfo];
   }, [dateCols]);
+
+  // Helper to get daily production value for a row on a given display column
+  const getColVal = useCallback((row: OrderUrgentItem, dc: DisplayDateColInfo): number => {
+    if (dc.dateKey && row.dailyProd[dc.dateKey] !== undefined) {
+      return row.dailyProd[dc.dateKey];
+    }
+    if (row.dailyProd[dc.date] !== undefined) {
+      return row.dailyProd[dc.date];
+    }
+    const targetDay = dc.dateObj.getDate();
+    const targetMonth = dc.dateObj.getMonth();
+    const targetYear = dc.dateObj.getFullYear();
+    for (const [key, val] of Object.entries(row.dailyProd)) {
+      const p = parseDateString(key);
+      if (p && p.day === targetDay && p.month === targetMonth && (p.year ? p.year === targetYear : true)) {
+        return val;
+      }
+    }
+    return 0;
+  }, []);
 
   // Summary counts for filter badges
   const stats = useMemo(() => {
     let totalItems = data.length;
     let unfulfilledCount = 0;
     let fulfilledCount = 0;
-    let recentCount = 0;
+    let recentDirectCount = 0;
     let totalKebutuhan = 0;
     let totalRealisasi = 0;
     let totalKekuranganPcs = 0;
@@ -435,15 +469,13 @@ export function OrderUrgentUpdate() {
         fulfilledCount++;
       }
 
-      if (displayDateCols.length > 0) {
-        if (displayDateCols.some(dc => (item.dailyProd[dc.date] || 0) > 0)) {
-          recentCount++;
-        }
-      } else if (item.latestProdVal > 0) {
-        recentCount++;
+      if (displayDateCols.some(dc => getColVal(item, dc) > 0)) {
+        recentDirectCount++;
       }
     });
 
+    const fallbackRecentCount = data.filter(item => item.latestProdVal > 0).length;
+    const recentCount = recentDirectCount > 0 ? recentDirectCount : fallbackRecentCount;
     const overallPct = totalKebutuhan > 0 ? ((totalRealisasi / totalKebutuhan) * 100).toFixed(1) : '0';
 
     return {
@@ -451,12 +483,13 @@ export function OrderUrgentUpdate() {
       unfulfilledCount,
       fulfilledCount,
       recentCount,
+      recentDirectCount,
       totalKebutuhan,
       totalRealisasi,
       totalKekuranganPcs,
       overallPct
     };
-  }, [data, displayDateCols]);
+  }, [data, displayDateCols, getColVal]);
 
   // Filtering & Sorting
   const filteredData = useMemo(() => {
@@ -480,8 +513,10 @@ export function OrderUrgentUpdate() {
         return item.kekurangan <= 0;
       }
       if (statusFilter === 'recent') {
-        // Items with production in displayed date columns
-        return displayDateCols.some(dc => (item.dailyProd[dc.date] || 0) > 0);
+        if (stats.recentDirectCount > 0) {
+          return displayDateCols.some(dc => getColVal(item, dc) > 0);
+        }
+        return item.latestProdVal > 0;
       }
 
       return true;
@@ -505,7 +540,7 @@ export function OrderUrgentUpdate() {
     }
 
     return list;
-  }, [data, searchTerm, statusFilter, sortConfig, displayDateCols]);
+  }, [data, searchTerm, statusFilter, sortConfig, displayDateCols, getColVal, stats.recentDirectCount]);
 
   const requestSort = (key: keyof OrderUrgentItem) => {
     let direction: 'asc' | 'desc' = 'asc';
@@ -701,7 +736,7 @@ export function OrderUrgentUpdate() {
                   const isToday = dcIdx === displayDateCols.length - 1;
                   return (
                     <th
-                      key={dc.date}
+                      key={dc.date + '_' + dcIdx}
                       className={cn(
                         "px-3.5 py-3 text-center font-semibold border-r border-slate-800 min-w-[125px]",
                         isToday ? "bg-slate-900" : "bg-slate-900/95"
@@ -843,11 +878,11 @@ export function OrderUrgentUpdate() {
 
                       {/* 1 Hari Sebelumnya & Hari Ini Data Columns */}
                       {displayDateCols.map((dc, dcIdx) => {
-                        const val = row.dailyProd[dc.date] || 0;
+                        const val = getColVal(row, dc);
                         const isToday = dcIdx === displayDateCols.length - 1;
                         return (
                           <td
-                            key={dc.date}
+                            key={dc.date + '_' + dcIdx}
                             className={cn(
                               "px-3.5 py-3 text-center font-mono text-xs border-r border-slate-100 font-semibold",
                               val > 0 
