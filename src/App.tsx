@@ -9,6 +9,7 @@ import {
   fetchMonthlyLogData,
   fetchOperatorData,
   fetchAnalisaOperatorDetailData,
+  fetchAnalisaOperatorData,
   fetchLogDikerjakan,
   getSummaryStats,
   getTodayMachineStats,
@@ -59,6 +60,7 @@ export default function App() {
   const [monthlyLogData, setMonthlyLogData] = useState<MonthlyLogData[]>(() => getLocalCache<MonthlyLogData[]>('month') || []);
   const [operatorData, setOperatorData] = useState<OperatorData[]>(() => getLocalCache<OperatorData[]>('op') || []);
   const [analisaOperatorDetailData, setAnalisaOperatorDetailData] = useState<AnalisaOperatorDetailData[]>(() => getLocalCache<AnalisaOperatorDetailData[]>('analisa') || []);
+  const [analisaOperatorData, setAnalisaOperatorData] = useState<ProductionData[]>(() => getLocalCache<ProductionData[]>('analisaOpData') || []);
   const [logDikerjakanData, setLogDikerjakanData] = useState<LogDikerjakanData[]>(() => getLocalCache<LogDikerjakanData[]>('log') || []);
   const [isLoading, setIsLoading] = useState<boolean>(() => {
     // If we have cached production data, do not block the UI with a full-screen loading spinner
@@ -134,20 +136,20 @@ export default function App() {
     }
   };
 
-  const latestDataRef = React.useRef({ data, supplierData, monthlyLogData, operatorData, analisaOperatorDetailData, logDikerjakanData });
+  const latestDataRef = React.useRef({ data, supplierData, monthlyLogData, operatorData, analisaOperatorDetailData, logDikerjakanData, analisaOperatorData });
   useEffect(() => {
-    latestDataRef.current = { data, supplierData, monthlyLogData, operatorData, analisaOperatorDetailData, logDikerjakanData };
-  }, [data, supplierData, monthlyLogData, operatorData, analisaOperatorDetailData, logDikerjakanData]);
+    latestDataRef.current = { data, supplierData, monthlyLogData, operatorData, analisaOperatorDetailData, logDikerjakanData, analisaOperatorData };
+  }, [data, supplierData, monthlyLogData, operatorData, analisaOperatorDetailData, logDikerjakanData, analisaOperatorData]);
 
   useEffect(() => {
     let isMounted = true;
     let autoSyncTimeout: NodeJS.Timeout;
     
     const performBackgroundSync = () => {
-      const { data: d, supplierData: s, monthlyLogData: m, operatorData: o, analisaOperatorDetailData: a, logDikerjakanData: ld } = latestDataRef.current;
+      const { data: d, supplierData: s, monthlyLogData: m, operatorData: o, analisaOperatorDetailData: a, logDikerjakanData: ld, analisaOperatorData: aod } = latestDataRef.current;
       autoSyncSpreadsheetUpdates(
-        d, s, m, o, a, ld,
-        (newProd, newSupp, newMonth, newOp, newAnalisaDetail, newLogDikerjakan) => {
+        d, s, m, o, a, ld, aod,
+        (newProd, newSupp, newMonth, newOp, newAnalisaDetail, newLogDikerjakan, newAnalisaOpData) => {
           if (isMounted) {
             setData(newProd);
             setSupplierData(newSupp);
@@ -155,6 +157,7 @@ export default function App() {
             setOperatorData(newOp);
             setAnalisaOperatorDetailData(newAnalisaDetail);
             setLogDikerjakanData(newLogDikerjakan);
+            setAnalisaOperatorData(newAnalisaOpData);
 
             setLocalCache('prod', newProd);
             setLocalCache('supp', newSupp);
@@ -162,6 +165,7 @@ export default function App() {
             setLocalCache('op', newOp);
             setLocalCache('analisa', newAnalisaDetail);
             setLocalCache('log', newLogDikerjakan);
+            setLocalCache('analisaOpData', newAnalisaOpData);
           }
         }
       );
@@ -174,8 +178,9 @@ export default function App() {
         fetchMonthlyLogData(),
         fetchOperatorData(),
         fetchAnalisaOperatorDetailData(),
-        fetchLogDikerjakan()
-      ]).then(([prodData, suppData, monthlyLog, opData, analisaDetailData, logDikerjakan]) => {
+        fetchLogDikerjakan(),
+        fetchAnalisaOperatorData()
+      ]).then(([prodData, suppData, monthlyLog, opData, analisaDetailData, logDikerjakan, analisaOpData]) => {
         if (!isMounted) return;
         setData(prodData);
         setSupplierData(suppData);
@@ -183,6 +188,7 @@ export default function App() {
         setOperatorData(opData);
         setAnalisaOperatorDetailData(analisaDetailData);
         setLogDikerjakanData(logDikerjakan);
+        setAnalisaOperatorData(analisaOpData);
         setIsLoading(false);
 
         // Cache in background
@@ -192,6 +198,7 @@ export default function App() {
         setLocalCache('op', opData);
         setLocalCache('analisa', analisaDetailData);
         setLocalCache('log', logDikerjakan);
+        setLocalCache('analisaOpData', analisaOpData);
 
         // Schedule background auto-sync check after initial load stabilizes
         autoSyncTimeout = setTimeout(() => {
@@ -333,7 +340,7 @@ export default function App() {
         {activeTab === 'Performance' && <PerformancePage data={data} />}
         {activeTab === 'Plan' && <PlanPage todayStats={todayStats} data={data} />}
         {activeTab === 'AI' && <AIPage data={data} />}
-        {activeTab === 'AnalisaOperator' && <AnalisaOperatorPage data={data} detailData={analisaOperatorDetailData} />}
+        {activeTab === 'AnalisaOperator' && <AnalisaOperatorPage data={analisaOperatorData} detailData={analisaOperatorDetailData} />}
       </Suspense>
     </MobileLayout>
   );

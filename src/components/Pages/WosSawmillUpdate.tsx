@@ -220,13 +220,13 @@ export function WosSawmillUpdate() {
   }, [data, searchTerm, selectedMonth]);
 
   return (
-    <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+    <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm font-bold">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4 mb-4">
         <div>
           <h1 className="text-xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
             <LayoutDashboard className="w-5 h-5 text-indigo-600" /> WOS Sawmill
           </h1>
-          <p className="text-xs text-slate-500 mt-1">Pemantauan Status & Kebutuhan Buyer</p>
+          <p className="text-xs text-slate-500 font-bold mt-1">Pemantauan Status & Kebutuhan Buyer</p>
         </div>
         
         <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -240,7 +240,7 @@ export function WosSawmillUpdate() {
           </button>
           <button 
             onClick={exportTableToCSV} 
-            className="flex items-center justify-center gap-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 p-1.5 rounded-lg text-sm font-medium transition-colors" 
+            className="flex items-center justify-center gap-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 p-1.5 rounded-lg text-sm font-bold transition-colors" 
             title="Ekspor CSV"
           >
             <Download className="w-4 h-4" />
@@ -249,7 +249,7 @@ export function WosSawmillUpdate() {
       </div>
 
       {error && (
-        <div className="mb-4 text-xs font-medium text-rose-600 bg-rose-50 p-2 rounded border border-rose-100">
+        <div className="mb-4 text-xs font-bold text-rose-600 bg-rose-50 p-2 rounded border border-rose-100">
           {error}
         </div>
       )}
@@ -262,7 +262,7 @@ export function WosSawmillUpdate() {
             placeholder="Cari nama buyer, ST, atau M3..." 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+            className="w-full pl-9 pr-3 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm font-bold focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
           />
         </div>
         <div className="sm:w-48 relative">
@@ -270,7 +270,7 @@ export function WosSawmillUpdate() {
           <select 
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
-            className="w-full pl-9 pr-8 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none appearance-none transition-all"
+            className="w-full pl-9 pr-8 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm font-bold focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none appearance-none transition-all"
           >
             <option value="all">Semua Bulan</option>
             {availableMonths.map(m => (
@@ -293,13 +293,13 @@ export function WosSawmillUpdate() {
                 <th className="px-4 py-3 text-right">M3</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-sm">
+            <tbody className="divide-y divide-slate-100 text-sm font-bold">
               {loading && data.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <Loader2 className="w-5 h-5 animate-spin text-indigo-500" />
-                      <p className="text-xs">Memuat data "WOS Sawmill"...</p>
+                      <p className="text-xs font-bold">Memuat data "WOS Sawmill"...</p>
                     </div>
                   </td>
                 </tr>
@@ -308,7 +308,7 @@ export function WosSawmillUpdate() {
                   <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
                     <div className="flex flex-col items-center gap-2">
                       <FileSearch className="w-6 h-6 text-slate-300" />
-                      <p className="text-xs">Tidak ada data ditemukan.</p>
+                      <p className="text-xs font-bold">Tidak ada data ditemukan.</p>
                     </div>
                   </td>
                 </tr>
@@ -322,8 +322,8 @@ export function WosSawmillUpdate() {
                       </td>
                       <td className="px-4 py-2 text-slate-500 font-bold align-top text-center text-xs">{row.no}</td>
                       <td className="px-4 py-2 font-bold text-slate-800 align-top max-w-[150px] truncate" title={row.buyer}>{row.buyer}</td>
-                      <td className="px-4 py-2 text-slate-600 font-mono text-[11px] align-top">{row.st || '-'}</td>
-                      <td className="px-4 py-2 text-indigo-700 font-black align-top text-right text-xs whitespace-nowrap">{row.m3 || '-'}</td>
+                      <td className="px-4 py-2 text-slate-600 font-mono font-bold text-[11px] align-top">{row.st || '-'}</td>
+                      <td className="px-4 py-2 text-indigo-700 font-bold align-top text-right text-xs whitespace-nowrap">{row.m3 || '-'}</td>
                     </tr>
                   );
                 })

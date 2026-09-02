@@ -613,6 +613,25 @@ async function fetchChunkedData<T>(collectionName: string): Promise<T[] | null> 
 }
 
 
+export async function fetchAnalisaOperatorDataFromSheet(): Promise<ProductionData[]> {
+  const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=analisa%20operator`;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Failed to fetch analisa operator data');
+    const csvData = await response.text();
+    return parseCSV(csvData);
+  } catch (error) {
+    console.error('Error fetching analisa operator data:', error);
+    return [];
+  }
+}
+
+export async function fetchAnalisaOperatorData(): Promise<ProductionData[]> {
+  const fsData = await fetchChunkedData<ProductionData>('analisaOperatorData');
+  if (fsData) return fsData;
+  return fetchAnalisaOperatorDataFromSheet();
+}
+
 export async function fetchAnalisaOperatorDetailDataFromSheet(): Promise<import('../types').AnalisaOperatorDetailData[]> {
   const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=analisa%20operator`;
   try {
@@ -755,6 +774,10 @@ export async function syncSpreadsheetToFirestore(onProgress?: (msg: string) => v
     const logDikerjakan = await fetchLogDikerjakanFromSheet();
     await saveInChunks('logDikerjakan', logDikerjakan, onProgress);
 
+    if (onProgress) onProgress('Fetching Analisa Operator Data from Sheet...');
+    const analisaOpData = await fetchAnalisaOperatorDataFromSheet();
+    await saveInChunks('analisaOperatorData', analisaOpData, onProgress);
+
     if (onProgress) onProgress('Sync Complete!');
   } catch (error: any) {
     console.error("Sync Error:", error);
@@ -770,16 +793,18 @@ export async function autoSyncSpreadsheetUpdates(
   currentOp: OperatorData[],
   currentAnalisaDetail: import('../types').AnalisaOperatorDetailData[],
   currentLogDikerjakan: import('../types').LogDikerjakanData[],
-  onUpdateDetected: (prod: ProductionData[], supp: SupplierData[], month: MonthlyLogData[], op: OperatorData[], analisaDetail: import('../types').AnalisaOperatorDetailData[], logDikerjakan: import('../types').LogDikerjakanData[]) => void
+  currentAnalisaOpData: ProductionData[],
+  onUpdateDetected: (prod: ProductionData[], supp: SupplierData[], month: MonthlyLogData[], op: OperatorData[], analisaDetail: import('../types').AnalisaOperatorDetailData[], logDikerjakan: import('../types').LogDikerjakanData[], analisaOpData: ProductionData[]) => void
 ) {
   try {
-    const [newProd, newSupp, newMonth, newOp, newAnalisaDetail, newLogDikerjakan] = await Promise.all([
+    const [newProd, newSupp, newMonth, newOp, newAnalisaDetail, newLogDikerjakan, newAnalisaOpData] = await Promise.all([
       fetchProductionDataFromSheet(),
       fetchSupplierDataFromSheet(),
       fetchMonthlyLogDataFromSheet(),
       fetchOperatorDataFromSheet(),
       fetchAnalisaOperatorDetailDataFromSheet(),
-      fetchLogDikerjakanFromSheet()
+      fetchLogDikerjakanFromSheet(),
+      fetchAnalisaOperatorDataFromSheet()
     ]);
 
     // Ultra fast dataset comparison
@@ -789,12 +814,13 @@ export async function autoSyncSpreadsheetUpdates(
       !isDatasetEqual(currentMonth, newMonth) ||
       !isDatasetEqual(currentOp, newOp) ||
       !isDatasetEqual(currentAnalisaDetail, newAnalisaDetail) ||
-      !isDatasetEqual(currentLogDikerjakan, newLogDikerjakan);
+      !isDatasetEqual(currentLogDikerjakan, newLogDikerjakan) ||
+      !isDatasetEqual(currentAnalisaOpData, newAnalisaOpData);
 
     if (isDifferent) {
       console.log('Update detected in spreadsheet! Updating UI and syncing to Firestore...');
       // Update UI state immediately for responsive experience
-      onUpdateDetected(newProd, newSupp, newMonth, newOp, newAnalisaDetail, newLogDikerjakan);
+      onUpdateDetected(newProd, newSupp, newMonth, newOp, newAnalisaDetail, newLogDikerjakan, newAnalisaOpData);
 
       // Now save the new data to Firestore in chunks in the background
       await saveInChunks('production', newProd);
@@ -803,6 +829,7 @@ export async function autoSyncSpreadsheetUpdates(
       await saveInChunks('monthlyLog', newMonth);
       await saveInChunks('analisaOperatorDetail', newAnalisaDetail);
       await saveInChunks('logDikerjakan', newLogDikerjakan);
+      await saveInChunks('analisaOperatorData', newAnalisaOpData);
       
       console.log('Auto-sync to Firestore complete.');
     } else {
