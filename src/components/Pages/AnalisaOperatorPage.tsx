@@ -339,35 +339,13 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
     });
   }, [processedData, selectedDate, selectedMachine]);
 
-  const filteredDetailData = useMemo(() => {
-    if (!detailData) return [];
-    return detailData.filter(row => {
-      const p = parseDateParts(row.tanggal);
-      if (!p || p.month !== selectedMonth) return false;
-      if (selectedDate !== 'all' && normalizeDateKey(row.tanggal) !== normalizeDateKey(selectedDate)) return false;
-      const normalizedRowMachine = normalizeMachineName(row.mesin);
-      if (selectedMachine !== 'all' && normalizedRowMachine !== selectedMachine) return false;
-      return true;
-    }).sort((a, b) => {
-      const pA = parseDateParts(a.tanggal);
-      const pB = parseDateParts(b.tanggal);
-      if (pA && pB) {
-        const timeA = new Date(pA.year, pA.month - 1, pA.day).getTime();
-        const timeB = new Date(pB.year, pB.month - 1, pB.day).getTime();
-        if (timeA !== timeB) return timeA - timeB;
-      }
-      const numA = parseInt(a.mesin.replace(/\D/g, '')) || 0;
-      const numB = parseInt(b.mesin.replace(/\D/g, '')) || 0;
-      return numA - numB;
-    });
-  }, [detailData, selectedMonth, selectedDate, selectedMachine]);
-
-
   // Matrix calculation for 7 days of the selected week/month
   const matrixWeekData = useMemo(() => {
-    let weekFiltered = data.filter(d => d.month === selectedMonth);
+    let weekFiltered = data;
     if (selectedWeek !== 'all') {
       weekFiltered = weekFiltered.filter(d => d.week === selectedWeek);
+    } else {
+      weekFiltered = weekFiltered.filter(d => d.month === selectedMonth);
     }
 
     // Get dates sorted
@@ -455,9 +433,9 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
         const turunan = record ? record.turunan : 0;
         const total = record ? record.total : 0;
 
-        const yieldUtama = input > 0 ? (utama / input) : 0;
-        const yieldTurunan = input > 0 ? (turunan / input) : 0;
-        const yieldTotal = input > 0 ? (total / input) : 0;
+        const yieldUtama = record && record.yield_primary !== undefined ? record.yield_primary : (input > 0 ? (utama / input) : 0);
+        const yieldTurunan = record && record.yield_secondary !== undefined ? record.yield_secondary : (input > 0 ? (turunan / input) : 0);
+        const yieldTotal = record && record.yield_total !== undefined ? record.yield_total : (input > 0 ? (total / input) : 0);
 
         // Get notes from Firestore operator_notes
         const targetDateKey = normalizeDateKey(dStr);
@@ -516,6 +494,40 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
 
     return { dates: datesToUse, machineRows };
   }, [data, selectedMonth, selectedWeek, customNotes]);
+
+
+
+  const filteredDetailData = useMemo(() => {
+    if (!detailData) return [];
+    const validDateKeys = new Set(matrixWeekData.dates.map(d => normalizeDateKey(d)));
+    return detailData.filter(row => {
+      const rowDateKey = normalizeDateKey(row.tanggal);
+      if (selectedWeek !== 'all') {
+        if (!validDateKeys.has(rowDateKey)) return false;
+      } else {
+        const p = parseDateParts(row.tanggal);
+        if (!p || p.month !== selectedMonth) return false;
+      }
+      if (selectedDate !== 'all' && rowDateKey !== normalizeDateKey(selectedDate)) return false;
+      const normalizedRowMachine = normalizeMachineName(row.mesin);
+      if (selectedMachine !== 'all' && normalizedRowMachine !== selectedMachine) return false;
+      return true;
+    }).sort((a, b) => {
+      const pA = parseDateParts(a.tanggal);
+      const pB = parseDateParts(b.tanggal);
+      if (pA && pB) {
+        const timeA = new Date(pA.year, pA.month - 1, pA.day).getTime();
+        const timeB = new Date(pB.year, pB.month - 1, pB.day).getTime();
+        if (timeA !== timeB) return timeA - timeB;
+      }
+      const numA = parseInt(a.mesin.replace(/\D/g, '')) || 0;
+      const numB = parseInt(b.mesin.replace(/\D/g, '')) || 0;
+      return numA - numB;
+    });
+  }, [detailData, selectedMonth, selectedWeek, selectedDate, selectedMachine, matrixWeekData.dates]);
+
+
+
 
   const handleDownloadPDF = () => {
     const doc = new jsPDF('landscape');
@@ -1201,7 +1213,7 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
                           const formatted = (cell.yieldTurunan * 100).toFixed(2) + '%';
                           return (
                             <td key={cIdx} className="p-2 border-r border-slate-200 font-medium text-slate-700">
-                              {cell.input > 0 ? formatted : '0.00%'}
+                              {formatted}
                             </td>
                           );
                         })}
