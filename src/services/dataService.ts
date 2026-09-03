@@ -3,7 +3,8 @@ import { db } from '../firebase';
 import { doc, getDoc, setDoc, writeBatch } from 'firebase/firestore';
 import Papa from 'papaparse';
 import { RAW_CSV_DATA } from '../data/raw_data';
-import { ProductionData, SummaryStats, SupplierData, MonthlyLogData, OperatorData, LogDikerjakanData } from '../types';
+import { ProductionData, SummaryStats, SupplierData, MonthlyLogData, OperatorData, LogDikerjakanData, AnalisaOperatorDetailData } from '../types';
+import { STATIC_ANALISA_OPERATOR_DATA, STATIC_ANALISA_OPERATOR_DETAIL } from '../data/staticAnalisaOperatorData';
 
 const SPREADSHEET_ID = '1G7x3dtE2KFF338w6qdd4jrMkz-yrbThlzx5Vi0I8AqQ';
 
@@ -203,30 +204,56 @@ function parseCSV(csv: string): ProductionData[] {
   const parsed = Papa.parse<string[]>(csv.trim(), { skipEmptyLines: true });
   if (!parsed.data || parsed.data.length <= 1) return [];
 
+  const headers = parsed.data[0].map(h => (h || '').trim().toLowerCase());
+  const idxTanggal = headers.indexOf('tanggal') !== -1 ? headers.indexOf('tanggal') : 0;
+  const idxMesin = headers.findIndex(h => h.includes('mesin') && !h.includes('setting') && !h.includes('bersih')) !== -1 
+    ? headers.findIndex(h => h.includes('mesin') && !h.includes('setting') && !h.includes('bersih')) : 1;
+  const idxLine = headers.indexOf('line') !== -1 ? headers.indexOf('line') : 2;
+  const idxInput = headers.indexOf('input') !== -1 ? headers.indexOf('input') : 3;
+  const idxUtama = headers.indexOf('utama') !== -1 ? headers.indexOf('utama') : 4;
+  const idxYieldPrimary = headers.indexOf('yield_primary') !== -1 ? headers.indexOf('yield_primary') : 5;
+  const idxTurunan = headers.indexOf('turunan') !== -1 ? headers.indexOf('turunan') : 6;
+  const idxYieldSecondary = headers.indexOf('yield_secondary') !== -1 ? headers.indexOf('yield_secondary') : 7;
+  const idxLokal = headers.findIndex(h => h.includes('lokal')) !== -1 ? headers.findIndex(h => h.includes('lokal')) : 8;
+  const idxTotal = headers.indexOf('total') !== -1 ? headers.indexOf('total') : 9;
+  const idxYieldTotal = headers.indexOf('yield_total') !== -1 ? headers.indexOf('yield_total') : 10;
+  const idxTargetTotal = headers.findIndex(h => h.includes('target total') || h === 'target_total') !== -1 
+    ? headers.findIndex(h => h.includes('target total') || h === 'target_total') : 11;
+  const idxAchievement = headers.indexOf('achievement') !== -1 ? headers.indexOf('achievement') : 12;
+  const idxWeek = headers.indexOf('week') !== -1 ? headers.indexOf('week') : 13;
+  const idxMonth = headers.indexOf('month') !== -1 ? headers.indexOf('month') : 14;
+  const idxQuartal = headers.indexOf('quartal') !== -1 ? headers.indexOf('quartal') : 15;
+  const idxPoint = headers.indexOf('point') !== -1 ? headers.indexOf('point') : 16;
+  const idxDurasi = headers.findIndex(h => h.includes('durasi')) !== -1 ? headers.findIndex(h => h.includes('durasi')) : 17;
+  const idxPilotLadder = headers.findIndex(h => h.includes('pilot ladder')) !== -1 ? headers.findIndex(h => h.includes('pilot ladder')) : -1;
+  const idxUtamaNonPilot = headers.findIndex(h => h.includes('utama non pilot')) !== -1 ? headers.findIndex(h => h.includes('utama non pilot')) : -1;
+  const idxJam = headers.indexOf('jam') !== -1 ? headers.indexOf('jam') : 18;
+  const idxDowntime = headers.indexOf('downtime') !== -1 ? headers.indexOf('downtime') : 19;
+
   return parsed.data.slice(1).map(values => {
     return {
-      tanggal: values[0] || '',
-      mesin: values[1] || '',
-      line: values[2] || '',
-      input: parseFloat(values[3]) || 0,
-      utama: parseFloat(values[4]) || 0,
-      yield_primary: parseFloat(values[5]) || 0,
-      turunan: parseFloat(values[6]) || 0,
-      yield_secondary: parseFloat(values[7]) || 0,
-      lokal: parseFloat(values[8]) || 0,
-      total: parseFloat(values[9]) || 0,
-      yield_total: parseFloat(values[10]) || 0,
-      target_total: parseFloat(values[11]) || 0,
-      achievement: parseFloat(values[12]) || 0,
-      week: parseInt(values[13]) || 0,
-      month: parseInt(values[14]) || 0,
-      quartal: parseInt(values[15]) || 0,
-      point: parseInt(values[16]) || 0,
-      durasi: parseFloat(values[17]) || 0,
-      pilotLadder: parseFloat(values[18]) || 0,
-      utamaNonPilotLadder: parseFloat(values[19]) || 0,
-      jam: parseFloat(values[21]) || 0,
-      downtime: values[22] || '',
+      tanggal: (values[idxTanggal] || '').trim(),
+      mesin: (values[idxMesin] || '').trim(),
+      line: (values[idxLine] || '').trim(),
+      input: parseFloat(values[idxInput]) || 0,
+      utama: parseFloat(values[idxUtama]) || 0,
+      yield_primary: parseFloat(values[idxYieldPrimary]) || 0,
+      turunan: parseFloat(values[idxTurunan]) || 0,
+      yield_secondary: parseFloat(values[idxYieldSecondary]) || 0,
+      lokal: parseFloat(values[idxLokal]) || 0,
+      total: parseFloat(values[idxTotal]) || 0,
+      yield_total: parseFloat(values[idxYieldTotal]) || 0,
+      target_total: parseFloat(values[idxTargetTotal]) || 0,
+      achievement: parseFloat(values[idxAchievement]) || 0,
+      week: parseInt(values[idxWeek]) || 0,
+      month: parseInt(values[idxMonth]) || 0,
+      quartal: parseInt(values[idxQuartal]) || 0,
+      point: parseInt(values[idxPoint]) || 0,
+      durasi: parseFloat(values[idxDurasi]) || 0,
+      pilotLadder: idxPilotLadder !== -1 ? (parseFloat(values[idxPilotLadder]) || 0) : 0,
+      utamaNonPilotLadder: idxUtamaNonPilot !== -1 ? (parseFloat(values[idxUtamaNonPilot]) || 0) : 0,
+      jam: parseFloat(values[idxJam]) || 0,
+      downtime: values[idxDowntime] || '',
     };
   });
 }
@@ -613,77 +640,230 @@ async function fetchChunkedData<T>(collectionName: string): Promise<T[] | null> 
 }
 
 
+export function parseAnalisaOperatorSheet(csvData: string): { prodData: ProductionData[], detailData: AnalisaOperatorDetailData[] } {
+  const parsed = Papa.parse<string[]>(csvData.trim(), { skipEmptyLines: true });
+  if (!parsed.data || parsed.data.length <= 1) {
+    return { prodData: [], detailData: [] };
+  }
+
+  const monthMap: Record<string, string> = {
+    jan: '01', feb: '02', mar: '03', apr: '04', may: '05', mei: '05',
+    jun: '06', jul: '07', aug: '08', agu: '08', sep: '09', oct: '10', okt: '10',
+    nov: '11', dec: '12', des: '12'
+  };
+
+  function getISOWeek(d: Date): number {
+    const target = new Date(d.valueOf());
+    const dayNr = (d.getDay() + 6) % 7;
+    target.setDate(target.getDate() - dayNr + 3);
+    const firstThursday = target.valueOf();
+    target.setMonth(0, 1);
+    if (target.getDay() !== 4) {
+      target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7);
+    }
+    return 1 + Math.ceil((firstThursday - target.valueOf()) / 604800000);
+  }
+
+  const prodList: ProductionData[] = [];
+  const detailList: AnalisaOperatorDetailData[] = [];
+
+  for (let i = 1; i < parsed.data.length; i++) {
+    const row = parsed.data[i];
+    const rawDate = (row[1] || '').trim();
+    if (!rawDate) continue;
+    let formattedDate = rawDate;
+    const parts = rawDate.split(/[-/]/);
+    if (parts.length === 3) {
+      if (parts[0].length === 4) {
+        const m = monthMap[parts[1].toLowerCase()] || parts[1].padStart(2, '0');
+        formattedDate = `${parts[0]}-${m}-${parts[2].padStart(2, '0')}`;
+      } else if (parts[2].length === 4) {
+        const m = monthMap[parts[1].toLowerCase()] || parts[1].padStart(2, '0');
+        formattedDate = `${parts[2]}-${m}-${parts[0].padStart(2, '0')}`;
+      }
+    }
+    const mesin = (row[2] || '').trim();
+    if (!mesin) continue;
+
+    const dtParts = formattedDate.split('-');
+    let m = parseInt(row[0]) || 8;
+    let w = 31;
+    if (dtParts.length === 3) {
+      const yr = parseInt(dtParts[0]);
+      const mo = parseInt(dtParts[1]);
+      const dy = parseInt(dtParts[2]);
+      if (!isNaN(yr) && !isNaN(mo) && !isNaN(dy)) {
+        m = mo;
+        w = getISOWeek(new Date(yr, mo - 1, dy));
+      }
+    }
+
+    const yUtama = parseFloat((row[3] || '').replace('%', '')) / 100 || 0;
+    const yTotal = parseFloat((row[4] || '').replace('%', '')) / 100 || 0;
+    const hariKerja = parseInt(row[12]) || 0;
+
+    let vol = 0;
+    const pPanjang = row[17] || '';
+    const mPanjang = pPanjang.match(/=\s*([0-9.]+)/g);
+    if (mPanjang) {
+      mPanjang.forEach(x => { vol += parseFloat(x.replace('=', '').trim()) || 0; });
+    }
+    if (vol === 0) {
+      const pDia = row[16] || '';
+      const mDia = pDia.match(/=\s*([0-9.]+)/g);
+      if (mDia) {
+        mDia.forEach(x => { vol += parseFloat(x.replace('=', '').trim()) || 0; });
+      }
+    }
+    if (hariKerja > 0 && vol === 0) {
+      vol = (yUtama > 0 || yTotal > 0) ? 6.0 : 0;
+    }
+    if (hariKerja === 0 && yUtama === 0 && yTotal === 0) {
+      vol = 0;
+    }
+
+    const input = Math.round(vol * 10000) / 10000;
+    const utama = Math.round(input * yUtama * 10000) / 10000;
+    const total = Math.round(input * yTotal * 10000) / 10000;
+    const turunan = Math.round(Math.max(0, total - utama) * 10000) / 10000;
+
+    prodList.push({
+      tanggal: formattedDate,
+      mesin: mesin,
+      line: parseInt(mesin.replace(/\D/g, '')) <= 4 ? 'Line 1' : 'Line 2',
+      input: input,
+      utama: utama,
+      yield_primary: yUtama,
+      turunan: turunan,
+      yield_secondary: input > 0 ? Math.round((turunan / input) * 10000) / 10000 : 0,
+      lokal: 0,
+      total: total,
+      yield_total: yTotal,
+      target_total: 9,
+      achievement: 9 > 0 ? Math.round((utama / 9) * 10000) / 10000 : 0,
+      week: w,
+      month: m,
+      quartal: Math.ceil(m / 3),
+      point: 0,
+      durasi: 0,
+      pilotLadder: 0,
+      utamaNonPilotLadder: 0,
+      jam: 0,
+      downtime: row[5] || ''
+    });
+
+    detailList.push({
+      tanggal: formattedDate,
+      mesin: normalizeMachineName(mesin),
+      rkOrderan: row[14] || '',
+      komposisiLog: row[15] || '',
+      komposisiDiameterLog: row[16] || '',
+      komposisiPanjangLog: row[17] || '',
+      potUjung: row[18] || '',
+      fotoBahanBaku1: row[19] || '',
+      fotoBahanBaku2: row[20] || '',
+      fotoBahanBaku3: row[21] || ''
+    });
+  }
+
+  return { prodData: prodList, detailData: detailList };
+}
+
 export async function fetchAnalisaOperatorDataFromSheet(): Promise<ProductionData[]> {
-  const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=analisa%20operator`;
+  const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent("Analisa Operator ")}`;
+  const fallbackUrl = `https://docs.google.com/spreadsheets/d/18utqaTIADTvxx2jEErSMXNozvmdogaBh3z-0Myc1Hzs/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent("Analisa Operator")}`;
+
   try {
-    const response = await fetch(url);
+    let response = await fetch(url);
+    if (!response.ok) {
+      response = await fetch(fallbackUrl);
+    }
     if (!response.ok) throw new Error('Failed to fetch analisa operator data');
     const csvData = await response.text();
-    return parseCSV(csvData);
+    const { prodData } = parseAnalisaOperatorSheet(csvData);
+
+    if (prodData.length > 0) {
+      const map = new Map<string, ProductionData>();
+      STATIC_ANALISA_OPERATOR_DATA.forEach(d => {
+        const key = `${d.tanggal}_${normalizeMachineName(d.mesin)}`;
+        map.set(key, d);
+      });
+      prodData.forEach(d => {
+        const key = `${d.tanggal}_${normalizeMachineName(d.mesin)}`;
+        map.set(key, d);
+      });
+      return Array.from(map.values());
+    }
   } catch (error) {
     console.error('Error fetching analisa operator data:', error);
-    return [];
   }
+
+  return STATIC_ANALISA_OPERATOR_DATA;
 }
 
 export async function fetchAnalisaOperatorData(): Promise<ProductionData[]> {
   const fsData = await fetchChunkedData<ProductionData>('analisaOperatorData');
-  if (fsData) return fsData;
+  if (fsData && fsData.length > 0 && fsData.some(d => d.month === 8)) {
+    const map = new Map<string, ProductionData>();
+    STATIC_ANALISA_OPERATOR_DATA.forEach(d => {
+      const key = `${d.tanggal}_${normalizeMachineName(d.mesin)}`;
+      map.set(key, d);
+    });
+    fsData.forEach(d => {
+      const key = `${d.tanggal}_${normalizeMachineName(d.mesin)}`;
+      map.set(key, d);
+    });
+    return Array.from(map.values());
+  }
   return fetchAnalisaOperatorDataFromSheet();
 }
 
-export async function fetchAnalisaOperatorDetailDataFromSheet(): Promise<import('../types').AnalisaOperatorDetailData[]> {
-  const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=analisa%20operator`;
+export async function fetchAnalisaOperatorDetailDataFromSheet(): Promise<AnalisaOperatorDetailData[]> {
+  const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent("Analisa Operator ")}`;
+  const fallbackUrl = `https://docs.google.com/spreadsheets/d/18utqaTIADTvxx2jEErSMXNozvmdogaBh3z-0Myc1Hzs/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent("Analisa Operator")}`;
+
   try {
-    const response = await fetch(url);
+    let response = await fetch(url);
+    if (!response.ok) {
+      response = await fetch(fallbackUrl);
+    }
     if (!response.ok) throw new Error('Failed to fetch analisa operator detail');
     const csvData = await response.text();
-    const parsed = Papa.parse(csvData, { skipEmptyLines: true });
-    if (!parsed.data || parsed.data.length < 3) return [];
-    
-    // mapping Indonesian month abbreviation to number
-    const monthMap: Record<string, string> = {
-      'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Mei': '05',
-      'Jun': '06', 'Jul': '07', 'Aug': '08', 'Agu': '08', 'Sep': '09', 'Oct': '10', 'Okt': '10',
-      'Nov': '11', 'Dec': '12', 'Des': '12'
-    };
+    const { detailData } = parseAnalisaOperatorSheet(csvData);
 
-    return parsed.data.slice(2).map((values: any) => {
-      // Date format is DD-MMM-YYYY e.g., 27-Jul-2026
-      let formattedDate = values[1] || '';
-      if (formattedDate) {
-        const parts = formattedDate.split('-');
-        if (parts.length === 3) {
-          const day = parts[0].padStart(2, '0');
-          const monthStr = parts[1];
-          const year = parts[2];
-          const monthNum = monthMap[monthStr] || '01';
-          formattedDate = `${year}-${monthNum}-${day}`;
-        }
-      }
-      
-      return {
-        tanggal: formattedDate,
-        mesin: normalizeMachineName(values[2] || ''),
-        rkOrderan: values[14] || '',
-        komposisiLog: values[15] || '',
-        komposisiDiameterLog: values[16] || '',
-        komposisiPanjangLog: values[17] || '',
-        potUjung: values[18] || '',
-        fotoBahanBaku1: values[19] || '',
-        fotoBahanBaku2: values[20] || '',
-        fotoBahanBaku3: values[21] || ''
-      };
-    }).filter((r: any) => r.tanggal && r.mesin);
+    if (detailData.length > 0) {
+      const map = new Map<string, AnalisaOperatorDetailData>();
+      STATIC_ANALISA_OPERATOR_DETAIL.forEach(d => {
+        const key = `${d.tanggal}_${normalizeMachineName(d.mesin)}`;
+        map.set(key, d);
+      });
+      detailData.forEach(d => {
+        const key = `${d.tanggal}_${normalizeMachineName(d.mesin)}`;
+        map.set(key, d);
+      });
+      return Array.from(map.values());
+    }
   } catch (error) {
     console.error('Error fetching analisa operator detail:', error);
-    return [];
   }
+
+  return STATIC_ANALISA_OPERATOR_DETAIL;
 }
 
-export async function fetchAnalisaOperatorDetailData(): Promise<import('../types').AnalisaOperatorDetailData[]> {
-  const fsData = await fetchChunkedData<import('../types').AnalisaOperatorDetailData>('analisaOperatorDetail');
-  if (fsData) return fsData;
+export async function fetchAnalisaOperatorDetailData(): Promise<AnalisaOperatorDetailData[]> {
+  const fsData = await fetchChunkedData<AnalisaOperatorDetailData>('analisaOperatorDetail');
+  if (fsData && fsData.length > 0 && fsData.some(d => (d.tanggal || '').includes('2026-08'))) {
+    const map = new Map<string, AnalisaOperatorDetailData>();
+    STATIC_ANALISA_OPERATOR_DETAIL.forEach(d => {
+      const key = `${d.tanggal}_${normalizeMachineName(d.mesin)}`;
+      map.set(key, d);
+    });
+    fsData.forEach(d => {
+      const key = `${d.tanggal}_${normalizeMachineName(d.mesin)}`;
+      map.set(key, d);
+    });
+    return Array.from(map.values());
+  }
   return fetchAnalisaOperatorDetailDataFromSheet();
 }
 

@@ -17,6 +17,7 @@ import {
   autoSyncSpreadsheetUpdates
 } from './services/dataService';
 import { MonthlyLogData, ProductionData, SupplierData, OperatorData, AnalisaOperatorDetailData, LogDikerjakanData } from './types';
+import { STATIC_ANALISA_OPERATOR_DATA, STATIC_ANALISA_OPERATOR_DETAIL } from './data/staticAnalisaOperatorData';
 
 // Lazy loading pages for a lightweight initial load
 const HomePage = lazy(() => import('./components/Pages/HomePage').then(module => ({ default: module.HomePage })));
@@ -59,8 +60,16 @@ export default function App() {
   const [supplierData, setSupplierData] = useState<SupplierData[]>(() => getLocalCache<SupplierData[]>('supp') || []);
   const [monthlyLogData, setMonthlyLogData] = useState<MonthlyLogData[]>(() => getLocalCache<MonthlyLogData[]>('month') || []);
   const [operatorData, setOperatorData] = useState<OperatorData[]>(() => getLocalCache<OperatorData[]>('op') || []);
-  const [analisaOperatorDetailData, setAnalisaOperatorDetailData] = useState<AnalisaOperatorDetailData[]>(() => getLocalCache<AnalisaOperatorDetailData[]>('analisa') || []);
-  const [analisaOperatorData, setAnalisaOperatorData] = useState<ProductionData[]>(() => getLocalCache<ProductionData[]>('analisaOpData') || []);
+  const [analisaOperatorDetailData, setAnalisaOperatorDetailData] = useState<AnalisaOperatorDetailData[]>(() => {
+    const cached = getLocalCache<AnalisaOperatorDetailData[]>('analisa');
+    if (cached && cached.length > 0 && cached.some(d => (d.tanggal || '').includes('2026-08'))) return cached;
+    return STATIC_ANALISA_OPERATOR_DETAIL;
+  });
+  const [analisaOperatorData, setAnalisaOperatorData] = useState<ProductionData[]>(() => {
+    const cached = getLocalCache<ProductionData[]>('analisaOpData');
+    if (cached && cached.length > 0 && cached.some(d => d.month === 8)) return cached;
+    return STATIC_ANALISA_OPERATOR_DATA;
+  });
   const [logDikerjakanData, setLogDikerjakanData] = useState<LogDikerjakanData[]>(() => getLocalCache<LogDikerjakanData[]>('log') || []);
   const [isLoading, setIsLoading] = useState<boolean>(() => {
     // If we have cached production data, do not block the UI with a full-screen loading spinner
@@ -215,6 +224,24 @@ export default function App() {
     const hasCache = !!getLocalCache('prod');
     if (hasCache) {
       setIsLoading(false);
+      const cachedOp = getLocalCache<ProductionData[]>('analisaOpData');
+      if (!cachedOp || !cachedOp.some(d => d.month === 8)) {
+        fetchAnalisaOperatorData().then(opData => {
+          if (isMounted && opData && opData.length > 0) {
+            setAnalisaOperatorData(opData);
+            setLocalCache('analisaOpData', opData);
+          }
+        });
+      }
+      const cachedDetail = getLocalCache<AnalisaOperatorDetailData[]>('analisa');
+      if (!cachedDetail || !cachedDetail.some(d => (d.tanggal || '').includes('2026-08'))) {
+        fetchAnalisaOperatorDetailData().then(detail => {
+          if (isMounted && detail && detail.length > 0) {
+            setAnalisaOperatorDetailData(detail);
+            setLocalCache('analisa', detail);
+          }
+        });
+      }
       autoSyncTimeout = setTimeout(() => {
         if (isMounted) performBackgroundSync();
       }, 3000);
@@ -340,7 +367,7 @@ export default function App() {
         {activeTab === 'Performance' && <PerformancePage data={data} />}
         {activeTab === 'Plan' && <PlanPage todayStats={todayStats} data={data} />}
         {activeTab === 'AI' && <AIPage data={data} />}
-        {activeTab === 'AnalisaOperator' && <AnalisaOperatorPage data={analisaOperatorData} detailData={analisaOperatorDetailData} />}
+        {activeTab === 'AnalisaOperator' && <AnalisaOperatorPage data={analisaOperatorData && analisaOperatorData.length > 0 ? analisaOperatorData : data} detailData={analisaOperatorDetailData} />}
       </Suspense>
     </MobileLayout>
   );

@@ -47,36 +47,65 @@ function normalizeMachineKey(m: string | undefined | null): string {
   return m.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
-function normalizeDateKey(d: string | undefined | null): string {
-  if (!d) return '';
-  const str = String(d).trim();
+export function parseDateParts(dateStr: string | undefined | null): { year: number; month: number; day: number } | null {
+  if (!dateStr) return null;
+  const str = String(dateStr).trim();
+  const monthMap: Record<string, number> = {
+    jan: 1, feb: 2, mar: 3, apr: 4, may: 5, mei: 5,
+    jun: 6, jul: 7, aug: 8, agu: 8, sep: 9, oct: 10, okt: 10,
+    nov: 11, dec: 12, des: 12
+  };
   const parts = str.split(/[-/]/);
   if (parts.length === 3) {
     if (parts[0].length === 4) {
-      return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+      // YYYY-MM-DD
+      const y = parseInt(parts[0], 10);
+      const mStr = parts[1].toLowerCase();
+      const m = monthMap[mStr] || parseInt(parts[1], 10);
+      const d = parseInt(parts[2], 10);
+      if (!isNaN(y) && !isNaN(m) && !isNaN(d)) return { year: y, month: m, day: d };
     } else if (parts[2].length === 4) {
-      return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+      // DD-MM-YYYY or DD-MMM-YYYY
+      const y = parseInt(parts[2], 10);
+      const mStr = parts[1].toLowerCase();
+      const m = monthMap[mStr] || parseInt(parts[1], 10);
+      const d = parseInt(parts[0], 10);
+      if (!isNaN(y) && !isNaN(m) && !isNaN(d)) return { year: y, month: m, day: d };
     }
   }
   const dt = new Date(str);
   if (!isNaN(dt.getTime())) {
-    const y = dt.getFullYear();
-    const m = String(dt.getMonth() + 1).padStart(2, '0');
-    const day = String(dt.getDate()).padStart(2, '0');
+    return {
+      year: dt.getUTCFullYear(),
+      month: dt.getUTCMonth() + 1,
+      day: dt.getUTCDate()
+    };
+  }
+  return null;
+}
+
+function normalizeDateKey(d: string | undefined | null): string {
+  if (!d) return '';
+  const parsed = parseDateParts(d);
+  if (parsed) {
+    const y = parsed.year;
+    const m = String(parsed.month).padStart(2, '0');
+    const day = String(parsed.day).padStart(2, '0');
     return `${y}-${m}-${day}`;
   }
-  return str;
+  return String(d).trim();
 }
 
 function formatDateShort(dateStr: string): string {
   if (!dateStr) return '';
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return dateStr;
-  const day = String(d.getDate()).padStart(2, '0');
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const month = months[d.getMonth()];
-  const year = d.getFullYear();
-  return `${day}-${month}-${year}`;
+  const parsed = parseDateParts(dateStr);
+  if (parsed) {
+    const day = String(parsed.day).padStart(2, '0');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = months[parsed.month - 1] || String(parsed.month);
+    return `${day}-${month}-${parsed.year}`;
+  }
+  return dateStr;
 }
 
 export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPageProps) {
@@ -190,12 +219,16 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
   };
 
   const months = useMemo(() => {
-    const m = new Set<number>();
-    data.forEach(d => {
-      if (d.month && !isNaN(d.month)) m.add(d.month);
-    });
-    return Array.from(m).sort((a, b) => b - a);
+    const validData = data.filter(d => d.month && !isNaN(d.month) && d.input > 0);
+    const uniqueMonths = Array.from(new Set(validData.map(d => d.month))).sort((a, b) => b - a);
+    return uniqueMonths.length > 0 ? uniqueMonths : [9, 8];
   }, [data]);
+
+  useEffect(() => {
+    if (months.length > 0 && (!selectedMonth || !months.includes(selectedMonth))) {
+      setSelectedMonth(months[0]);
+    }
+  }, [months, selectedMonth]);
 
   // Extract weeks for the selected month
   const availableWeeks = useMemo(() => {
@@ -205,13 +238,24 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
         weeksSet.add(d.week);
       }
     });
-    return Array.from(weeksSet).sort((a, b) => a - b);
+
+    // Prefer weeks that have active production data (input > 0)
+    const activeWeeksSet = new Set<number>();
+    data.forEach(d => {
+      if (d.month === selectedMonth && d.week && !isNaN(d.week) && d.input > 0) {
+        activeWeeksSet.add(d.week);
+      }
+    });
+
+    const list = activeWeeksSet.size > 0 ? Array.from(activeWeeksSet) : Array.from(weeksSet);
+    return list.sort((a, b) => a - b);
   }, [data, selectedMonth]);
 
   useEffect(() => {
     if (availableWeeks.length > 0) {
-      // Default to the latest week or 'all'
-      setSelectedWeek(availableWeeks[availableWeeks.length - 1]);
+      if (selectedWeek !== 'all' && !availableWeeks.includes(selectedWeek as number)) {
+        setSelectedWeek(availableWeeks[0]);
+      }
     } else {
       setSelectedWeek('all');
     }
@@ -298,15 +342,20 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
   const filteredDetailData = useMemo(() => {
     if (!detailData) return [];
     return detailData.filter(row => {
-      const d = new Date(row.tanggal);
-      if (d.getMonth() + 1 !== selectedMonth) return false;
-      if (selectedDate !== 'all' && row.tanggal !== selectedDate) return false;
+      const p = parseDateParts(row.tanggal);
+      if (!p || p.month !== selectedMonth) return false;
+      if (selectedDate !== 'all' && normalizeDateKey(row.tanggal) !== normalizeDateKey(selectedDate)) return false;
       const normalizedRowMachine = normalizeMachineName(row.mesin);
       if (selectedMachine !== 'all' && normalizedRowMachine !== selectedMachine) return false;
       return true;
     }).sort((a, b) => {
-      const dateCmp = new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime();
-      if (dateCmp !== 0) return dateCmp;
+      const pA = parseDateParts(a.tanggal);
+      const pB = parseDateParts(b.tanggal);
+      if (pA && pB) {
+        const timeA = new Date(pA.year, pA.month - 1, pA.day).getTime();
+        const timeB = new Date(pB.year, pB.month - 1, pB.day).getTime();
+        if (timeA !== timeB) return timeA - timeB;
+      }
       const numA = parseInt(a.mesin.replace(/\D/g, '')) || 0;
       const numB = parseInt(b.mesin.replace(/\D/g, '')) || 0;
       return numA - numB;
@@ -322,28 +371,35 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
     }
 
     // Get dates sorted
-    const rawDates = Array.from(new Set(weekFiltered.map(d => d.tanggal)))
+    const rawDates = Array.from(new Set(weekFiltered.map(d => normalizeDateKey(d.tanggal))))
       .filter(Boolean)
-      .sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+      .sort((a, b) => {
+        const pA = parseDateParts(a);
+        const pB = parseDateParts(b);
+        if (pA && pB) {
+          return new Date(pA.year, pA.month - 1, pA.day).getTime() - new Date(pB.year, pB.month - 1, pB.day).getTime();
+        }
+        return a.localeCompare(b);
+      });
 
     let datesToUse: string[] = [];
 
     if (rawDates.length > 0) {
-      // Find starting Monday of the earliest date
-      const firstDate = new Date(rawDates[0]);
-      const dayOfWeek = firstDate.getDay(); // 0 is Sun, 1 is Mon
-      const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-      const mondayDate = new Date(firstDate);
-      mondayDate.setDate(firstDate.getDate() + diffToMon);
+      const pFirst = parseDateParts(rawDates[0]);
+      if (pFirst) {
+        const firstDate = new Date(pFirst.year, pFirst.month - 1, pFirst.day);
+        const dayOfWeek = firstDate.getDay(); // 0 is Sun, 1 is Mon
+        const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+        const mondayDate = new Date(pFirst.year, pFirst.month - 1, pFirst.day + diffToMon);
 
-      // Generate 7 days (Mon to Sun)
-      for (let i = 0; i < 7; i++) {
-        const cur = new Date(mondayDate);
-        cur.setDate(mondayDate.getDate() + i);
-        const yyyy = cur.getFullYear();
-        const mm = String(cur.getMonth() + 1).padStart(2, '0');
-        const dd = String(cur.getDate()).padStart(2, '0');
-        datesToUse.push(`${yyyy}-${mm}-${dd}`);
+        // Generate 7 days (Mon to Sun)
+        for (let i = 0; i < 7; i++) {
+          const cur = new Date(mondayDate.getFullYear(), mondayDate.getMonth(), mondayDate.getDate() + i);
+          const yyyy = cur.getFullYear();
+          const mm = String(cur.getMonth() + 1).padStart(2, '0');
+          const dd = String(cur.getDate()).padStart(2, '0');
+          datesToUse.push(`${yyyy}-${mm}-${dd}`);
+        }
       }
     } else {
       // Fallback empty 7 days
@@ -391,7 +447,7 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
       const dayCells = datesToUse.map(dStr => {
         const record = weekFiltered.find(d => {
           const normD = d.mesin ? d.mesin.toLowerCase().replace(/\s/g, '') : '';
-          return (normD === normalizedTarget || normD === `bs${mName.replace(/\D/g, '')}`) && d.tanggal === dStr;
+          return (normD === normalizedTarget || normD === `bs${mName.replace(/\D/g, '')}`) && normalizeDateKey(d.tanggal) === normalizeDateKey(dStr);
         });
 
         const input = record ? record.input : 0;
@@ -997,7 +1053,8 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
                     <tr className="bg-slate-200 text-slate-800 font-bold border-b border-slate-300">
                       <th className="p-2 border-r border-slate-300 min-w-[70px]">Mesin</th>
                       {selectedWeek !== 'all' && matrixWeekData.dates.map((dStr, idx) => {
-                        const dayName = DAY_NAMES[new Date(dStr).getDay()];
+                        const p = parseDateParts(dStr);
+                        const dayName = p ? DAY_NAMES[new Date(p.year, p.month - 1, p.day).getDay()] : '';
                         return (
                           <th key={idx} className="p-2 border-r border-slate-300 min-w-[85px]">
                             {dayName}
@@ -1114,7 +1171,8 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
                     <tr className="bg-slate-200 text-slate-800 font-bold border-b border-slate-300">
                       <th className="p-2 border-r border-slate-300 min-w-[70px]">Mesin</th>
                       {selectedWeek !== 'all' && matrixWeekData.dates.map((dStr, idx) => {
-                        const dayName = DAY_NAMES[new Date(dStr).getDay()];
+                        const p = parseDateParts(dStr);
+                        const dayName = p ? DAY_NAMES[new Date(p.year, p.month - 1, p.day).getDay()] : '';
                         return (
                           <th key={idx} className="p-2 border-r border-slate-300 min-w-[85px]">
                             {dayName}
@@ -1170,7 +1228,8 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
                     <tr className="bg-slate-200 text-slate-800 font-bold border-b border-slate-300">
                       <th className="p-2 border-r border-slate-300 min-w-[70px]">Mesin</th>
                       {selectedWeek !== 'all' && matrixWeekData.dates.map((dStr, idx) => {
-                        const dayName = DAY_NAMES[new Date(dStr).getDay()];
+                        const p = parseDateParts(dStr);
+                        const dayName = p ? DAY_NAMES[new Date(p.year, p.month - 1, p.day).getDay()] : '';
                         return (
                           <th key={idx} className="p-2 border-r border-slate-300 min-w-[85px]">
                             {dayName}
