@@ -4,14 +4,15 @@ import { doc, getDoc, setDoc, writeBatch } from 'firebase/firestore';
 import Papa from 'papaparse';
 import { RAW_CSV_DATA } from '../data/raw_data';
 import { ProductionData, SummaryStats, SupplierData, MonthlyLogData, OperatorData, LogDikerjakanData, AnalisaOperatorDetailData } from '../types';
-import { STATIC_ANALISA_OPERATOR_DATA, STATIC_ANALISA_OPERATOR_DETAIL } from '../data/staticAnalisaOperatorData';
+
 
 const SPREADSHEET_ID = '1G7x3dtE2KFF338w6qdd4jrMkz-yrbThlzx5Vi0I8AqQ';
 
 // Cached baseline data
 let memoizedStaticBaseline: ProductionData[] | null = null;
-function getStaticBaselineData(): ProductionData[] {
+async function getStaticBaselineData(): Promise<ProductionData[]> {
   if (!memoizedStaticBaseline) {
+    const { RAW_CSV_DATA } = await import('../data/raw_data');
     memoizedStaticBaseline = parseCSV(RAW_CSV_DATA);
   }
   return memoizedStaticBaseline;
@@ -42,7 +43,7 @@ export async function fetchOperatorDataFromSheet(): Promise<OperatorData[]> {
     const csvData = await response.text();
     return parseOperatorCSV(csvData);
   } catch (error) {
-    console.error('Error fetching operator data:', error);
+    console.warn('Network offline or fetch blocked for operator data:. Using local/fallback data.');
     return [];
   }
 }
@@ -79,7 +80,7 @@ function parseOperatorCSV(csv: string): OperatorData[] {
 }
 
 export async function fetchProductionDataFromSheet(): Promise<ProductionData[]> {
-  const staticData = getStaticBaselineData();
+  const staticData = await getStaticBaselineData();
   const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=DATABASE%20APPSCRIPT`;
   
   try {
@@ -100,7 +101,7 @@ export async function fetchProductionDataFromSheet(): Promise<ProductionData[]> 
     });
     return Array.from(map.values());
   } catch (error) {
-    console.error('Error fetching production data:', error);
+    console.warn('Network offline or fetch blocked for production data:. Using local/fallback data.');
     // Fallback to static data on error
     return staticData;
   }
@@ -115,7 +116,7 @@ export async function fetchSupplierDataFromSheet(): Promise<SupplierData[]> {
     const csvData = await response.text();
     return parseSupplierCSV(csvData);
   } catch (error) {
-    console.error('Error fetching supplier data:', error);
+    console.warn('Network offline or fetch blocked for supplier data:. Using local/fallback data.');
     return getMockSupplierData();
   }
 }
@@ -156,7 +157,7 @@ export async function fetchMonthlyLogDataFromSheet(): Promise<MonthlyLogData[]> 
     const csvData = await response.text();
     return parseMonthlyLogCSV(csvData);
   } catch (error) {
-    console.error('Error fetching monthly log data:', error);
+    console.warn('Network offline or fetch blocked for monthly log data:. Using local/fallback data.');
     return [];
   }
 }
@@ -258,7 +259,8 @@ function parseCSV(csv: string): ProductionData[] {
   });
 }
 
-export function parseProductionData(): ProductionData[] {
+export async function parseProductionData(): Promise<ProductionData[]> {
+  const { RAW_CSV_DATA } = await import('../data/raw_data');
   return parseCSV(RAW_CSV_DATA);
 }
 
@@ -609,8 +611,12 @@ export function getPerformanceByTimeframe(data: ProductionData[], type: 'daily' 
 
 
 async function fetchChunkedData<T>(collectionName: string): Promise<T[] | null> {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return null;
   try {
-    const infoDoc = await getDoc(doc(db, 'dashboard_data', collectionName + '_info'));
+    const infoDocPromise = getDoc(doc(db, 'dashboard_data', collectionName + '_info'));
+    const timeoutPromise = new Promise<null>((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000));
+    const infoDoc = await Promise.race([infoDocPromise, timeoutPromise]) as any;
+    if (!infoDoc || !infoDoc.exists()) return null;
     if (!infoDoc.exists()) return null;
     
     const numChunks = infoDoc.data().numChunks || 0;
@@ -634,7 +640,7 @@ async function fetchChunkedData<T>(collectionName: string): Promise<T[] | null> 
     }
     return allData.length > 0 ? allData : null;
   } catch (error) {
-    console.error('Error reading from Firestore:', error);
+    console.warn('Firestore offline. Using fallback.');
     return null;
   }
 }
@@ -783,8 +789,9 @@ export async function fetchAnalisaOperatorDataFromSheet(): Promise<ProductionDat
     const { prodData } = parseAnalisaOperatorSheet(csvData);
 
     if (prodData.length > 0) {
+      const { STATIC_ANALISA_OPERATOR_DATA } = await import('../data/staticAnalisaOperatorData');
       const map = new Map<string, ProductionData>();
-      STATIC_ANALISA_OPERATOR_DATA.forEach(d => {
+      STATIC_ANALISA_OPERATOR_DATA.forEach((d: any) => {
         const key = `${d.tanggal}_${normalizeMachineName(d.mesin)}`;
         map.set(key, d);
       });
@@ -795,17 +802,19 @@ export async function fetchAnalisaOperatorDataFromSheet(): Promise<ProductionDat
       return Array.from(map.values());
     }
   } catch (error) {
-    console.error('Error fetching analisa operator data:', error);
+    console.warn('Network offline or fetch blocked for analisa operator data:. Using local/fallback data.');
   }
 
+  const { STATIC_ANALISA_OPERATOR_DATA } = await import('../data/staticAnalisaOperatorData');
   return STATIC_ANALISA_OPERATOR_DATA;
 }
 
 export async function fetchAnalisaOperatorData(): Promise<ProductionData[]> {
   const fsData = await fetchChunkedData<ProductionData>('analisaOperatorData');
   if (fsData && fsData.length > 0 && fsData.some(d => d.month === 8)) {
+    const { STATIC_ANALISA_OPERATOR_DATA } = await import('../data/staticAnalisaOperatorData');
     const map = new Map<string, ProductionData>();
-    STATIC_ANALISA_OPERATOR_DATA.forEach(d => {
+    STATIC_ANALISA_OPERATOR_DATA.forEach((d: any) => {
       const key = `${d.tanggal}_${normalizeMachineName(d.mesin)}`;
       map.set(key, d);
     });
@@ -832,8 +841,9 @@ export async function fetchAnalisaOperatorDetailDataFromSheet(): Promise<Analisa
     const { detailData } = parseAnalisaOperatorSheet(csvData);
 
     if (detailData.length > 0) {
+      const { STATIC_ANALISA_OPERATOR_DETAIL } = await import('../data/staticAnalisaOperatorData');
       const map = new Map<string, AnalisaOperatorDetailData>();
-      STATIC_ANALISA_OPERATOR_DETAIL.forEach(d => {
+      STATIC_ANALISA_OPERATOR_DETAIL.forEach((d: any) => {
         const key = `${d.tanggal}_${normalizeMachineName(d.mesin)}`;
         map.set(key, d);
       });
@@ -844,17 +854,19 @@ export async function fetchAnalisaOperatorDetailDataFromSheet(): Promise<Analisa
       return Array.from(map.values());
     }
   } catch (error) {
-    console.error('Error fetching analisa operator detail:', error);
+    console.warn('Network offline or fetch blocked for analisa operator detail:. Using local/fallback data.');
   }
 
+  const { STATIC_ANALISA_OPERATOR_DETAIL } = await import('../data/staticAnalisaOperatorData');
   return STATIC_ANALISA_OPERATOR_DETAIL;
 }
 
 export async function fetchAnalisaOperatorDetailData(): Promise<AnalisaOperatorDetailData[]> {
   const fsData = await fetchChunkedData<AnalisaOperatorDetailData>('analisaOperatorDetail');
   if (fsData && fsData.length > 0 && fsData.some(d => (d.tanggal || '').includes('2026-08'))) {
+    const { STATIC_ANALISA_OPERATOR_DETAIL } = await import('../data/staticAnalisaOperatorData');
     const map = new Map<string, AnalisaOperatorDetailData>();
-    STATIC_ANALISA_OPERATOR_DETAIL.forEach(d => {
+    STATIC_ANALISA_OPERATOR_DETAIL.forEach((d: any) => {
       const key = `${d.tanggal}_${normalizeMachineName(d.mesin)}`;
       map.set(key, d);
     });
@@ -874,7 +886,7 @@ export async function fetchOperatorData(): Promise<OperatorData[]> {
 }
 
 export async function fetchProductionData(): Promise<ProductionData[]> {
-  const staticData = getStaticBaselineData();
+  const staticData = await getStaticBaselineData();
   const fsData = await fetchChunkedData<ProductionData>('production');
   if (fsData && fsData.length > 0) {
     const map = new Map<string, ProductionData>();
@@ -960,7 +972,7 @@ export async function syncSpreadsheetToFirestore(onProgress?: (msg: string) => v
 
     if (onProgress) onProgress('Sync Complete!');
   } catch (error: any) {
-    console.error("Sync Error:", error);
+    console.warn('Sync skipped (offline).');
     if (onProgress) onProgress('Error: ' + error.message);
     throw error;
   }
@@ -1016,7 +1028,7 @@ export async function autoSyncSpreadsheetUpdates(
       console.log('Spreadsheet is up-to-date.');
     }
   } catch (error) {
-    console.error('Auto-sync background check failed:', error);
+    console.warn('Auto-sync background check skipped (offline).');
   }
 }
 
@@ -1028,7 +1040,7 @@ export async function fetchLogDikerjakanFromSheet(): Promise<LogDikerjakanData[]
     const csvData = await response.text();
     return parseLogDikerjakanCSV(csvData);
   } catch (error) {
-    console.error('Error fetching Log_dikerjakan data:', error);
+    console.warn('Network offline or fetch blocked for Log_dikerjakan data:. Using local/fallback data.');
     return [];
   }
 }

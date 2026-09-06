@@ -113,6 +113,13 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
   const [selectedWeek, setSelectedWeek] = useState<number | 'all'>('all');
   const [selectedDate, setSelectedDate] = useState<string>('all');
   const [selectedMachine, setSelectedMachine] = useState<string>('all');
+  const [visibleRows, setVisibleRows] = useState<number>(30);
+  const [visibleDetailRows, setVisibleDetailRows] = useState<number>(30);
+  // Reset pagination on filter change
+  useEffect(() => {
+    setVisibleRows(30);
+    setVisibleDetailRows(30);
+  }, [selectedMonth, selectedWeek, selectedDate, selectedMachine]);
   const [viewMode, setViewMode] = useState<'matrix' | 'table' | 'detail'>('matrix');
 
   const [noteTanggal, setNoteTanggal] = useState<string>(() => {
@@ -525,6 +532,13 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
       return numA - numB;
     });
   }, [detailData, selectedMonth, selectedWeek, selectedDate, selectedMachine, matrixWeekData.dates]);
+
+  const detailDataMap = useMemo(() => {
+    const map = new Map<string, any>();
+    filteredDetailData.forEach(d => map.set(`${d.tanggal}_${d.mesin}`, d));
+    return map;
+  }, [filteredDetailData]);
+
 
 
 
@@ -1393,7 +1407,7 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filteredData.length > 0 ? (
-                    filteredData.map((row, i) => (
+                    filteredData.slice(0, visibleRows).map((row, i) => (
                       <tr key={i} className="hover:bg-slate-50 transition-colors">
                         <td className="px-4 py-2.5 font-medium text-slate-700 whitespace-nowrap border-r border-slate-100">
                           {formatDateShort(row.tanggal)}
@@ -1455,6 +1469,13 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
                   )}
                 </tbody>
               </table>
+              {filteredData.length > visibleRows && (
+                <div className="p-4 text-center border-t border-slate-100">
+                  <button onClick={() => setVisibleRows(v => v + 50)} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold transition-colors">
+                    Tampilkan Lebih Banyak
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1512,8 +1533,8 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
                 </thead>
                 <tbody className="bg-white">
                   {filteredData.length > 0 ? (
-                    filteredData.map((row, idx) => {
-                      const d = filteredDetailData.find(detail => detail.tanggal === row.tanggal && detail.mesin === row.mesin);
+                    filteredData.slice(0, visibleDetailRows).map((row, idx) => {
+                      const d = detailDataMap.get(`${row.tanggal}_${row.mesin}`);
                       return (
                         <tr key={idx} className="hover:bg-slate-50 transition-colors">
                           <td className="px-2 py-2 text-slate-600 font-medium border border-slate-300 text-center whitespace-nowrap">

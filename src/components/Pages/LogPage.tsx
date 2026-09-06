@@ -78,7 +78,14 @@ export function LogPage({ logDikerjakanData, onUpdateLogData }: LogPageProps) {
   const [selectedDate, setSelectedDate] = useState<string>('TODAY');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedMesin, setSelectedMesin] = useState<string>('ALL');
+
   const [selectedLine, setSelectedLine] = useState<string>('ALL');
+
+  const [visibleRows, setVisibleRows] = useState<number>(30);
+  // Reset pagination on filter change
+  useEffect(() => {
+    setVisibleRows(30);
+  }, [selectedDate, selectedMesin, selectedLine, searchQuery]);
   
   // Sorting
   const [sortField, setSortField] = useState<'volume' | 'panjang' | 'diameter' | 'nomer_log' | 'mesin' | 'timestamp'>('timestamp');
@@ -748,7 +755,7 @@ export function LogPage({ logDikerjakanData, onUpdateLogData }: LogPageProps) {
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {filteredData.length > 0 ? (
-                filteredData.map((log, i) => (
+                filteredData.slice(0, visibleRows).map((log, i) => (
                   <tr key={i} className="hover:bg-slate-50/80 transition-colors">
                     {/* No */}
                     <td className="px-3 py-2.5 border-r border-slate-100 font-mono text-slate-400 text-[11px]">

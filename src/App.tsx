@@ -17,7 +17,7 @@ import {
   autoSyncSpreadsheetUpdates
 } from './services/dataService';
 import { MonthlyLogData, ProductionData, SupplierData, OperatorData, AnalisaOperatorDetailData, LogDikerjakanData } from './types';
-import { STATIC_ANALISA_OPERATOR_DATA, STATIC_ANALISA_OPERATOR_DETAIL } from './data/staticAnalisaOperatorData';
+
 
 // Lazy loading pages for a lightweight initial load
 const HomePage = lazy(() => import('./components/Pages/HomePage').then(module => ({ default: module.HomePage })));
@@ -63,12 +63,12 @@ export default function App() {
   const [analisaOperatorDetailData, setAnalisaOperatorDetailData] = useState<AnalisaOperatorDetailData[]>(() => {
     const cached = getLocalCache<AnalisaOperatorDetailData[]>('analisa');
     if (cached && cached.length > 0 && cached.some(d => (d.tanggal || '').includes('2026-08'))) return cached;
-    return STATIC_ANALISA_OPERATOR_DETAIL;
+    return [];
   });
   const [analisaOperatorData, setAnalisaOperatorData] = useState<ProductionData[]>(() => {
     const cached = getLocalCache<ProductionData[]>('analisaOpData');
     if (cached && cached.length > 0 && cached.some(d => d.month === 8)) return cached;
-    return STATIC_ANALISA_OPERATOR_DATA;
+    return [];
   });
   const [logDikerjakanData, setLogDikerjakanData] = useState<LogDikerjakanData[]>(() => getLocalCache<LogDikerjakanData[]>('log') || []);
   const [isLoading, setIsLoading] = useState<boolean>(() => {
@@ -214,7 +214,7 @@ export default function App() {
           if (isMounted) performBackgroundSync();
         }, 5000);
       }).catch(err => {
-        console.error("Initial load error:", err);
+        console.warn("Initial load network issue. Proceeding with cache/fallback.");
         if (isMounted) setIsLoading(false);
       });
     };
