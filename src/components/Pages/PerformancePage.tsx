@@ -75,6 +75,7 @@ export function PerformancePage({ data }: PerformancePageProps) {
       
       const periodYieldPrimary = periodInput > 0 ? (periodUtama / periodInput) * 100 : 0;
       const periodYieldSecondary = periodInput > 0 ? (periodTurunan / periodInput) * 100 : 0;
+      const periodYieldLokal = periodInput > 0 ? (periodData.reduce((sum, item) => sum + (item.lokal || 0), 0) / periodInput) * 100 : 0;
       const periodYieldTotal = periodInput > 0 ? (periodOutput / periodInput) * 100 : 0;
 
       // Overall averages (across all weeks in the month)
@@ -106,6 +107,7 @@ export function PerformancePage({ data }: PerformancePageProps) {
         periodOutput,
         periodYieldPrimary,
         periodYieldSecondary,
+        periodYieldLokal,
         periodYieldTotal,
         avgOutput,
         avgOutputPerHari,
@@ -167,6 +169,7 @@ export function PerformancePage({ data }: PerformancePageProps) {
                 <th className="py-4 px-4 font-semibold text-right">TOTAL</th>
                 <th className="py-4 px-4 font-semibold text-center">REND. UTAMA</th>
                 <th className="py-4 px-4 font-semibold text-center">REND. TURUNAN</th>
+                <th className="py-4 px-4 font-semibold text-center">REND. LOKAL</th>
                 <th className="py-4 px-4 font-semibold text-center">REND. TOTAL</th>
                 <th className="py-4 px-4 font-semibold text-right">AVG TOTAL PER HARI</th>
               </tr>
@@ -182,6 +185,7 @@ export function PerformancePage({ data }: PerformancePageProps) {
                   <td className="py-4 px-4 text-right font-semibold text-slate-800">{row.periodOutput.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</td>
                   <td className="py-4 px-4 text-center font-bold text-indigo-600">{row.periodYieldPrimary.toFixed(1)}%</td>
                   <td className="py-4 px-4 text-center text-slate-600">{row.periodYieldSecondary.toFixed(1)}%</td>
+                  <td className="py-4 px-4 text-center text-slate-600">{!isNaN(row.periodYieldLokal) ? row.periodYieldLokal.toFixed(1) : "0.0"}%</td>
                   <td className="py-4 px-4 text-center">
                     {row.periodInput > 0 ? (
                       <span className={cn(
