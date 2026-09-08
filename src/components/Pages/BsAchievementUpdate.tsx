@@ -273,6 +273,7 @@ export function BsAchievementUpdate() {
 
     const yieldUtama = totalInput > 0 ? (totalUtama / totalInput) * 100 : 0;
     const yieldTurunan = totalInput > 0 ? (totalTurunan / totalInput) * 100 : 0;
+    const yieldLokal = totalInput > 0 ? (totalLokal / totalInput) * 100 : 0;
     const yieldTotal = totalInput > 0 ? (totalOutput / totalInput) * 100 : 0;
     const averageTotalOutput = bsData.length > 0 ? totalOutput / bsData.length : 0;
 
@@ -280,6 +281,7 @@ export function BsAchievementUpdate() {
         const yieldU = m.input > 0 ? (m.utama / m.input) * 100 : 0;
         const yieldUNonPilot = m.input > 0 ? (m.utamaNonPilotLadder / m.input) * 100 : 0;
         const yieldT = m.input > 0 ? (m.turunan / m.input) * 100 : 0;
+        const yieldL = m.input > 0 ? (m.lokal / m.input) * 100 : 0;
         const yieldTot = m.input > 0 ? (m.totalOutput / m.input) * 100 : 0;
         const avg = m.count > 0 ? m.totalOutput / m.count : 0;
         return {
@@ -287,6 +289,7 @@ export function BsAchievementUpdate() {
             yieldUtama: yieldU,
             yieldUtamaNonPilot: yieldUNonPilot,
             yieldTurunan: yieldT,
+            yieldLokal: yieldL,
             yieldTotal: yieldTot,
             averageOutput: avg
         };
@@ -300,6 +303,7 @@ export function BsAchievementUpdate() {
         turunan: totalTurunan,
         yieldTurunan: yieldTurunan,
         lokal: totalLokal,
+        yieldLokal: yieldLokal,
         totalOutput: totalOutput,
         yieldTotal: yieldTotal,
         averageOutput: averageTotalOutput
@@ -416,9 +420,13 @@ export function BsAchievementUpdate() {
                         <p className="text-2xl font-black text-slate-800 relative z-10">{statsBS.summary.turunan.toLocaleString('id-ID', { maximumFractionDigits: 1 })} <span className="text-xs text-slate-400 font-bold">M³</span></p>
                     </div>
 
-                    <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 hover:bg-slate-100/50 transition-colors flex flex-col justify-between">
-                        <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-2">Lokal</p>
-                        <p className="text-2xl font-black text-slate-800">{statsBS.summary.lokal.toLocaleString('id-ID', { maximumFractionDigits: 1 })} <span className="text-xs text-slate-400 font-bold">M³</span></p>
+                    <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 hover:bg-slate-100/50 transition-colors flex flex-col justify-between relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-16 h-16 bg-purple-50 rounded-full blur-xl -mr-8 -mt-8" />
+                        <div className="flex justify-between items-start mb-2 relative z-10">
+                           <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Lokal</p>
+                           <span className="text-[10px] font-black text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-100">{!isNaN(statsBS.summary.yieldLokal) ? statsBS.summary.yieldLokal.toFixed(1) : "0.0"}%</span>
+                        </div>
+                        <p className="text-2xl font-black text-slate-800 relative z-10">{statsBS.summary.lokal.toLocaleString('id-ID', { maximumFractionDigits: 1 })} <span className="text-xs text-slate-400 font-bold">M³</span></p>
                     </div>
                 
                     <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100 col-span-2 lg:col-span-1 flex flex-col justify-between relative overflow-hidden">
@@ -462,6 +470,7 @@ export function BsAchievementUpdate() {
                                 <th className="py-5 px-4 font-extrabold text-[#475569] text-right uppercase tracking-wider">TURUNAN (M³)</th>
                                 <th className="py-5 px-4 font-extrabold text-[#475569] text-center uppercase tracking-wider">RENDEMEN<br/>TURUNAN (%)</th>
                                 <th className="py-5 px-4 font-extrabold text-[#475569] text-right uppercase tracking-wider">LOKAL (M³)</th>
+                                <th className="py-5 px-4 font-extrabold text-[#475569] text-center uppercase tracking-wider">RENDEMEN<br/>LOKAL (%)</th>
                                 <th className="py-5 px-4 font-extrabold text-[#475569] text-right uppercase tracking-wider">TOTAL<br/>OUTPUT (M³)</th>
                                 <th className="py-5 px-4 font-extrabold text-[#475569] text-center uppercase tracking-wider">RENDEMEN<br/>TOTAL (%)</th>
                                 <th className="py-5 px-4 font-extrabold text-[#475569] text-right uppercase tracking-wider">AVG<br/>OUTPUT</th>
@@ -489,6 +498,9 @@ export function BsAchievementUpdate() {
                                         {m.yieldTurunan.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%
                                     </td>
                                     <td className="py-5 px-4 font-bold text-slate-800 text-right text-sm sm:text-base">{m.lokal.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
+                                    <td className="py-5 px-4 text-center font-bold text-slate-800 text-sm sm:text-base">
+                                        {!isNaN(m.yieldLokal) ? m.yieldLokal.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '0,0'}%
+                                    </td>
                                     <td className="py-5 px-4 font-black text-slate-900 text-right text-sm sm:text-base">{m.totalOutput.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
                                     <td className="py-5 px-4 font-black text-slate-900 text-center text-sm sm:text-base">{m.yieldTotal.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%</td>
                                     <td className="py-5 px-4 font-bold text-slate-800 text-right text-sm sm:text-base">{m.averageOutput.toLocaleString('id-ID', { maximumFractionDigits: 1 })}</td>
