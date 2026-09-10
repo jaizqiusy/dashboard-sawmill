@@ -1,5 +1,5 @@
 import React from 'react';
-import { 
+import { Package, 
   LayoutGrid, 
   BarChart3, 
   Trophy, 
@@ -23,6 +23,7 @@ export function HomePage({ setActiveTab }: HomePageProps) {
     { id: 'Overview', icon: LayoutGrid, label: 'Overview', desc: 'Ringkasan performa', color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-100' },
     { id: 'Analytics', icon: BarChart3, label: 'Analytics', desc: 'Analisis detail', color: 'text-sky-600', bg: 'bg-sky-50', border: 'border-sky-100' },
     { id: 'Ranking', icon: Trophy, label: 'Ranking', desc: 'Peringkat mesin', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100' },
+    { id: 'Order', icon: Package, label: 'ORDER', desc: 'Order urgent', color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-100' },
     { id: 'AnalisaOperator', icon: Users, label: 'Analisa Opr', desc: 'Performa operator harian', color: 'text-pink-600', bg: 'bg-pink-50', border: 'border-pink-100' },
     { id: 'Log', icon: FileText, label: 'Log', desc: 'Log hari ini', color: 'text-lime-600', bg: 'bg-lime-50', border: 'border-lime-100' },
     { id: 'Production', icon: Factory, label: 'Live Prod', desc: 'Produksi realtime', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },

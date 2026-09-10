@@ -27,6 +27,7 @@ const AnalisaOperatorPage = lazy(() => import('./components/Pages/AnalisaOperato
 const OverviewPage = lazy(() => import('./components/Pages/OverviewPage').then(module => ({ default: module.OverviewPage })));
 const AnalyticsPage = lazy(() => import('./components/Pages/AnalyticsPage').then(module => ({ default: module.AnalyticsPage })));
 const RankingPage = lazy(() => import('./components/Pages/RankingPage').then(module => ({ default: module.RankingPage })));
+const OrderPage = lazy(() => import('./components/Pages/OrderPage').then(module => ({ default: module.OrderPage })));
 const OperatorProfilePage = lazy(() => import('./components/Pages/OperatorProfilePage').then(module => ({ default: module.OperatorProfilePage })));
 const ProductionPage = lazy(() => import('./components/Pages/ProductionPage').then(module => ({ default: module.ProductionPage })));
 const LogPage = lazy(() => import('./components/Pages/LogPage').then(module => ({ default: module.LogPage })));
@@ -350,6 +351,7 @@ export default function App() {
         {activeTab === 'Overview' && <OverviewPage stats={stats} todayStats={todayStats} monthPerformance={monthPerformance} monthlyLogData={monthlyLogData} />}
         {activeTab === 'Analytics' && <AnalyticsPage data={data} monthlyLogData={monthlyLogData} />}
         {activeTab === 'Ranking' && <RankingPage data={data} operatorData={operatorData} />}
+        {activeTab === 'Order' && <OrderPage />}
         {activeTab === 'OperatorProfile' && <OperatorProfilePage data={data} operatorData={operatorData} />}
         {activeTab === 'Production' && <ProductionPage todayStats={todayStats} />}
         {activeTab === 'Log' && (

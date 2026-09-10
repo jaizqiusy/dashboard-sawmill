@@ -10,6 +10,13 @@ const SPREADSHEET_ID = '1G7x3dtE2KFF338w6qdd4jrMkz-yrbThlzx5Vi0I8AqQ';
 
 // Cached baseline data
 let memoizedStaticBaseline: ProductionData[] | null = null;
+const memoryCache = new Map<string, {data: any, timestamp: number}>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
+
+export function clearMemoryCache() {
+  memoryCache.clear();
+}
+
 async function getStaticBaselineData(): Promise<ProductionData[]> {
   if (!memoizedStaticBaseline) {
     const { RAW_CSV_DATA } = await import('../data/raw_data');
@@ -809,7 +816,7 @@ export async function fetchAnalisaOperatorDataFromSheet(): Promise<ProductionDat
   return STATIC_ANALISA_OPERATOR_DATA;
 }
 
-export async function fetchAnalisaOperatorData(): Promise<ProductionData[]> {
+async function _fetchAnalisaOperatorData_internal(): Promise<ProductionData[]> {
   const fsData = await fetchChunkedData<ProductionData>('analisaOperatorData');
   if (fsData && fsData.length > 0 && fsData.some(d => d.month === 8)) {
     const { STATIC_ANALISA_OPERATOR_DATA } = await import('../data/staticAnalisaOperatorData');
@@ -861,7 +868,7 @@ export async function fetchAnalisaOperatorDetailDataFromSheet(): Promise<Analisa
   return STATIC_ANALISA_OPERATOR_DETAIL;
 }
 
-export async function fetchAnalisaOperatorDetailData(): Promise<AnalisaOperatorDetailData[]> {
+async function _fetchAnalisaOperatorDetailData_internal(): Promise<AnalisaOperatorDetailData[]> {
   const fsData = await fetchChunkedData<AnalisaOperatorDetailData>('analisaOperatorDetail');
   if (fsData && fsData.length > 0 && fsData.some(d => (d.tanggal || '').includes('2026-08'))) {
     const { STATIC_ANALISA_OPERATOR_DETAIL } = await import('../data/staticAnalisaOperatorData');
@@ -879,13 +886,13 @@ export async function fetchAnalisaOperatorDetailData(): Promise<AnalisaOperatorD
   return fetchAnalisaOperatorDetailDataFromSheet();
 }
 
-export async function fetchOperatorData(): Promise<OperatorData[]> {
+async function _fetchOperatorData_internal(): Promise<OperatorData[]> {
   const fsData = await fetchChunkedData<OperatorData>('operator');
   if (fsData) return fsData;
   return fetchOperatorDataFromSheet();
 }
 
-export async function fetchProductionData(): Promise<ProductionData[]> {
+async function _fetchProductionData_internal(): Promise<ProductionData[]> {
   const staticData = await getStaticBaselineData();
   const fsData = await fetchChunkedData<ProductionData>('production');
   if (fsData && fsData.length > 0) {
@@ -903,13 +910,13 @@ export async function fetchProductionData(): Promise<ProductionData[]> {
   return fetchProductionDataFromSheet();
 }
 
-export async function fetchSupplierData(): Promise<SupplierData[]> {
+async function _fetchSupplierData_internal(): Promise<SupplierData[]> {
   const fsData = await fetchChunkedData<SupplierData>('supplier');
   if (fsData) return fsData;
   return fetchSupplierDataFromSheet();
 }
 
-export async function fetchMonthlyLogData(): Promise<MonthlyLogData[]> {
+async function _fetchMonthlyLogData_internal(): Promise<MonthlyLogData[]> {
   const fsData = await fetchChunkedData<MonthlyLogData>('monthlyLog');
   if (fsData) return fsData;
   return fetchMonthlyLogDataFromSheet();
@@ -971,6 +978,7 @@ export async function syncSpreadsheetToFirestore(onProgress?: (msg: string) => v
     await saveInChunks('analisaOperatorData', analisaOpData, onProgress);
 
     if (onProgress) onProgress('Sync Complete!');
+    clearMemoryCache();
   } catch (error: any) {
     console.warn('Sync skipped (offline).');
     if (onProgress) onProgress('Error: ' + error.message);
@@ -1011,6 +1019,8 @@ export async function autoSyncSpreadsheetUpdates(
 
     if (isDifferent) {
       console.log('Update detected in spreadsheet! Updating UI and syncing to Firestore...');
+      // Clear memory cache so next fetches get the latest data
+      clearMemoryCache();
       // Update UI state immediately for responsive experience
       onUpdateDetected(newProd, newSupp, newMonth, newOp, newAnalisaDetail, newLogDikerjakan, newAnalisaOpData);
 
@@ -1154,8 +1164,163 @@ function parseLogDikerjakanCSV(csv: string): LogDikerjakanData[] {
   });
 }
 
-export async function fetchLogDikerjakan(): Promise<import('../types').LogDikerjakanData[]> {
+async function _fetchLogDikerjakan_internal(): Promise<LogDikerjakanData[]> {
   const fsData = await fetchChunkedData<import('../types').LogDikerjakanData>('logDikerjakan');
   if (fsData && fsData.length > 0) return fsData;
   return fetchLogDikerjakanFromSheet();
+}
+
+export async function fetchLogDikerjakan(forceRefresh = false): Promise<LogDikerjakanData[]> {
+  if (!forceRefresh) {
+    const cached = memoryCache.get('fetchLogDikerjakan');
+    if (cached && (Date.now() - cached.timestamp < CACHE_DURATION)) {
+      return cached.data;
+    }
+  }
+  const data = await _fetchLogDikerjakan_internal();
+  memoryCache.set('fetchLogDikerjakan', { data, timestamp: Date.now() });
+  return data;
+}
+
+
+async function _fetchOrderUrgentDataFromSheet_internal(): Promise<{data: any[], dateH1: string, dateHariIni: string}> {
+  const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=order%20urgent`;
+  
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Failed to fetch order urgent data');
+    const csvData = await response.text();
+    
+    // Parse using Papa since it's already imported in dataService
+    const parsed = Papa.parse<string[]>(csvData.trim(), { skipEmptyLines: true });
+    const rows = parsed.data;
+    if (rows.length < 2) return { data: [], dateH1: '', dateHariIni: '' };
+    
+    const headers = rows[1];
+    let dateCols: {index: number, title: string}[] = [];
+    for (let i = 5; i < headers.length; i++) {
+      if (headers[i] && headers[i].trim() !== '') {
+        dateCols.push({ index: i, title: headers[i].trim() });
+      } else {
+        break; // Hit empty header (Total Realisasi)
+      }
+    }
+    
+    const hariIniCol = dateCols.length > 0 ? dateCols[dateCols.length - 1] : null;
+    const h1Col = dateCols.length > 1 ? dateCols[dateCols.length - 2] : null;
+    
+    const dataRows = rows.slice(2).filter(row => row[1] && row[1].trim() !== '');
+    const mapped = dataRows.map(row => {
+      const ukuran = row[1];
+      const panjang = row[2] || '-';
+      const jo = row[3];
+      const target = parseInt(row[4] || '0', 10);
+      const h1 = h1Col && row[h1Col.index] ? parseInt(row[h1Col.index], 10) : null;
+      const hariIni = hariIniCol && row[hariIniCol.index] ? parseInt(row[hariIniCol.index], 10) : null;
+      
+      const realisasiIdx = dateCols.length > 0 ? dateCols[dateCols.length - 1].index + 1 : 9;
+      const statusIdx = realisasiIdx + 1;
+      
+      const realisasi = parseInt(row[realisasiIdx] || '0', 10);
+      const statusVal = parseInt(row[statusIdx] || '0', 10);
+      const status = statusVal >= 0 ? 'selesai' : 'kurang';
+      
+      const kekurangan = target > realisasi ? target - realisasi : 0;
+      return { ukuran, panjang, jo, target, h1, hariIni, realisasi, kekurangan, status };
+    });
+    
+    return {
+      data: mapped,
+      dateH1: h1Col ? h1Col.title : 'H-1',
+      dateHariIni: hariIniCol ? hariIniCol.title : 'Hari Ini'
+    };
+  } catch (error) {
+    console.warn('Network offline or fetch blocked for order urgent data. Using empty array.');
+    return { data: [], dateH1: '', dateHariIni: '' };
+  }
+}
+
+
+export async function fetchOperatorData(forceRefresh = false): Promise<OperatorData[]> {
+  if (!forceRefresh) {
+    const cached = memoryCache.get('fetchOperatorData');
+    if (cached && (Date.now() - cached.timestamp < CACHE_DURATION)) {
+      return cached.data;
+    }
+  }
+  const data = await _fetchOperatorData_internal();
+  memoryCache.set('fetchOperatorData', { data, timestamp: Date.now() });
+  return data;
+}
+
+export async function fetchProductionData(forceRefresh = false): Promise<ProductionData[]> {
+  if (!forceRefresh) {
+    const cached = memoryCache.get('fetchProductionData');
+    if (cached && (Date.now() - cached.timestamp < CACHE_DURATION)) {
+      return cached.data;
+    }
+  }
+  const data = await _fetchProductionData_internal();
+  memoryCache.set('fetchProductionData', { data, timestamp: Date.now() });
+  return data;
+}
+
+export async function fetchSupplierData(forceRefresh = false): Promise<SupplierData[]> {
+  if (!forceRefresh) {
+    const cached = memoryCache.get('fetchSupplierData');
+    if (cached && (Date.now() - cached.timestamp < CACHE_DURATION)) {
+      return cached.data;
+    }
+  }
+  const data = await _fetchSupplierData_internal();
+  memoryCache.set('fetchSupplierData', { data, timestamp: Date.now() });
+  return data;
+}
+
+export async function fetchMonthlyLogData(forceRefresh = false): Promise<MonthlyLogData[]> {
+  if (!forceRefresh) {
+    const cached = memoryCache.get('fetchMonthlyLogData');
+    if (cached && (Date.now() - cached.timestamp < CACHE_DURATION)) {
+      return cached.data;
+    }
+  }
+  const data = await _fetchMonthlyLogData_internal();
+  memoryCache.set('fetchMonthlyLogData', { data, timestamp: Date.now() });
+  return data;
+}
+
+export async function fetchAnalisaOperatorDetailData(forceRefresh = false): Promise<AnalisaOperatorDetailData[]> {
+  if (!forceRefresh) {
+    const cached = memoryCache.get('fetchAnalisaOperatorDetailData');
+    if (cached && (Date.now() - cached.timestamp < CACHE_DURATION)) {
+      return cached.data;
+    }
+  }
+  const data = await _fetchAnalisaOperatorDetailData_internal();
+  memoryCache.set('fetchAnalisaOperatorDetailData', { data, timestamp: Date.now() });
+  return data;
+}
+
+export async function fetchAnalisaOperatorData(forceRefresh = false): Promise<ProductionData[]> {
+  if (!forceRefresh) {
+    const cached = memoryCache.get('fetchAnalisaOperatorData');
+    if (cached && (Date.now() - cached.timestamp < CACHE_DURATION)) {
+      return cached.data;
+    }
+  }
+  const data = await _fetchAnalisaOperatorData_internal();
+  memoryCache.set('fetchAnalisaOperatorData', { data, timestamp: Date.now() });
+  return data;
+}
+
+export async function fetchOrderUrgentDataFromSheet(forceRefresh = false): Promise<{data: any[], dateH1: string, dateHariIni: string}> {
+  if (!forceRefresh) {
+    const cached = memoryCache.get('fetchOrderUrgentDataFromSheet');
+    if (cached && (Date.now() - cached.timestamp < CACHE_DURATION)) {
+      return cached.data;
+    }
+  }
+  const data = await _fetchOrderUrgentDataFromSheet_internal();
+  memoryCache.set('fetchOrderUrgentDataFromSheet', { data, timestamp: Date.now() });
+  return data;
 }

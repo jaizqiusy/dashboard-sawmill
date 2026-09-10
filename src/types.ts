@@ -120,3 +120,15 @@ export interface LogDikerjakanData {
   fotoLog?: string;
   timestamp?: string;
 }
+
+export interface OrderUrgentData {
+  ukuran: string;
+  panjang: string;
+  jo: string;
+  target: number;
+  h1: number | null;
+  hariIni: number | null;
+  realisasi: number;
+  kekurangan: number;
+  status: 'selesai' | 'kurang';
+}
