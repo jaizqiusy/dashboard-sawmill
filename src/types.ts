@@ -131,4 +131,5 @@ export interface OrderUrgentData {
   realisasi: number;
   kekurangan: number;
   status: 'selesai' | 'kurang';
+  dateValues?: Record<string, number | null>;
 }

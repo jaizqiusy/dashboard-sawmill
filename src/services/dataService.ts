@@ -1183,7 +1183,7 @@ export async function fetchLogDikerjakan(forceRefresh = false): Promise<LogDiker
 }
 
 
-async function _fetchOrderUrgentDataFromSheet_internal(): Promise<{data: any[], dateH1: string, dateHariIni: string}> {
+async function _fetchOrderUrgentDataFromSheet_internal(): Promise<{data: any[], dateH1: string, dateHariIni: string, availableDates: string[]}> {
   const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=order%20urgent`;
   
   try {
@@ -1194,22 +1194,85 @@ async function _fetchOrderUrgentDataFromSheet_internal(): Promise<{data: any[], 
     // Parse using Papa since it's already imported in dataService
     const parsed = Papa.parse<string[]>(csvData.trim(), { skipEmptyLines: true });
     const rows = parsed.data;
-    if (rows.length < 2) return { data: [], dateH1: '', dateHariIni: '' };
+    if (rows.length < 2) return { data: [], dateH1: '', dateHariIni: '', availableDates: [] };
     
     const headers = rows[1];
-    let dateCols: {index: number, title: string}[] = [];
-    for (let i = 5; i < headers.length; i++) {
+    
+    // Find Satuan and Realisasi column index
+    const satuanIdx = headers.findIndex(h => h && h.toLowerCase().trim() === 'satuan');
+    const realisasiIdx = satuanIdx > 0 ? satuanIdx - 2 : 15;
+    const statusIdx = satuanIdx > 0 ? satuanIdx - 1 : 16;
+    
+    // Extract all valid date columns (between index 5 and realisasiIdx)
+    const dateCols: { index: number; title: string; dataCount?: number }[] = [];
+    for (let i = 5; i < realisasiIdx; i++) {
       if (headers[i] && headers[i].trim() !== '') {
         dateCols.push({ index: i, title: headers[i].trim() });
-      } else {
-        break; // Hit empty header (Total Realisasi)
       }
     }
     
-    const hariIniCol = dateCols.length > 0 ? dateCols[dateCols.length - 1] : null;
-    const h1Col = dateCols.length > 1 ? dateCols[dateCols.length - 2] : null;
-    
     const dataRows = rows.slice(2).filter(row => row[1] && row[1].trim() !== '');
+    
+    // Count rows with non-zero values for each date column
+    dateCols.forEach(col => {
+      let count = 0;
+      for (const r of dataRows) {
+        const val = parseInt(r[col.index] || '0', 10);
+        if (!isNaN(val) && val > 0) count++;
+      }
+      col.dataCount = count;
+    });
+
+    // Helper to format date string to match header (e.g., "11 Sep 26")
+    const getFormattedDate = (tz?: string) => {
+      try {
+        const options: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'short', year: '2-digit' };
+        if (tz) options.timeZone = tz;
+        const parts = new Intl.DateTimeFormat('en-GB', options).formatToParts(new Date());
+        const day = parts.find(p => p.type === 'day')?.value || '';
+        const month = (parts.find(p => p.type === 'month')?.value || '').slice(0, 3);
+        const year = parts.find(p => p.type === 'year')?.value || '';
+        return `${day} ${month} ${year}`.toLowerCase();
+      } catch {
+        return '';
+      }
+    };
+
+    const todayWIB = getFormattedDate('Asia/Jakarta');
+    const todayLocal = getFormattedDate();
+
+    // Match today's column
+    let todayColIdx = dateCols.findIndex(c => {
+      const t = c.title.toLowerCase().replace(/\s+/g, ' ').trim();
+      return t === todayWIB || t.includes(todayWIB);
+    });
+    if (todayColIdx === -1 && todayLocal) {
+      todayColIdx = dateCols.findIndex(c => {
+        const t = c.title.toLowerCase().replace(/\s+/g, ' ').trim();
+        return t === todayLocal || t.includes(todayLocal);
+      });
+    }
+
+    let hariIniCol: { index: number; title: string } | null = null;
+    let h1Col: { index: number; title: string } | null = null;
+
+    if (todayColIdx !== -1) {
+      hariIniCol = dateCols[todayColIdx];
+      h1Col = todayColIdx > 0 ? dateCols[todayColIdx - 1] : null;
+    } else {
+      // Fallback: pick the latest column that actually has non-zero data
+      const colsWithData = dateCols.filter(c => (c.dataCount || 0) > 0);
+      if (colsWithData.length > 0) {
+        const latestWithData = colsWithData[colsWithData.length - 1];
+        const idx = dateCols.findIndex(c => c.index === latestWithData.index);
+        hariIniCol = dateCols[idx];
+        h1Col = idx > 0 ? dateCols[idx - 1] : null;
+      } else if (dateCols.length > 0) {
+        hariIniCol = dateCols[dateCols.length - 1];
+        h1Col = dateCols.length > 1 ? dateCols[dateCols.length - 2] : null;
+      }
+    }
+    
     const mapped = dataRows.map(row => {
       const ukuran = row[1];
       const panjang = row[2] || '-';
@@ -1218,25 +1281,30 @@ async function _fetchOrderUrgentDataFromSheet_internal(): Promise<{data: any[], 
       const h1 = h1Col && row[h1Col.index] ? parseInt(row[h1Col.index], 10) : null;
       const hariIni = hariIniCol && row[hariIniCol.index] ? parseInt(row[hariIniCol.index], 10) : null;
       
-      const realisasiIdx = dateCols.length > 0 ? dateCols[dateCols.length - 1].index + 1 : 9;
-      const statusIdx = realisasiIdx + 1;
-      
       const realisasi = parseInt(row[realisasiIdx] || '0', 10);
       const statusVal = parseInt(row[statusIdx] || '0', 10);
       const status = statusVal >= 0 ? 'selesai' : 'kurang';
       
       const kekurangan = target > realisasi ? target - realisasi : 0;
-      return { ukuran, panjang, jo, target, h1, hariIni, realisasi, kekurangan, status };
+
+      const dateValues: Record<string, number | null> = {};
+      dateCols.forEach(col => {
+        const v = row[col.index] ? parseInt(row[col.index], 10) : null;
+        dateValues[col.title] = (v !== null && !isNaN(v)) ? v : null;
+      });
+
+      return { ukuran, panjang, jo, target, h1, hariIni, realisasi, kekurangan, status, dateValues };
     });
     
     return {
       data: mapped,
       dateH1: h1Col ? h1Col.title : 'H-1',
-      dateHariIni: hariIniCol ? hariIniCol.title : 'Hari Ini'
+      dateHariIni: hariIniCol ? hariIniCol.title : 'Hari Ini',
+      availableDates: dateCols.map(c => c.title)
     };
   } catch (error) {
     console.warn('Network offline or fetch blocked for order urgent data. Using empty array.');
-    return { data: [], dateH1: '', dateHariIni: '' };
+    return { data: [], dateH1: '', dateHariIni: '', availableDates: [] };
   }
 }
 
@@ -1313,7 +1381,7 @@ export async function fetchAnalisaOperatorData(forceRefresh = false): Promise<Pr
   return data;
 }
 
-export async function fetchOrderUrgentDataFromSheet(forceRefresh = false): Promise<{data: any[], dateH1: string, dateHariIni: string}> {
+export async function fetchOrderUrgentDataFromSheet(forceRefresh = false): Promise<{data: any[], dateH1: string, dateHariIni: string, availableDates: string[]}> {
   if (!forceRefresh) {
     const cached = memoryCache.get('fetchOrderUrgentDataFromSheet');
     if (cached && (Date.now() - cached.timestamp < CACHE_DURATION)) {

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Download, RefreshCw, ZoomOut, ZoomIn, Package, Search } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Download, RefreshCw, ZoomOut, ZoomIn, Package, Search, Calendar } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { fetchOrderUrgentDataFromSheet } from '../../services/dataService';
 import { OrderUrgentData } from '../../types';
@@ -10,15 +10,21 @@ export function OrderPage() {
   const [data, setData] = useState<OrderUrgentData[]>([]);
   const [dateH1, setDateH1] = useState('H-1');
   const [dateHariIni, setDateHariIni] = useState('Hari Ini');
+  const [availableDates, setAvailableDates] = useState<string[]>([]);
+  const [selectedDate, setSelectedDate] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
-  const loadData = async () => {
+  const loadData = async (forceRefresh = false) => {
     setLoading(true);
-    const result = await fetchOrderUrgentDataFromSheet();
+    const result = await fetchOrderUrgentDataFromSheet(forceRefresh);
     setData(result.data);
     setDateH1(result.dateH1);
     setDateHariIni(result.dateHariIni);
+    setAvailableDates(result.availableDates || []);
+    if (!selectedDate || forceRefresh) {
+      setSelectedDate(result.dateHariIni);
+    }
     setLoading(false);
   };
 
@@ -26,7 +32,24 @@ export function OrderPage() {
     loadData();
   }, []);
 
-  const filteredData = data.filter(item => {
+  const displayHariIni = selectedDate || dateHariIni;
+  const selectedDateIdx = availableDates.indexOf(displayHariIni);
+  const displayH1 = selectedDateIdx > 0 ? availableDates[selectedDateIdx - 1] : dateH1;
+
+  const processedData = useMemo(() => {
+    return data.map(item => {
+      if (!item.dateValues) return item;
+      const h1 = (displayH1 && item.dateValues[displayH1] !== undefined) ? item.dateValues[displayH1] : item.h1;
+      const hariIni = (displayHariIni && item.dateValues[displayHariIni] !== undefined) ? item.dateValues[displayHariIni] : item.hariIni;
+      return {
+        ...item,
+        h1,
+        hariIni
+      };
+    });
+  }, [data, displayH1, displayHariIni]);
+
+  const filteredData = processedData.filter(item => {
     if (search && !item.ukuran.toLowerCase().includes(search.toLowerCase())) return false;
     if (activeTab === 'TERKINI') {
       return (item.h1 !== null && item.h1 > 0) || (item.hariIni !== null && item.hariIni > 0);
@@ -36,24 +59,41 @@ export function OrderPage() {
     return true;
   });
 
-  const countTerkini = data.filter(item => (item.h1 !== null && item.h1 > 0) || (item.hariIni !== null && item.hariIni > 0)).length;
-  const countKurang = data.filter(d => d.status === 'kurang').length;
-  const countSelesai = data.filter(d => d.status === 'selesai').length;
-  const countSemua = data.length;
+  const countTerkini = processedData.filter(item => (item.h1 !== null && item.h1 > 0) || (item.hariIni !== null && item.hariIni > 0)).length;
+  const countKurang = processedData.filter(d => d.status === 'kurang').length;
+  const countSelesai = processedData.filter(d => d.status === 'selesai').length;
+  const countSemua = processedData.length;
 
   return (
     <div className="min-h-full bg-slate-50 pb-20">
       <div className="px-3 sm:px-5 mt-4 space-y-4">
         {/* Controls Row */}
         <div className="bg-white rounded-xl p-3 border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-4">
-          <h2 className="text-sm font-black text-indigo-900 tracking-wide uppercase">SKALA TAMPILAN / ZOOM</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-sm font-black text-indigo-900 tracking-wide uppercase">SKALA TAMPILAN / ZOOM</h2>
+            {availableDates.length > 0 && (
+              <div className="flex items-center gap-1.5 bg-indigo-50/70 border border-indigo-100 rounded-lg px-2.5 py-1 text-xs">
+                <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+                <span className="font-bold text-indigo-900/70 text-[11px] whitespace-nowrap">Tanggal:</span>
+                <select
+                  value={displayHariIni}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="bg-transparent font-black text-indigo-950 text-xs outline-none cursor-pointer"
+                >
+                  {availableDates.map(d => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1">
               <button onClick={() => setZoom(z => Math.max(50, z - 10))} className="p-1 hover:bg-slate-200 rounded text-slate-600"><ZoomOut className="w-4 h-4" /></button>
               <span className="text-xs font-bold text-slate-800 w-10 text-center">{zoom}%</span>
               <button onClick={() => setZoom(z => Math.min(150, z + 10))} className="p-1 hover:bg-slate-200 rounded text-slate-600"><ZoomIn className="w-4 h-4" /></button>
             </div>
-            <button onClick={loadData} className="w-8 h-8 flex items-center justify-center border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">
+            <button onClick={() => loadData(true)} title="Refresh data dari Spreadsheet" className="w-8 h-8 flex items-center justify-center border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">
               <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
             </button>
             <button className="w-8 h-8 flex items-center justify-center border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">
@@ -119,12 +159,12 @@ export function OrderPage() {
                   <th className="py-4 px-4 font-black text-indigo-900 text-xs border-r border-indigo-100/50 text-center">TARGET</th>
                   <th className="py-3 px-4 font-black text-indigo-900 text-xs border-r border-indigo-100/50 text-center">
                     <div className="leading-tight">
-                      H-1<br/><span className="text-[9px] font-bold text-indigo-500/70">{dateH1}</span>
+                      H-1<br/><span className="text-[9px] font-bold text-indigo-500/70">{displayH1}</span>
                     </div>
                   </th>
                   <th className="py-3 px-4 font-black text-indigo-900 text-xs border-r border-indigo-100/50 text-center">
                     <div className="leading-tight">
-                      HARI INI<br/><span className="text-[9px] font-bold text-indigo-500/70">{dateHariIni}</span>
+                      HARI INI<br/><span className="text-[9px] font-bold text-indigo-500/70">{displayHariIni}</span>
                     </div>
                   </th>
                   <th className="py-4 px-4 font-black text-indigo-900 text-xs border-r border-indigo-100/50 text-center">REALISASI</th>
