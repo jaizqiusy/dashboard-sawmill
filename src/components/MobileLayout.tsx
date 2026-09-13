@@ -54,7 +54,7 @@ export function MobileLayout({
   return (
     <div className={cn(
       "min-h-[100dvh] max-h-[100dvh] flex flex-col text-slate-800 font-sans relative overflow-hidden transition-colors duration-300",
-      isHome ? "bg-gradient-to-br from-emerald-600 via-purple-600 to-indigo-900" : "bg-[#6970f0]"
+      isHome ? "bg-gradient-to-br from-[#6ca0c0] to-[#457c9c]" : "bg-[#6970f0]"
     )}>
       {/* Background Gradients (Softer for light theme) */}
       <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] rounded-full bg-white/10 blur-[80px] pointer-events-none" />
@@ -62,7 +62,7 @@ export function MobileLayout({
       <div className="absolute bottom-[-10%] left-[20%] w-[80vw] h-[80vw] rounded-full bg-white/10 blur-[100px] pointer-events-none" />
 
       {/* Top Header */}
-      <header className="px-5 py-5 relative z-20 flex items-center justify-between bg-[#202020] border-b border-[#202020]">
+      <header className="px-5 py-5 relative z-20 flex items-center justify-between bg-[#104b47] border-b border-[#104b47]">
         <div className="flex items-center gap-3">
           {activeTab !== 'Home' && (
             <button 

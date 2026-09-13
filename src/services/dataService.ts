@@ -621,7 +621,7 @@ async function fetchChunkedData<T>(collectionName: string): Promise<T[] | null> 
   if (typeof navigator !== 'undefined' && !navigator.onLine) return null;
   try {
     const infoDocPromise = getDoc(doc(db, 'dashboard_data', collectionName + '_info'));
-    const timeoutPromise = new Promise<null>((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000));
+    const timeoutPromise = new Promise<null>((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000));
     const infoDoc = await Promise.race([infoDocPromise, timeoutPromise]) as any;
     if (!infoDoc || !infoDoc.exists()) return null;
     if (!infoDoc.exists()) return null;
@@ -1021,6 +1021,15 @@ export async function autoSyncSpreadsheetUpdates(
       console.log('Update detected in spreadsheet! Updating UI and syncing to Firestore...');
       // Clear memory cache so next fetches get the latest data
       clearMemoryCache();
+      
+      memoryCache.set('fetchProductionData', { data: newProd, timestamp: Date.now() });
+      memoryCache.set('fetchSupplierData', { data: newSupp, timestamp: Date.now() });
+      memoryCache.set('fetchMonthlyLogData', { data: newMonth, timestamp: Date.now() });
+      memoryCache.set('fetchOperatorData', { data: newOp, timestamp: Date.now() });
+      memoryCache.set('fetchAnalisaOperatorDetailData', { data: newAnalisaDetail, timestamp: Date.now() });
+      memoryCache.set('fetchLogDikerjakan', { data: newLogDikerjakan, timestamp: Date.now() });
+      memoryCache.set('fetchAnalisaOperatorData', { data: newAnalisaOpData, timestamp: Date.now() });
+
       // Update UI state immediately for responsive experience
       onUpdateDetected(newProd, newSupp, newMonth, newOp, newAnalisaDetail, newLogDikerjakan, newAnalisaOpData);
 
