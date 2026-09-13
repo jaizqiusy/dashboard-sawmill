@@ -32,7 +32,7 @@ export function HomePage({ setActiveTab }: HomePageProps) {
     { id: 'Overview', icon: Gauge, label: 'Overview', bg: 'bg-[#D16474]' },
     { id: 'Analytics', icon: LineChart, label: 'Analytics', bg: 'bg-[#DA8E56]' },
     { id: 'Ranking', icon: Trophy, label: 'Ranking', bg: 'bg-[#676767]' },
-    { id: 'Order', icon: Package, label: 'Order', bg: 'bg-[#A34F55]' },
+    { id: 'Order', icon: Box, label: 'Order', bg: 'bg-[#A34F55]' },
     { id: 'AnalisaOperator', icon: BookUser, label: 'Analisa Opr', bg: 'bg-[#2D867D]' },
     { id: 'Log', icon: MessageCircle, label: 'Input Log', bg: 'bg-[#CF6078]' },
     { id: 'Production', icon: Settings, label: 'Live Prod', bg: 'bg-[#72B538]' },
@@ -45,17 +45,18 @@ export function HomePage({ setActiveTab }: HomePageProps) {
   ];
 
   return (
-    <div className="min-h-full p-5 sm:p-6 lg:p-8 pt-8">
-      <div className="max-w-4xl mx-auto space-y-10">
+    <div className="min-h-full p-4 sm:p-6 lg:p-8 pt-4 sm:pt-6">
+      <div className="max-w-5xl mx-auto space-y-6 sm:space-y-8">
         
         {/* Motivation Card */}
-        <div className="bg-white/10 backdrop-blur-md rounded-xl p-2.5 sm:p-3 border border-white/10 shadow-xl w-[90%] sm:w-1/2 mx-auto">
-          <div className="flex justify-between items-center mb-1.5">
-             <h3 className="text-[10px] font-bold uppercase tracking-widest text-indigo-300 flex items-center gap-1.5">
-               <Sparkles className="w-3 h-3" /> Inspirasi Hari Ini
+        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3.5 sm:p-4 border border-white/15 shadow-lg w-full max-w-[320px] sm:max-w-md md:max-w-xl lg:max-w-2xl mx-auto text-center transition-all">
+          <div className="flex items-center justify-center gap-1.5 mb-1.5">
+             <Sparkles className="w-3.5 h-3.5 text-indigo-200" />
+             <h3 className="text-[11px] font-bold uppercase tracking-widest text-indigo-200">
+               Inspirasi Hari Ini
              </h3>
           </div>
-          <p className="text-xs font-medium italic text-slate-100 leading-relaxed">
+          <p className="text-xs sm:text-sm font-medium italic text-white/95 leading-relaxed">
             "{[
               "Semangat kerja hari ini adalah kunci sukses hari esok.",
               "Setiap batang kayu adalah hasil dari kesabaran dan kerja keras.",
@@ -71,26 +72,27 @@ export function HomePage({ setActiveTab }: HomePageProps) {
           </p>
         </div>
 
-        {/* Main Menu Grid */}
-        <div className="flex justify-center mt-6">
-          <div className="flex flex-wrap justify-center gap-x-6 gap-y-8 max-w-4xl">
+        {/* Main Menu Grid - 2 columns on mobile (HP), flexible multi-column on desktop (komputer) */}
+        <div className="flex justify-center mt-2 sm:mt-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-6 sm:gap-x-8 md:gap-x-10 gap-y-7 sm:gap-y-8 md:gap-y-9 w-full max-w-[320px] sm:max-w-xl md:max-w-3xl lg:max-w-5xl justify-items-center">
             {menuItems.map((item) => (
               <button
                 key={item.id}
+                id={`menu-item-${item.id}`}
                 onClick={() => setActiveTab(item.id)}
-                className="flex flex-col items-center justify-start gap-2 hover:-translate-y-1 transition-all duration-300 group w-[90px] sm:w-[100px]"
+                className="flex flex-col items-center justify-start gap-2.5 hover:-translate-y-1.5 active:scale-95 transition-all duration-300 group w-full max-w-[120px] focus:outline-none"
               >
                 <div className={cn(
-                  "w-[75px] h-[75px] sm:w-[85px] sm:h-[85px] rounded-[14px] flex items-center justify-center shadow-md transition-all duration-300 group-hover:scale-105", 
+                  "w-[92px] h-[92px] sm:w-[100px] sm:h-[100px] md:w-[108px] md:h-[108px] rounded-[22px] flex items-center justify-center shadow-lg shadow-black/15 transition-all duration-300 group-hover:scale-105 group-hover:shadow-xl", 
                   item.bg
                 )}>
                   <item.icon 
-                    className="w-10 h-10 sm:w-11 sm:h-11 text-white" 
-                    strokeWidth={1.5} 
-                    style={{ filter: 'drop-shadow(1px 2px 3px rgba(0,0,0,0.3))' }}
+                    className="w-11 h-11 sm:w-12 sm:h-12 md:w-13 md:h-13 text-white" 
+                    strokeWidth={1.6} 
+                    style={{ filter: 'drop-shadow(1px 2px 3px rgba(0,0,0,0.25))' }}
                   />
                 </div>
-                <span className="text-white text-[13px] sm:text-[14px] font-normal text-center tracking-normal font-sans drop-shadow-md">
+                <span className="text-white text-[13px] sm:text-[14px] md:text-[15px] font-normal text-center tracking-normal font-sans drop-shadow-md whitespace-nowrap">
                   {item.label}
                 </span>
               </button>
