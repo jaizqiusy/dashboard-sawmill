@@ -1,24 +1,19 @@
-import React, { useState } from 'react';
-import { Package, 
-  LayoutGrid, 
-  BarChart3, 
+import React from 'react';
+import { 
+  Gauge, 
+  TrendingUp, 
   Trophy, 
+  ClipboardCheck, 
+  Target, 
+  Cylinder, 
   Factory, 
-  FileText,
-  AlertTriangle, 
-  History,
-  Sparkles,
-  Calendar,
-  Users,
-  Activity,
-  MessageCircle,
-  BookUser,
-  LineChart,
-  CircleDollarSign,
-  Box,
-  Wrench,
-  Gauge,
-  Settings
+  CirclePercent, 
+  CalendarClock, 
+  FileBarChart2, 
+  ClockAlert, 
+  FileClock, 
+  IdCard,
+  Sparkles
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -27,21 +22,86 @@ interface HomePageProps {
 }
 
 export function HomePage({ setActiveTab }: HomePageProps) {
-  // Map to the requested colors/icons based on the image style
+  // Map icons and colors accurately to the provided reference design
   const menuItems = [
-    { id: 'Overview', icon: Gauge, label: 'Overview', bg: 'bg-[#D16474]' },
-    { id: 'Analytics', icon: LineChart, label: 'Analytics', bg: 'bg-[#DA8E56]' },
-    { id: 'Ranking', icon: Trophy, label: 'Ranking', bg: 'bg-[#676767]' },
-    { id: 'Order', icon: Box, label: 'Order', bg: 'bg-[#A34F55]' },
-    { id: 'AnalisaOperator', icon: BookUser, label: 'Analisa Opr', bg: 'bg-[#2D867D]' },
-    { id: 'Log', icon: MessageCircle, label: 'Input Log', bg: 'bg-[#CF6078]' },
-    { id: 'Production', icon: Settings, label: 'Live Prod', bg: 'bg-[#72B538]' },
-    { id: 'Performance', icon: Activity, label: 'Performance', bg: 'bg-[#DA8E56]' },
-    { id: 'Plan', icon: Calendar, label: 'Plan', bg: 'bg-[#DA8E56]' },
-    { id: 'Recap', icon: FileText, label: 'Rekap Data', bg: 'bg-[#2D867D]' },
-    { id: 'Downtime', icon: Wrench, label: 'Downtime', bg: 'bg-[#676767]' },
-    { id: 'History', icon: History, label: 'History', bg: 'bg-[#A34F55]' },
-    { id: 'OperatorProfile', icon: Users, label: 'Operator', bg: 'bg-[#2D867D]' },
+    { 
+      id: 'Overview', 
+      icon: Gauge, 
+      label: 'Overview', 
+      bg: 'bg-gradient-to-b from-[#05C596] to-[#048E6B]' 
+    },
+    { 
+      id: 'Analytics', 
+      icon: TrendingUp, 
+      label: 'Analytics', 
+      bg: 'bg-gradient-to-b from-[#7642ED] to-[#5123D8]' 
+    },
+    { 
+      id: 'Ranking', 
+      icon: Trophy, 
+      label: 'Ranking', 
+      bg: 'bg-gradient-to-b from-[#F5A623] to-[#DF820B]' 
+    },
+    { 
+      id: 'Order', 
+      icon: ClipboardCheck, 
+      label: 'Order', 
+      bg: 'bg-gradient-to-b from-[#F03D6D] to-[#BD194A]' 
+    },
+    { 
+      id: 'AnalisaOperator', 
+      icon: Target, 
+      label: 'Analisa Opr', 
+      bg: 'bg-gradient-to-b from-[#0EA5E9] to-[#0275B1]' 
+    },
+    { 
+      id: 'Log', 
+      icon: Cylinder, 
+      label: 'Input Log', 
+      bg: 'bg-gradient-to-b from-[#0B8E82] to-[#066158]' 
+    },
+    { 
+      id: 'Production', 
+      icon: Factory, 
+      label: 'Live Prod', 
+      bg: 'bg-gradient-to-b from-[#0BA6AF] to-[#087F86]' 
+    },
+    { 
+      id: 'Performance', 
+      icon: CirclePercent, 
+      label: 'Performance', 
+      bg: 'bg-gradient-to-b from-[#10B981] to-[#05875D]' 
+    },
+    { 
+      id: 'Plan', 
+      icon: CalendarClock, 
+      label: 'Plan', 
+      bg: 'bg-gradient-to-b from-[#5B63EE] to-[#3B42CE]' 
+    },
+    { 
+      id: 'Recap', 
+      icon: FileBarChart2, 
+      label: 'Rekap Data', 
+      bg: 'bg-gradient-to-b from-[#F59E0B] to-[#C97204]' 
+    },
+    { 
+      id: 'Downtime', 
+      icon: ClockAlert, 
+      label: 'Downtime', 
+      bg: 'bg-gradient-to-b from-[#EF4444] to-[#B91C1C]' 
+    },
+    { 
+      id: 'History', 
+      icon: FileClock, 
+      label: 'History', 
+      bg: 'bg-gradient-to-b from-[#3B82F6] to-[#1D4ED8]' 
+    },
+    { 
+      id: 'OperatorProfile', 
+      icon: IdCard, 
+      label: 'Operator', 
+      bg: 'bg-gradient-to-b from-[#8B5CF6] to-[#6324D6]' 
+    },
   ];
 
   return (
@@ -83,16 +143,19 @@ export function HomePage({ setActiveTab }: HomePageProps) {
                 className="flex flex-col items-center justify-start gap-1.5 sm:gap-2 hover:-translate-y-1 active:scale-95 transition-all duration-300 group w-full max-w-[78px] sm:max-w-[100px] focus:outline-none"
               >
                 <div className={cn(
-                  "w-[66px] h-[66px] sm:w-[86px] sm:h-[86px] md:w-[96px] md:h-[96px] rounded-[18px] sm:rounded-[22px] flex items-center justify-center shadow-md sm:shadow-lg shadow-black/15 transition-all duration-300 group-hover:scale-105 group-hover:shadow-xl", 
+                  "w-[66px] h-[66px] sm:w-[86px] sm:h-[86px] md:w-[96px] md:h-[96px] rounded-[19px] sm:rounded-[24px] flex items-center justify-center shadow-lg shadow-black/20 border-t border-white/25 transition-all duration-300 group-hover:scale-105 group-hover:shadow-xl relative overflow-hidden", 
                   item.bg
                 )}>
+                  {/* Subtle top-gloss sheen */}
+                  <div className="absolute inset-x-0 top-0 h-[45%] bg-gradient-to-b from-white/20 to-transparent pointer-events-none rounded-t-[19px] sm:rounded-t-[24px]" />
+                  
                   <item.icon 
-                    className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-white" 
-                    strokeWidth={1.6} 
-                    style={{ filter: 'drop-shadow(1px 2px 3px rgba(0,0,0,0.25))' }}
+                    className="w-8 h-8 sm:w-10 sm:h-10 md:w-11 md:h-11 text-white relative z-10" 
+                    strokeWidth={1.9} 
+                    style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.25))' }}
                   />
                 </div>
-                <span className="text-white text-[11px] sm:text-[13px] md:text-[14px] font-normal text-center tracking-tight sm:tracking-normal font-sans drop-shadow-md leading-tight line-clamp-1 sm:line-clamp-none max-w-full">
+                <span className="text-white text-[11px] sm:text-[13px] md:text-[14px] font-medium text-center tracking-tight sm:tracking-normal font-sans drop-shadow-md leading-tight line-clamp-1 sm:line-clamp-none max-w-full">
                   {item.label}
                 </span>
               </button>
