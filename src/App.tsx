@@ -36,22 +36,64 @@ const DowntimePage = lazy(() => import('./components/Pages/DowntimePage').then(m
 const HistoryPage = lazy(() => import('./components/Pages/HistoryPage').then(module => ({ default: module.HistoryPage })));
 const PerformancePage = lazy(() => import('./components/Pages/PerformancePage').then(module => ({ default: module.PerformancePage })));
 
+const CACHE_VERSION = 'v1.1'; // Increment to force cache invalidation
+
+// Automatically clear old caches to prevent stale data bugs
+try {
+  const currentVersion = localStorage.getItem('app_cache_version');
+  if (currentVersion !== CACHE_VERSION) {
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('cache_data_')) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(k => localStorage.removeItem(k));
+    localStorage.setItem('app_cache_version', CACHE_VERSION);
+    console.log('Old cache successfully cleared for new version.');
+  }
+} catch (e) {
+  console.warn('Failed to verify cache version:', e);
+}
+
 // Helper to get cached data from localStorage for instant zero-delay render
 function getLocalCache<T>(key: string): T | null {
   try {
     const raw = localStorage.getItem(`cache_data_${key}`);
     if (!raw) return null;
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    // Ignore empty arrays from cache so we force a fresh fetch
+    if (Array.isArray(parsed) && parsed.length === 0) return null;
+    return parsed;
   } catch (e) {
+    // Clean up corrupted cache
+    localStorage.removeItem(`cache_data_${key}`);
     return null;
   }
 }
 
 function setLocalCache<T>(key: string, data: T): void {
   try {
+    // Prevent overwriting valid cache with empty data arrays (e.g. during a network glitch)
+    if (Array.isArray(data) && data.length === 0) return;
     localStorage.setItem(`cache_data_${key}`, JSON.stringify(data));
   } catch (e) {
-    // Ignore storage quota limits
+    // If quota is exceeded, clear caches to free space, then try saving again
+    console.warn('Storage quota exceeded. Clearing older caches to free space...');
+    try {
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('cache_data_') && k !== `cache_data_${key}`) {
+          keysToRemove.push(k);
+        }
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k));
+      localStorage.setItem(`cache_data_${key}`, JSON.stringify(data));
+    } catch(err) {
+      console.error('Storage full. Unable to cache new data.', err);
+    }
   }
 }
 
