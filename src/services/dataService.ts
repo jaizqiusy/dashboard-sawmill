@@ -35,7 +35,12 @@ export function isDatasetEqual<T extends Record<string, any>>(a: T[], b: T[]): b
     const itemA = a[i];
     const itemB = b[i];
     if (!itemA || !itemB) return false;
-    for (const key in itemA) {
+    
+    const keysA = Object.keys(itemA);
+    const keysB = Object.keys(itemB);
+    if (keysA.length !== keysB.length) return false;
+    
+    for (const key of keysA) {
       if (itemA[key] !== itemB[key]) return false;
     }
   }
@@ -621,7 +626,7 @@ async function fetchChunkedData<T>(collectionName: string): Promise<T[] | null> 
   if (typeof navigator !== 'undefined' && !navigator.onLine) return null;
   try {
     const infoDocPromise = getDoc(doc(db, 'dashboard_data', collectionName + '_info'));
-    const timeoutPromise = new Promise<null>((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000));
+    const timeoutPromise = new Promise<null>((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000));
     const infoDoc = await Promise.race([infoDocPromise, timeoutPromise]) as any;
     if (!infoDoc || !infoDoc.exists()) return null;
     if (!infoDoc.exists()) return null;
@@ -735,10 +740,10 @@ export function parseAnalisaOperatorSheet(csvData: string): { prodData: Producti
       vol = 0;
     }
 
-    const input = Math.round(vol * 10000) / 10000;
-    const utama = Math.round(input * yUtama * 10000) / 10000;
-    const total = Math.round(input * yTotal * 10000) / 10000;
-    const turunan = Math.round(Math.max(0, total - utama) * 10000) / 10000;
+    const input = Math.round(vol * 3000) / 3000;
+    const utama = Math.round(input * yUtama * 3000) / 3000;
+    const total = Math.round(input * yTotal * 3000) / 3000;
+    const turunan = Math.round(Math.max(0, total - utama) * 3000) / 3000;
 
     prodList.push({
       tanggal: formattedDate,
@@ -748,12 +753,12 @@ export function parseAnalisaOperatorSheet(csvData: string): { prodData: Producti
       utama: utama,
       yield_primary: yUtama,
       turunan: turunan,
-      yield_secondary: input > 0 ? Math.round((turunan / input) * 10000) / 10000 : 0,
+      yield_secondary: input > 0 ? Math.round((turunan / input) * 3000) / 3000 : 0,
       lokal: 0,
       total: total,
       yield_total: yTotal,
       target_total: 9,
-      achievement: 9 > 0 ? Math.round((utama / 9) * 10000) / 10000 : 0,
+      achievement: 9 > 0 ? Math.round((utama / 9) * 3000) / 3000 : 0,
       week: w,
       month: m,
       quartal: Math.ceil(m / 3),
@@ -997,25 +1002,31 @@ export async function autoSyncSpreadsheetUpdates(
   onUpdateDetected: (prod: ProductionData[], supp: SupplierData[], month: MonthlyLogData[], op: OperatorData[], analisaDetail: import('../types').AnalisaOperatorDetailData[], logDikerjakan: import('../types').LogDikerjakanData[], analisaOpData: ProductionData[]) => void
 ) {
   try {
-    const [newProd, newSupp, newMonth, newOp, newAnalisaDetail, newLogDikerjakan, newAnalisaOpData] = await Promise.all([
+    // Fetch in smaller batches to prevent heavy network lag or rate limits
+    const [newProd, newSupp] = await Promise.all([
       fetchProductionDataFromSheet(),
-      fetchSupplierDataFromSheet(),
+      fetchSupplierDataFromSheet()
+    ]);
+    const [newMonth, newOp] = await Promise.all([
       fetchMonthlyLogDataFromSheet(),
-      fetchOperatorDataFromSheet(),
+      fetchOperatorDataFromSheet()
+    ]);
+    const [newAnalisaDetail, newLogDikerjakan, newAnalisaOpData] = await Promise.all([
       fetchAnalisaOperatorDetailDataFromSheet(),
       fetchLogDikerjakanFromSheet(),
       fetchAnalisaOperatorDataFromSheet()
     ]);
 
-    // Ultra fast dataset comparison
-    const isDifferent = 
-      !isDatasetEqual(currentProd, newProd) ||
-      !isDatasetEqual(currentSupp, newSupp) ||
-      !isDatasetEqual(currentMonth, newMonth) ||
-      !isDatasetEqual(currentOp, newOp) ||
-      !isDatasetEqual(currentAnalisaDetail, newAnalisaDetail) ||
-      !isDatasetEqual(currentLogDikerjakan, newLogDikerjakan) ||
-      !isDatasetEqual(currentAnalisaOpData, newAnalisaOpData);
+    // Check equality for each dataset individually to avoid unnecessary Firebase writes
+    const isProdDiff = !isDatasetEqual(currentProd, newProd);
+    const isSuppDiff = !isDatasetEqual(currentSupp, newSupp);
+    const isMonthDiff = !isDatasetEqual(currentMonth, newMonth);
+    const isOpDiff = !isDatasetEqual(currentOp, newOp);
+    const isAnalisaDetailDiff = !isDatasetEqual(currentAnalisaDetail, newAnalisaDetail);
+    const isLogDikerjakanDiff = !isDatasetEqual(currentLogDikerjakan, newLogDikerjakan);
+    const isAnalisaOpDataDiff = !isDatasetEqual(currentAnalisaOpData, newAnalisaOpData);
+
+    const isDifferent = isProdDiff || isSuppDiff || isMonthDiff || isOpDiff || isAnalisaDetailDiff || isLogDikerjakanDiff || isAnalisaOpDataDiff;
 
     if (isDifferent) {
       console.log('Update detected in spreadsheet! Updating UI and syncing to Firestore...');
@@ -1033,14 +1044,17 @@ export async function autoSyncSpreadsheetUpdates(
       // Update UI state immediately for responsive experience
       onUpdateDetected(newProd, newSupp, newMonth, newOp, newAnalisaDetail, newLogDikerjakan, newAnalisaOpData);
 
-      // Now save the new data to Firestore in chunks in the background
-      await saveInChunks('production', newProd);
-      await saveInChunks('operator', newOp);
-      await saveInChunks('supplier', newSupp);
-      await saveInChunks('monthlyLog', newMonth);
-      await saveInChunks('analisaOperatorDetail', newAnalisaDetail);
-      await saveInChunks('logDikerjakan', newLogDikerjakan);
-      await saveInChunks('analisaOperatorData', newAnalisaOpData);
+      // Save ONLY the changed datasets to Firestore in the background
+      const savePromises: Promise<any>[] = [];
+      if (isProdDiff) savePromises.push(saveInChunks('production', newProd));
+      if (isOpDiff) savePromises.push(saveInChunks('operator', newOp));
+      if (isSuppDiff) savePromises.push(saveInChunks('supplier', newSupp));
+      if (isMonthDiff) savePromises.push(saveInChunks('monthlyLog', newMonth));
+      if (isAnalisaDetailDiff) savePromises.push(saveInChunks('analisaOperatorDetail', newAnalisaDetail));
+      if (isLogDikerjakanDiff) savePromises.push(saveInChunks('logDikerjakan', newLogDikerjakan));
+      if (isAnalisaOpDataDiff) savePromises.push(saveInChunks('analisaOperatorData', newAnalisaOpData));
+      
+      await Promise.all(savePromises);
       
       console.log('Auto-sync to Firestore complete.');
     } else {

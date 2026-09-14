@@ -110,7 +110,20 @@ function formatDateShort(dateStr: string): string {
 
 export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPageProps) {
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
-  const [selectedWeek, setSelectedWeek] = useState<number | 'all'>('all');
+  
+  const getCurrentISOWeek = () => {
+    const target = new Date();
+    const dayNr = (target.getDay() + 6) % 7;
+    target.setDate(target.getDate() - dayNr + 3);
+    const firstThursday = target.valueOf();
+    target.setMonth(0, 1);
+    if (target.getDay() !== 4) {
+      target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7);
+    }
+    return 1 + Math.ceil((firstThursday - target.valueOf()) / 604800000);
+  };
+
+  const [selectedWeek, setSelectedWeek] = useState<number | 'all'>(getCurrentISOWeek());
   const [selectedDate, setSelectedDate] = useState<string>('all');
   const [selectedMachine, setSelectedMachine] = useState<string>('all');
   const [visibleRows, setVisibleRows] = useState<number>(30);
@@ -240,28 +253,45 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
   // Extract weeks for the selected month
   const availableWeeks = useMemo(() => {
     const weeksSet = new Set<number>();
+    
+    // Always generate the correct ISO weeks for the selected month in the current year
+    const year = new Date().getFullYear();
+    const d = new Date(year, selectedMonth - 1, 1);
+    while (d.getMonth() === selectedMonth - 1) {
+      const target = new Date(d.valueOf());
+      const dayNr = (d.getDay() + 6) % 7;
+      target.setDate(target.getDate() - dayNr + 3);
+      const firstThursday = target.valueOf();
+      target.setMonth(0, 1);
+      if (target.getDay() !== 4) {
+        target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7);
+      }
+      const week = 1 + Math.ceil((firstThursday - target.valueOf()) / 604800000);
+      weeksSet.add(week);
+      d.setDate(d.getDate() + 1);
+    }
+
+    // Add any extra weeks from data just in case of edge anomalies
     data.forEach(d => {
       if (d.month === selectedMonth && d.week && !isNaN(d.week)) {
         weeksSet.add(d.week);
       }
     });
-
-    // Prefer weeks that have active production data (input > 0)
-    const activeWeeksSet = new Set<number>();
-    data.forEach(d => {
-      if (d.month === selectedMonth && d.week && !isNaN(d.week) && d.input > 0) {
-        activeWeeksSet.add(d.week);
-      }
-    });
-
-    const list = activeWeeksSet.size > 0 ? Array.from(activeWeeksSet) : Array.from(weeksSet);
+    
+    const list = Array.from(weeksSet);
     return list.sort((a, b) => a - b);
   }, [data, selectedMonth]);
 
   useEffect(() => {
     if (availableWeeks.length > 0) {
       if (selectedWeek !== 'all' && !availableWeeks.includes(selectedWeek as number)) {
-        setSelectedWeek(availableWeeks[0]);
+        const currentMonth = new Date().getMonth() + 1;
+        const currentWeek = getCurrentISOWeek();
+        if (selectedMonth === currentMonth && availableWeeks.includes(currentWeek)) {
+          setSelectedWeek(currentWeek);
+        } else {
+          setSelectedWeek('all');
+        }
       }
     } else {
       setSelectedWeek('all');
@@ -355,40 +385,35 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
       weekFiltered = weekFiltered.filter(d => d.month === selectedMonth);
     }
 
-    // Get dates sorted
-    const rawDates = Array.from(new Set(weekFiltered.map(d => normalizeDateKey(d.tanggal))))
-      .filter(Boolean)
-      .sort((a, b) => {
-        const pA = parseDateParts(a);
-        const pB = parseDateParts(b);
-        if (pA && pB) {
-          return new Date(pA.year, pA.month - 1, pA.day).getTime() - new Date(pB.year, pB.month - 1, pB.day).getTime();
-        }
-        return a.localeCompare(b);
-      });
-
     let datesToUse: string[] = [];
 
-    if (rawDates.length > 0) {
-      const pFirst = parseDateParts(rawDates[0]);
-      if (pFirst) {
-        const firstDate = new Date(pFirst.year, pFirst.month - 1, pFirst.day);
-        const dayOfWeek = firstDate.getDay(); // 0 is Sun, 1 is Mon
-        const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-        const mondayDate = new Date(pFirst.year, pFirst.month - 1, pFirst.day + diffToMon);
-
-        // Generate 7 days (Mon to Sun)
-        for (let i = 0; i < 7; i++) {
-          const cur = new Date(mondayDate.getFullYear(), mondayDate.getMonth(), mondayDate.getDate() + i);
-          const yyyy = cur.getFullYear();
-          const mm = String(cur.getMonth() + 1).padStart(2, '0');
-          const dd = String(cur.getDate()).padStart(2, '0');
-          datesToUse.push(`${yyyy}-${mm}-${dd}`);
-        }
+    if (selectedWeek !== 'all') {
+      // Always generate Mon-Sun for the selected week using ISO week calculation
+      const year = new Date().getFullYear();
+      const d = new Date(year, 0, 4);
+      const day = d.getDay() || 7;
+      d.setDate(d.getDate() - day + 1 + ((selectedWeek as number) - 1) * 7);
+      
+      for (let i = 0; i < 7; i++) {
+        const cur = new Date(d.getFullYear(), d.getMonth(), d.getDate() + i);
+        const yyyy = cur.getFullYear();
+        const mm = String(cur.getMonth() + 1).padStart(2, '0');
+        const dd = String(cur.getDate()).padStart(2, '0');
+        datesToUse.push(`${yyyy}-${mm}-${dd}`);
       }
     } else {
-      // Fallback empty 7 days
-      datesToUse = ['2026-08-10', '2026-08-11', '2026-08-12', '2026-08-13', '2026-08-14', '2026-08-15', '2026-08-16'];
+      // For "all" (recap), we typically don't show day columns, but if needed we extract from data
+      const rawDates = Array.from(new Set(weekFiltered.map(d => normalizeDateKey(d.tanggal))))
+        .filter(Boolean)
+        .sort((a, b) => {
+          const pA = parseDateParts(a);
+          const pB = parseDateParts(b);
+          if (pA && pB) {
+            return new Date(pA.year, pA.month - 1, pA.day).getTime() - new Date(pB.year, pB.month - 1, pB.day).getTime();
+          }
+          return a.localeCompare(b);
+        });
+      datesToUse = rawDates;
     }
 
     // Build machine rows
@@ -930,7 +955,7 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
                     author: currentUserEmail || 'Saya'
                   })}
                 >
-                  <img src={notePhoto} alt="Pratinjau Foto Catatan" className="w-full h-full object-cover" />
+                  <img loading="lazy" decoding="async" src={notePhoto} alt="Pratinjau Foto Catatan" className="w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
                     <Eye className="w-5 h-5" />
                   </div>
@@ -1443,7 +1468,7 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
                                       className="relative group w-12 h-12 rounded-lg overflow-hidden border border-slate-300 hover:border-emerald-500 cursor-pointer shadow-xs bg-slate-900 shrink-0"
                                       title="Klik untuk perbesar foto"
                                     >
-                                      <img src={p.photo!} alt="Foto Catatan" className="w-full h-full object-cover" />
+                                      <img loading="lazy" decoding="async" src={p.photo!} alt="Foto Catatan" className="w-full h-full object-cover" />
                                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
                                         <Eye className="w-3.5 h-3.5" />
                                       </div>
@@ -1571,13 +1596,13 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
                             {d?.potUjung || '-'}
                           </td>
                           <td className="px-3 py-2 border border-slate-300 text-center align-middle">
-                            {d?.fotoBahanBaku1 && d.fotoBahanBaku1.startsWith('http') ? <img src={d.fotoBahanBaku1} alt="Bahan Baku 1" className="h-20 w-auto object-cover mx-auto rounded shadow-sm border border-slate-200" referrerPolicy="no-referrer" /> : (d?.fotoBahanBaku1 || '-')}
+                            {d?.fotoBahanBaku1 && d.fotoBahanBaku1.startsWith('http') ? <img loading="lazy" decoding="async" src={d.fotoBahanBaku1} alt="Bahan Baku 1" className="h-20 w-auto object-cover mx-auto rounded shadow-sm border border-slate-200" referrerPolicy="no-referrer" /> : (d?.fotoBahanBaku1 || '-')}
                           </td>
                           <td className="px-3 py-2 border border-slate-300 text-center align-middle">
-                            {d?.fotoBahanBaku2 && d.fotoBahanBaku2.startsWith('http') ? <img src={d.fotoBahanBaku2} alt="Bahan Baku 2" className="h-20 w-auto object-cover mx-auto rounded shadow-sm border border-slate-200" referrerPolicy="no-referrer" /> : (d?.fotoBahanBaku2 || '-')}
+                            {d?.fotoBahanBaku2 && d.fotoBahanBaku2.startsWith('http') ? <img loading="lazy" decoding="async" src={d.fotoBahanBaku2} alt="Bahan Baku 2" className="h-20 w-auto object-cover mx-auto rounded shadow-sm border border-slate-200" referrerPolicy="no-referrer" /> : (d?.fotoBahanBaku2 || '-')}
                           </td>
                           <td className="px-3 py-2 border border-slate-300 text-center align-middle">
-                            {d?.fotoBahanBaku3 && d.fotoBahanBaku3.startsWith('http') ? <img src={d.fotoBahanBaku3} alt="Bahan Baku 3" className="h-20 w-auto object-cover mx-auto rounded shadow-sm border border-slate-200" referrerPolicy="no-referrer" /> : (d?.fotoBahanBaku3 || '-')}
+                            {d?.fotoBahanBaku3 && d.fotoBahanBaku3.startsWith('http') ? <img loading="lazy" decoding="async" src={d.fotoBahanBaku3} alt="Bahan Baku 3" className="h-20 w-auto object-cover mx-auto rounded shadow-sm border border-slate-200" referrerPolicy="no-referrer" /> : (d?.fotoBahanBaku3 || '-')}
                           </td>
                         </tr>
                       );
@@ -1627,7 +1652,7 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
                     })}
                   >
                     <div className="relative aspect-square bg-slate-900 overflow-hidden">
-                      <img
+                      <img loading="lazy" decoding="async"
                         src={n.photo}
                         alt={`Foto ${n.mesin}`}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"

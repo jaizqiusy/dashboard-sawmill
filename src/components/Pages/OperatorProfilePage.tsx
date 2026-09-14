@@ -485,7 +485,7 @@ export function OperatorProfilePage({ data, operatorData }: { data: any[], opera
                     "w-16 h-16 rounded-full overflow-hidden flex-shrink-0 bg-slate-800 flex items-center justify-center relative shadow-sm ring-4-no border border-white",
                     colorScheme.ring
                   )}>
-                    <img 
+                    <img loading="lazy" decoding="async" 
                       src={getAvatarImage(mesin)} 
                       alt={profile.name} 
                       referrerPolicy="no-referrer"
@@ -643,7 +643,7 @@ export function OperatorProfilePage({ data, operatorData }: { data: any[], opera
                   {/* Photo frame */}
                   <div className="relative">
                     <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden shadow-md ring-4 ring-indigo-500/10 border border-white flex items-center justify-center relative">
-                      <img 
+                      <img loading="lazy" decoding="async" 
                         src={getAvatarImage(selectedOperator)} 
                         alt={profile.name} 
                         referrerPolicy="no-referrer"

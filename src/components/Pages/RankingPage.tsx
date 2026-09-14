@@ -451,7 +451,7 @@ export function RankingPage({ data, operatorData }: { data: any[], operatorData?
               <div className="relative cursor-pointer group" onClick={() => setSelectedOperator(rankItem)}>
                   <div className={cn("rounded-full border-[3px] flex items-center justify-center bg-slate-800 text-slate-300 font-bold overflow-hidden p-0.5 relative", borderColor, glow, sizeClass)}>
                       <div className="w-full h-full rounded-full bg-slate-900 border border-slate-700/30 flex items-center justify-center overflow-hidden relative">
-                        <img 
+                        <img loading="lazy" decoding="async" 
                           src={getAvatarImage(rankItem.mesin)} 
                           alt={rankItem.mesin} 
                           referrerPolicy="no-referrer"
@@ -611,7 +611,7 @@ export function RankingPage({ data, operatorData }: { data: any[], operatorData?
                                   onClick={() => setSelectedOperator(rankItem)}
                               >
                                   <div className="w-full h-full bg-slate-900 rounded-full flex items-center justify-center overflow-hidden relative">
-                                    <img 
+                                    <img loading="lazy" decoding="async" 
                                       src={getAvatarImage(rankItem.mesin)} 
                                       alt={rankItem.mesin} 
                                       referrerPolicy="no-referrer"
@@ -678,7 +678,7 @@ export function RankingPage({ data, operatorData }: { data: any[], operatorData?
                   className="w-40 h-40 sm:w-56 sm:h-56 md:w-64 md:h-64 rounded-full overflow-hidden shadow-xl border-4 sm:border-8 border-slate-50 bg-slate-100 flex items-center justify-center relative cursor-pointer group"
                   title={avatarLocks[activeOperatorData.mesin] ? "Foto Terkunci. Klik gembok di bawah untuk Membuka." : "Klik untuk mengubah foto"}
                 >
-                    <img 
+                    <img loading="lazy" decoding="async" 
                       src={getAvatarImage(activeOperatorData.mesin)} 
                       alt={activeOperatorData.mesin} 
                       referrerPolicy="no-referrer"
