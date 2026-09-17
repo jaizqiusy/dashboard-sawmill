@@ -223,43 +223,51 @@ export default function App() {
       );
     };
 
-    const loadDataFromFirestore = () => {
-      Promise.all([
-        fetchProductionData(),
-        fetchSupplierData(),
-        fetchMonthlyLogData(),
-        fetchOperatorData(),
-        fetchAnalisaOperatorDetailData(),
-        fetchLogDikerjakan(),
-        fetchAnalisaOperatorData()
-      ]).then(([prodData, suppData, monthlyLog, opData, analisaDetailData, logDikerjakan, analisaOpData]) => {
-        if (!isMounted) return;
-        setData(prodData);
-        setSupplierData(suppData);
-        setMonthlyLogData(monthlyLog);
-        setOperatorData(opData);
-        setAnalisaOperatorDetailData(analisaDetailData);
-        setLogDikerjakanData(logDikerjakan);
-        setAnalisaOperatorData(analisaOpData);
-        setIsLoading(false);
+    const loadDataFromFirestore = async () => {
+      try {
+        // 1. Fetch critical data first to unblock UI immediately
+        const prodData = await fetchProductionData();
+        if (isMounted) {
+          setData(prodData);
+          setLocalCache('prod', prodData);
+          setIsLoading(false); // Unblock UI early!
+        }
+        
+        // 2. Fetch the rest sequentially to avoid request jam (bottleneck) on Firebase
+        if (isMounted) {
+          const suppData = await fetchSupplierData();
+          setSupplierData(suppData);
+          setLocalCache('supp', suppData);
+          
+          const monthlyLog = await fetchMonthlyLogData();
+          setMonthlyLogData(monthlyLog);
+          setLocalCache('month', monthlyLog);
+          
+          const opData = await fetchOperatorData();
+          setOperatorData(opData);
+          setLocalCache('op', opData);
+          
+          const analisaDetailData = await fetchAnalisaOperatorDetailData();
+          setAnalisaOperatorDetailData(analisaDetailData);
+          setLocalCache('analisa', analisaDetailData);
+          
+          const logDikerjakan = await fetchLogDikerjakan();
+          setLogDikerjakanData(logDikerjakan);
+          setLocalCache('log', logDikerjakan);
+          
+          const analisaOpData = await fetchAnalisaOperatorData();
+          setAnalisaOperatorData(analisaOpData);
+          setLocalCache('analisaOpData', analisaOpData);
 
-        // Cache in background
-        setLocalCache('prod', prodData);
-        setLocalCache('supp', suppData);
-        setLocalCache('month', monthlyLog);
-        setLocalCache('op', opData);
-        setLocalCache('analisa', analisaDetailData);
-        setLocalCache('log', logDikerjakan);
-        setLocalCache('analisaOpData', analisaOpData);
-
-        // Schedule background auto-sync check after initial load stabilizes
-        autoSyncTimeout = setTimeout(() => {
-          if (isMounted) performBackgroundSync();
-        }, 5000);
-      }).catch(err => {
+          // Schedule background auto-sync check after initial load stabilizes
+          autoSyncTimeout = setTimeout(() => {
+            if (isMounted) performBackgroundSync();
+          }, 5000);
+        }
+      } catch (err) {
         console.warn("Initial load network issue. Proceeding with cache/fallback.");
         if (isMounted) setIsLoading(false);
-      });
+      }
     };
 
     // Fast-path: if we already have local cache, skip the heavy 48 parallel Firestore reads
