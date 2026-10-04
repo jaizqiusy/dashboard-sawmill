@@ -36,7 +36,7 @@ const DowntimePage = lazy(() => import('./components/Pages/DowntimePage').then(m
 const HistoryPage = lazy(() => import('./components/Pages/HistoryPage').then(module => ({ default: module.HistoryPage })));
 const PerformancePage = lazy(() => import('./components/Pages/PerformancePage').then(module => ({ default: module.PerformancePage })));
 
-const CACHE_VERSION = 'v1.1'; // Increment to force cache invalidation
+const CACHE_VERSION = 'v1.2'; // Increment to force cache invalidation
 
 // Automatically clear old caches to prevent stale data bugs
 try {
@@ -105,12 +105,12 @@ export default function App() {
   const [operatorData, setOperatorData] = useState<OperatorData[]>(() => getLocalCache<OperatorData[]>('op') || []);
   const [analisaOperatorDetailData, setAnalisaOperatorDetailData] = useState<AnalisaOperatorDetailData[]>(() => {
     const cached = getLocalCache<AnalisaOperatorDetailData[]>('analisa');
-    if (cached && cached.length > 0 && cached.some(d => (d.tanggal || '').includes('2026-08'))) return cached;
+    if (cached && cached.length > 0) return cached;
     return [];
   });
   const [analisaOperatorData, setAnalisaOperatorData] = useState<ProductionData[]>(() => {
     const cached = getLocalCache<ProductionData[]>('analisaOpData');
-    if (cached && cached.length > 0 && cached.some(d => d.month === 8)) return cached;
+    if (cached && cached.length > 0) return cached;
     return [];
   });
   const [logDikerjakanData, setLogDikerjakanData] = useState<LogDikerjakanData[]>(() => getLocalCache<LogDikerjakanData[]>('log') || []);
@@ -276,7 +276,7 @@ export default function App() {
     if (hasCache) {
       setIsLoading(false);
       const cachedOp = getLocalCache<ProductionData[]>('analisaOpData');
-      if (!cachedOp || !cachedOp.some(d => d.month === 8)) {
+      if (!cachedOp || !cachedOp.some(d => d.month === 10)) {
         fetchAnalisaOperatorData().then(opData => {
           if (isMounted && opData && opData.length > 0) {
             setAnalisaOperatorData(opData);
@@ -285,7 +285,7 @@ export default function App() {
         });
       }
       const cachedDetail = getLocalCache<AnalisaOperatorDetailData[]>('analisa');
-      if (!cachedDetail || !cachedDetail.some(d => (d.tanggal || '').includes('2026-08'))) {
+      if (!cachedDetail || !cachedDetail.some(d => (d.tanggal || '').includes('2026-10'))) {
         fetchAnalisaOperatorDetailData().then(detail => {
           if (isMounted && detail && detail.length > 0) {
             setAnalisaOperatorDetailData(detail);
@@ -370,6 +370,58 @@ export default function App() {
     };
   }, [data]);
 
+  const combinedAnalisaOperatorData = useMemo(() => {
+    const map = new Map<string, ProductionData>();
+    // 1. Seed with data from DATABASE APPSCRIPT (which contains latest October data)
+    data.forEach(d => {
+      if (d.tanggal && d.mesin) {
+        const key = `${d.tanggal}_${normalizeMachineName(d.mesin)}`;
+        map.set(key, d);
+      }
+    });
+    // 2. Overlay any specialized records from analisaOperatorData
+    if (analisaOperatorData && analisaOperatorData.length > 0) {
+      analisaOperatorData.forEach(d => {
+        if (d.tanggal && d.mesin) {
+          const key = `${d.tanggal}_${normalizeMachineName(d.mesin)}`;
+          map.set(key, d);
+        }
+      });
+    }
+    return Array.from(map.values());
+  }, [data, analisaOperatorData]);
+
+  const combinedAnalisaDetailData = useMemo(() => {
+    const map = new Map<string, AnalisaOperatorDetailData>();
+    if (analisaOperatorDetailData) {
+      analisaOperatorDetailData.forEach(d => {
+        const key = `${d.tanggal}_${normalizeMachineName(d.mesin)}`;
+        map.set(key, d);
+      });
+    }
+    // Ensure all machines for each active date in data have an entry in detailData
+    data.forEach(d => {
+      if (d.tanggal && d.mesin && d.input > 0) {
+        const key = `${d.tanggal}_${normalizeMachineName(d.mesin)}`;
+        if (!map.has(key)) {
+          map.set(key, {
+            tanggal: d.tanggal,
+            mesin: normalizeMachineName(d.mesin),
+            rkOrderan: '',
+            komposisiLog: '',
+            komposisiDiameterLog: '',
+            komposisiPanjangLog: '',
+            potUjung: '0',
+            fotoBahanBaku1: '',
+            fotoBahanBaku2: '',
+            fotoBahanBaku3: ''
+          });
+        }
+      }
+    });
+    return Array.from(map.values());
+  }, [data, analisaOperatorDetailData]);
+
   if (isLoading) {
     return (
       <div className="min-h-[100dvh] bg-[#6970f0] flex items-center justify-center">
@@ -419,7 +471,12 @@ export default function App() {
         {activeTab === 'Performance' && <PerformancePage data={data} />}
         {activeTab === 'Plan' && <PlanPage todayStats={todayStats} data={data} />}
         {activeTab === 'AI' && <AIPage data={data} />}
-        {activeTab === 'AnalisaOperator' && <AnalisaOperatorPage data={analisaOperatorData && analisaOperatorData.length > 0 ? analisaOperatorData : data} detailData={analisaOperatorDetailData} />}
+        {activeTab === 'AnalisaOperator' && (
+          <AnalisaOperatorPage 
+            data={combinedAnalisaOperatorData.length > 0 ? combinedAnalisaOperatorData : data} 
+            detailData={combinedAnalisaDetailData} 
+          />
+        )}
       </Suspense>
     </MobileLayout>
   );

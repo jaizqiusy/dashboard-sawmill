@@ -241,12 +241,19 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
   const months = useMemo(() => {
     const validData = data.filter(d => d.month && !isNaN(d.month) && d.input > 0);
     const uniqueMonths = Array.from(new Set(validData.map(d => d.month))).sort((a, b) => b - a);
-    return uniqueMonths.length > 0 ? uniqueMonths : [9, 8];
+    return uniqueMonths.length > 0 ? uniqueMonths : [10, 9, 8, 7];
   }, [data]);
 
   useEffect(() => {
-    if (months.length > 0 && (!selectedMonth || !months.includes(selectedMonth))) {
-      setSelectedMonth(months[0]);
+    if (months.length > 0) {
+      if (!selectedMonth || !months.includes(selectedMonth)) {
+        const currentMonth = new Date().getMonth() + 1;
+        if (months.includes(currentMonth)) {
+          setSelectedMonth(currentMonth);
+        } else {
+          setSelectedMonth(months[0]);
+        }
+      }
     }
   }, [months, selectedMonth]);
 
@@ -284,13 +291,13 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
 
   useEffect(() => {
     if (availableWeeks.length > 0) {
+      const currentMonth = new Date().getMonth() + 1;
+      const currentWeek = getCurrentISOWeek();
       if (selectedWeek !== 'all' && !availableWeeks.includes(selectedWeek as number)) {
-        const currentMonth = new Date().getMonth() + 1;
-        const currentWeek = getCurrentISOWeek();
         if (selectedMonth === currentMonth && availableWeeks.includes(currentWeek)) {
           setSelectedWeek(currentWeek);
         } else {
-          setSelectedWeek('all');
+          setSelectedWeek(availableWeeks[0]);
         }
       }
     } else {
@@ -378,11 +385,9 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
 
   // Matrix calculation for 7 days of the selected week/month
   const matrixWeekData = useMemo(() => {
-    let weekFiltered = data;
+    let weekFiltered = data.filter(d => d.month === selectedMonth);
     if (selectedWeek !== 'all') {
       weekFiltered = weekFiltered.filter(d => d.week === selectedWeek);
-    } else {
-      weekFiltered = weekFiltered.filter(d => d.month === selectedMonth);
     }
 
     let datesToUse: string[] = [];
@@ -394,13 +399,21 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
       const day = d.getDay() || 7;
       d.setDate(d.getDate() - day + 1 + ((selectedWeek as number) - 1) * 7);
       
+      const fullWeekDates: string[] = [];
       for (let i = 0; i < 7; i++) {
         const cur = new Date(d.getFullYear(), d.getMonth(), d.getDate() + i);
         const yyyy = cur.getFullYear();
         const mm = String(cur.getMonth() + 1).padStart(2, '0');
         const dd = String(cur.getDate()).padStart(2, '0');
-        datesToUse.push(`${yyyy}-${mm}-${dd}`);
+        fullWeekDates.push(`${yyyy}-${mm}-${dd}`);
       }
+
+      // Filter to dates belonging to the selected month so the week evaluation adjusts cleanly to each month
+      const datesInMonth = fullWeekDates.filter(dStr => {
+        const p = parseDateParts(dStr);
+        return p && p.month === selectedMonth;
+      });
+      datesToUse = datesInMonth.length > 0 ? datesInMonth : fullWeekDates;
     } else {
       // For "all" (recap), we typically don't show day columns, but if needed we extract from data
       const rawDates = Array.from(new Set(weekFiltered.map(d => normalizeDateKey(d.tanggal))))
@@ -444,8 +457,8 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
           sumTotal += d_total;
           
           if (d_input > 0) {
-            const yUtama = d_utama / d_input;
-            const yTotal = d_total / d_input;
+            const yUtama = d.yield_primary !== undefined ? d.yield_primary : (d_utama / d_input);
+            const yTotal = d.yield_total !== undefined ? d.yield_total : (d_total / d_input);
             if (yUtama < 0.30) countOrangeUtama++;
             else countHijauUtama++;
             if (yTotal < 0.65) countOrangeTotal++;
