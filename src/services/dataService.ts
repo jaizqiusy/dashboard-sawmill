@@ -41,7 +41,12 @@ export function isDatasetEqual<T extends Record<string, any>>(a: T[], b: T[]): b
     if (keysA.length !== keysB.length) return false;
     
     for (const key of keysA) {
-      if (itemA[key] !== itemB[key]) return false;
+      const valA = itemA[key];
+      const valB = itemB[key];
+      if (valA === valB) continue;
+      // Handle NaN === NaN for numeric equality
+      if (typeof valA === 'number' && typeof valB === 'number' && isNaN(valA) && isNaN(valB)) continue;
+      return false;
     }
   }
   return true;
@@ -658,6 +663,21 @@ async function fetchChunkedData<T>(collectionName: string): Promise<T[] | null> 
 }
 
 
+export function cleanPhotoUrl(raw: string | undefined | null): string {
+  if (!raw) return '';
+  const str = String(raw).trim();
+  if (!str || str.startsWith('#') || str.toLowerCase() === 'null' || str.toLowerCase() === 'undefined') return '';
+  if (str.includes('drive.google.com')) {
+    const idMatch = str.match(/id=([a-zA-Z0-9_-]+)/) || 
+                    str.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || 
+                    str.match(/\/open\?.+?id=([a-zA-Z0-9_-]+)/);
+    if (idMatch) {
+      return `https://lh3.googleusercontent.com/d/${idMatch[1]}`;
+    }
+  }
+  return str;
+}
+
 export function parseAnalisaOperatorSheet(csvData: string): { prodData: ProductionData[], detailData: AnalisaOperatorDetailData[] } {
   const parsed = Papa.parse<string[]>(csvData.trim(), { skipEmptyLines: true });
   if (!parsed.data || parsed.data.length <= 1) {
@@ -778,9 +798,9 @@ export function parseAnalisaOperatorSheet(csvData: string): { prodData: Producti
       komposisiDiameterLog: row[16] || '',
       komposisiPanjangLog: row[17] || '',
       potUjung: row[18] || '',
-      fotoBahanBaku1: row[19] || '',
-      fotoBahanBaku2: row[20] || '',
-      fotoBahanBaku3: row[21] || ''
+      fotoBahanBaku1: cleanPhotoUrl(row[19]),
+      fotoBahanBaku2: cleanPhotoUrl(row[20]),
+      fotoBahanBaku3: cleanPhotoUrl(row[21])
     });
   }
 
@@ -1018,13 +1038,14 @@ export async function autoSyncSpreadsheetUpdates(
     ]);
 
     // Check equality for each dataset individually to avoid unnecessary Firebase writes
-    const isProdDiff = !isDatasetEqual(currentProd, newProd);
-    const isSuppDiff = !isDatasetEqual(currentSupp, newSupp);
-    const isMonthDiff = !isDatasetEqual(currentMonth, newMonth);
-    const isOpDiff = !isDatasetEqual(currentOp, newOp);
-    const isAnalisaDetailDiff = !isDatasetEqual(currentAnalisaDetail, newAnalisaDetail);
-    const isLogDikerjakanDiff = !isDatasetEqual(currentLogDikerjakan, newLogDikerjakan);
-    const isAnalisaOpDataDiff = !isDatasetEqual(currentAnalisaOpData, newAnalisaOpData);
+    // Guard against empty/offline responses: only consider it different if valid real data was received!
+    const isProdDiff = Boolean(newProd && newProd.length > 0 && !isDatasetEqual(currentProd, newProd));
+    const isSuppDiff = Boolean(newSupp && newSupp.length > 4 && !isDatasetEqual(currentSupp, newSupp));
+    const isMonthDiff = Boolean(newMonth && newMonth.length > 0 && !isDatasetEqual(currentMonth, newMonth));
+    const isOpDiff = Boolean(newOp && newOp.length > 0 && !isDatasetEqual(currentOp, newOp));
+    const isAnalisaDetailDiff = Boolean(newAnalisaDetail && newAnalisaDetail.length > 0 && !isDatasetEqual(currentAnalisaDetail, newAnalisaDetail));
+    const isLogDikerjakanDiff = Boolean(newLogDikerjakan && newLogDikerjakan.length > 0 && !isDatasetEqual(currentLogDikerjakan, newLogDikerjakan));
+    const isAnalisaOpDataDiff = Boolean(newAnalisaOpData && newAnalisaOpData.length > 0 && !isDatasetEqual(currentAnalisaOpData, newAnalisaOpData));
 
     const isDifferent = isProdDiff || isSuppDiff || isMonthDiff || isOpDiff || isAnalisaDetailDiff || isLogDikerjakanDiff || isAnalisaOpDataDiff;
 
@@ -1033,16 +1054,24 @@ export async function autoSyncSpreadsheetUpdates(
       // Clear memory cache so next fetches get the latest data
       clearMemoryCache();
       
-      memoryCache.set('fetchProductionData', { data: newProd, timestamp: Date.now() });
-      memoryCache.set('fetchSupplierData', { data: newSupp, timestamp: Date.now() });
-      memoryCache.set('fetchMonthlyLogData', { data: newMonth, timestamp: Date.now() });
-      memoryCache.set('fetchOperatorData', { data: newOp, timestamp: Date.now() });
-      memoryCache.set('fetchAnalisaOperatorDetailData', { data: newAnalisaDetail, timestamp: Date.now() });
-      memoryCache.set('fetchLogDikerjakan', { data: newLogDikerjakan, timestamp: Date.now() });
-      memoryCache.set('fetchAnalisaOperatorData', { data: newAnalisaOpData, timestamp: Date.now() });
+      if (isProdDiff) memoryCache.set('fetchProductionData', { data: newProd, timestamp: Date.now() });
+      if (isSuppDiff) memoryCache.set('fetchSupplierData', { data: newSupp, timestamp: Date.now() });
+      if (isMonthDiff) memoryCache.set('fetchMonthlyLogData', { data: newMonth, timestamp: Date.now() });
+      if (isOpDiff) memoryCache.set('fetchOperatorData', { data: newOp, timestamp: Date.now() });
+      if (isAnalisaDetailDiff) memoryCache.set('fetchAnalisaOperatorDetailData', { data: newAnalisaDetail, timestamp: Date.now() });
+      if (isLogDikerjakanDiff) memoryCache.set('fetchLogDikerjakan', { data: newLogDikerjakan, timestamp: Date.now() });
+      if (isAnalisaOpDataDiff) memoryCache.set('fetchAnalisaOperatorData', { data: newAnalisaOpData, timestamp: Date.now() });
 
-      // Update UI state immediately for responsive experience
-      onUpdateDetected(newProd, newSupp, newMonth, newOp, newAnalisaDetail, newLogDikerjakan, newAnalisaOpData);
+      const finalProd = isProdDiff ? newProd : currentProd;
+      const finalSupp = isSuppDiff ? newSupp : currentSupp;
+      const finalMonth = isMonthDiff ? newMonth : currentMonth;
+      const finalOp = isOpDiff ? newOp : currentOp;
+      const finalAnalisaDetail = isAnalisaDetailDiff ? newAnalisaDetail : currentAnalisaDetail;
+      const finalLogDikerjakan = isLogDikerjakanDiff ? newLogDikerjakan : currentLogDikerjakan;
+      const finalAnalisaOpData = isAnalisaOpDataDiff ? newAnalisaOpData : currentAnalisaOpData;
+
+      // Update UI state immediately with valid data only
+      onUpdateDetected(finalProd, finalSupp, finalMonth, finalOp, finalAnalisaDetail, finalLogDikerjakan, finalAnalisaOpData);
 
       // Save ONLY the changed datasets to Firestore in the background
       const savePromises: Promise<any>[] = [];

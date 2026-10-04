@@ -305,6 +305,37 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
     }
   }, [selectedMonth, availableWeeks]);
 
+  // Pre-indexed map for O(1) instant notes/photos lookup
+  const notesMap = useMemo(() => {
+    const map = new Map<string, { customStr: string; photos: NotePhotoItem[] }>();
+    customNotes.forEach((n: any) => {
+      const dateKey = normalizeDateKey(n.tanggal);
+      const machineKey = normalizeMachineKey(n.mesin);
+      if (!dateKey || !machineKey) return;
+      const key = `${dateKey}_${machineKey}`;
+      let entry = map.get(key);
+      if (!entry) {
+        entry = { customStr: '', photos: [] };
+        map.set(key, entry);
+      }
+      if (n.note) {
+        entry.customStr = entry.customStr ? `${entry.customStr} | ${n.note}` : n.note;
+      }
+      if (n.photo) {
+        entry.photos.push({
+          id: n.id,
+          photo: n.photo,
+          note: n.note,
+          author: n.author,
+          tanggal: n.tanggal,
+          mesin: n.mesin,
+          timestamp: n.timestamp
+        });
+      }
+    });
+    return map;
+  }, [customNotes]);
+
   // Flat processed data for detail table
   const { processedData, availableDates, availableMachines } = useMemo(() => {
     const monthData = data.filter(d => {
@@ -335,22 +366,9 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
 
       const targetDateKey = normalizeDateKey(row.tanggal);
       const targetMachineKey = normalizeMachineKey(mesin);
-      const matchedNotes = customNotes.filter((n: any) => 
-        normalizeDateKey(n.tanggal) === targetDateKey && 
-        normalizeMachineKey(n.mesin) === targetMachineKey
-      );
-      const customStr = matchedNotes.map((n: any) => n.note).filter(Boolean).join(' | ');
-      const photos: NotePhotoItem[] = matchedNotes
-        .filter((n: any) => Boolean(n.photo))
-        .map((n: any) => ({
-          id: n.id,
-          photo: n.photo,
-          note: n.note,
-          author: n.author,
-          tanggal: n.tanggal,
-          mesin: n.mesin,
-          timestamp: n.timestamp
-        }));
+      const noteEntry = notesMap.get(`${targetDateKey}_${targetMachineKey}`);
+      const customStr = noteEntry ? noteEntry.customStr : '';
+      const photos = noteEntry ? noteEntry.photos : [];
 
       return {
         tanggal: row.tanggal,
@@ -372,7 +390,7 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
     });
 
     return { processedData: processed, availableDates: dates, availableMachines: machines };
-  }, [data, selectedMonth, customNotes]);
+  }, [data, selectedMonth, notesMap]);
 
 
   const filteredData = useMemo(() => {
@@ -482,24 +500,11 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
         const yieldTurunan = record && record.yield_secondary !== undefined ? record.yield_secondary : (input > 0 ? (turunan / input) : 0);
         const yieldTotal = record && record.yield_total !== undefined ? record.yield_total : (input > 0 ? (total / input) : 0);
 
-        // Get notes from Firestore operator_notes
+        // Get notes from pre-indexed map
         const targetDateKey = normalizeDateKey(dStr);
-        const matchedNotes = customNotes.filter((n: any) => 
-          normalizeDateKey(n.tanggal) === targetDateKey && 
-          normalizeMachineKey(n.mesin) === normalizedTarget
-        );
-        const noteCombined = matchedNotes.map((n: any) => n.note).filter(Boolean).join(' | ');
-        const cellPhotos: NotePhotoItem[] = matchedNotes
-          .filter((n: any) => Boolean(n.photo))
-          .map((n: any) => ({
-            id: n.id,
-            photo: n.photo,
-            note: n.note,
-            author: n.author,
-            tanggal: n.tanggal,
-            mesin: n.mesin,
-            timestamp: n.timestamp
-          }));
+        const noteEntry = notesMap.get(`${targetDateKey}_${normalizedTarget}`);
+        const noteCombined = noteEntry ? noteEntry.customStr : '';
+        const cellPhotos = noteEntry ? noteEntry.photos : [];
 
         return {
           tanggal: dStr,
@@ -538,7 +543,7 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
     });
 
     return { dates: datesToUse, machineRows };
-  }, [data, selectedMonth, selectedWeek, customNotes]);
+  }, [data, selectedMonth, selectedWeek, notesMap]);
 
 
 
@@ -1609,13 +1614,67 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
                             {d?.potUjung || '-'}
                           </td>
                           <td className="px-3 py-2 border border-slate-300 text-center align-middle">
-                            {d?.fotoBahanBaku1 && d.fotoBahanBaku1.startsWith('http') ? <img loading="lazy" decoding="async" src={d.fotoBahanBaku1} alt="Bahan Baku 1" className="h-20 w-auto object-cover mx-auto rounded shadow-sm border border-slate-200" referrerPolicy="no-referrer" /> : (d?.fotoBahanBaku1 || '-')}
+                            {d?.fotoBahanBaku1 && d.fotoBahanBaku1.startsWith('http') ? (
+                              <div 
+                                className="relative group cursor-pointer inline-block"
+                                onClick={() => setLightboxPhoto({
+                                  url: d.fotoBahanBaku1,
+                                  mesin: d.mesin,
+                                  tanggal: formatDateShort(d.tanggal),
+                                  note: 'Foto Bahan Baku 1'
+                                })}
+                                title="Klik untuk memperbesar"
+                              >
+                                <img loading="lazy" decoding="async" src={d.fotoBahanBaku1} alt="Bahan Baku 1" className="h-20 w-auto object-cover mx-auto rounded shadow-sm border border-slate-200 group-hover:opacity-90 transition-opacity" referrerPolicy="no-referrer" />
+                                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white rounded">
+                                  <Eye className="w-4 h-4" />
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-slate-400">-</span>
+                            )}
                           </td>
                           <td className="px-3 py-2 border border-slate-300 text-center align-middle">
-                            {d?.fotoBahanBaku2 && d.fotoBahanBaku2.startsWith('http') ? <img loading="lazy" decoding="async" src={d.fotoBahanBaku2} alt="Bahan Baku 2" className="h-20 w-auto object-cover mx-auto rounded shadow-sm border border-slate-200" referrerPolicy="no-referrer" /> : (d?.fotoBahanBaku2 || '-')}
+                            {d?.fotoBahanBaku2 && d.fotoBahanBaku2.startsWith('http') ? (
+                              <div 
+                                className="relative group cursor-pointer inline-block"
+                                onClick={() => setLightboxPhoto({
+                                  url: d.fotoBahanBaku2,
+                                  mesin: d.mesin,
+                                  tanggal: formatDateShort(d.tanggal),
+                                  note: 'Foto Bahan Baku 2'
+                                })}
+                                title="Klik untuk memperbesar"
+                              >
+                                <img loading="lazy" decoding="async" src={d.fotoBahanBaku2} alt="Bahan Baku 2" className="h-20 w-auto object-cover mx-auto rounded shadow-sm border border-slate-200 group-hover:opacity-90 transition-opacity" referrerPolicy="no-referrer" />
+                                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white rounded">
+                                  <Eye className="w-4 h-4" />
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-slate-400">-</span>
+                            )}
                           </td>
                           <td className="px-3 py-2 border border-slate-300 text-center align-middle">
-                            {d?.fotoBahanBaku3 && d.fotoBahanBaku3.startsWith('http') ? <img loading="lazy" decoding="async" src={d.fotoBahanBaku3} alt="Bahan Baku 3" className="h-20 w-auto object-cover mx-auto rounded shadow-sm border border-slate-200" referrerPolicy="no-referrer" /> : (d?.fotoBahanBaku3 || '-')}
+                            {d?.fotoBahanBaku3 && d.fotoBahanBaku3.startsWith('http') ? (
+                              <div 
+                                className="relative group cursor-pointer inline-block"
+                                onClick={() => setLightboxPhoto({
+                                  url: d.fotoBahanBaku3,
+                                  mesin: d.mesin,
+                                  tanggal: formatDateShort(d.tanggal),
+                                  note: 'Foto Bahan Baku 3'
+                                })}
+                                title="Klik untuk memperbesar"
+                              >
+                                <img loading="lazy" decoding="async" src={d.fotoBahanBaku3} alt="Bahan Baku 3" className="h-20 w-auto object-cover mx-auto rounded shadow-sm border border-slate-200 group-hover:opacity-90 transition-opacity" referrerPolicy="no-referrer" />
+                                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white rounded">
+                                  <Eye className="w-4 h-4" />
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-slate-400">-</span>
+                            )}
                           </td>
                         </tr>
                       );
