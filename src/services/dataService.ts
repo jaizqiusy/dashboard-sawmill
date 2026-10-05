@@ -13,8 +13,44 @@ let memoizedStaticBaseline: ProductionData[] | null = null;
 const memoryCache = new Map<string, {data: any, timestamp: number}>();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
 
+// ISO 8601 Week calculation helper
+export function getISOWeek(d: Date): number {
+  const target = new Date(d.valueOf());
+  const dayNr = (d.getDay() + 6) % 7;
+  target.setDate(target.getDate() - dayNr + 3);
+  const firstThursday = target.valueOf();
+  target.setMonth(0, 1);
+  if (target.getDay() !== 4) {
+    target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7);
+  }
+  return 1 + Math.ceil((firstThursday - target.valueOf()) / 604800000);
+}
+
+// Memory cache getter that immediately removes expired entries to free RAM
+export function getValidCache<T>(key: string): T | null {
+  const cached = memoryCache.get(key);
+  if (!cached) return null;
+  if (Date.now() - cached.timestamp >= CACHE_DURATION) {
+    memoryCache.delete(key);
+    return null;
+  }
+  return cached.data as T;
+}
+
+// Clean and prune all expired memory caches
+export function pruneExpiredMemoryCache(): void {
+  const now = Date.now();
+  for (const [key, entry] of memoryCache.entries()) {
+    if (now - entry.timestamp >= CACHE_DURATION) {
+      memoryCache.delete(key);
+    }
+  }
+}
+
 export function clearMemoryCache() {
   memoryCache.clear();
+  analisaSheetPromise = null;
+  analisaSheetTimestamp = 0;
 }
 
 async function getStaticBaselineData(): Promise<ProductionData[]> {
@@ -249,8 +285,28 @@ function parseCSV(csv: string): ProductionData[] {
   const idxDowntime = headers.indexOf('downtime') !== -1 ? headers.indexOf('downtime') : 19;
 
   return parsed.data.slice(1).map(values => {
+    const tanggalVal = (values[idxTanggal] || '').trim();
+    let weekVal = parseInt(values[idxWeek]) || 0;
+    let monthVal = parseInt(values[idxMonth]) || 0;
+
+    // Fix bug where week or month is 0/missing in CSV rows
+    if ((!weekVal || !monthVal) && tanggalVal) {
+      const parts = tanggalVal.split(/[-/]/);
+      if (parts.length === 3) {
+        const yr = parseInt(parts[0].length === 4 ? parts[0] : parts[2]);
+        const mo = parseInt(parts[0].length === 4 ? parts[1] : parts[1]);
+        const dy = parseInt(parts[0].length === 4 ? parts[2] : parts[0]);
+        if (!isNaN(yr) && !isNaN(mo) && !isNaN(dy) && yr > 2000 && mo >= 1 && mo <= 12) {
+          if (!monthVal) monthVal = mo;
+          if (!weekVal) {
+            weekVal = getISOWeek(new Date(yr, mo - 1, dy));
+          }
+        }
+      }
+    }
+
     return {
-      tanggal: (values[idxTanggal] || '').trim(),
+      tanggal: tanggalVal,
       mesin: (values[idxMesin] || '').trim(),
       line: (values[idxLine] || '').trim(),
       input: parseFloat(values[idxInput]) || 0,
@@ -263,9 +319,9 @@ function parseCSV(csv: string): ProductionData[] {
       yield_total: parseFloat(values[idxYieldTotal]) || 0,
       target_total: parseFloat(values[idxTargetTotal]) || 0,
       achievement: parseFloat(values[idxAchievement]) || 0,
-      week: parseInt(values[idxWeek]) || 0,
-      month: parseInt(values[idxMonth]) || 0,
-      quartal: parseInt(values[idxQuartal]) || 0,
+      week: weekVal,
+      month: monthVal,
+      quartal: parseInt(values[idxQuartal]) || (monthVal ? Math.ceil(monthVal / 3) : 0),
       point: parseInt(values[idxPoint]) || 0,
       durasi: parseFloat(values[idxDurasi]) || 0,
       pilotLadder: idxPilotLadder !== -1 ? (parseFloat(values[idxPilotLadder]) || 0) : 0,
@@ -807,18 +863,38 @@ export function parseAnalisaOperatorSheet(csvData: string): { prodData: Producti
   return { prodData: prodList, detailData: detailList };
 }
 
-export async function fetchAnalisaOperatorDataFromSheet(): Promise<ProductionData[]> {
-  const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent("Analisa Operator ")}`;
-  const fallbackUrl = `https://docs.google.com/spreadsheets/d/18utqaTIADTvxx2jEErSMXNozvmdogaBh3z-0Myc1Hzs/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent("Analisa Operator")}`;
+let analisaSheetPromise: Promise<{ prodData: ProductionData[], detailData: AnalisaOperatorDetailData[] }> | null = null;
+let analisaSheetTimestamp = 0;
 
-  try {
-    let response = await fetch(url);
-    if (!response.ok) {
-      response = await fetch(fallbackUrl);
+export async function fetchAnalisaOperatorSheetRaw(): Promise<{ prodData: ProductionData[], detailData: AnalisaOperatorDetailData[] }> {
+  if (analisaSheetPromise && (Date.now() - analisaSheetTimestamp < 15000)) {
+    return analisaSheetPromise;
+  }
+  analisaSheetTimestamp = Date.now();
+  analisaSheetPromise = (async () => {
+    try {
+      const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent("Analisa Operator ")}`;
+      const fallbackUrl = `https://docs.google.com/spreadsheets/d/18utqaTIADTvxx2jEErSMXNozvmdogaBh3z-0Myc1Hzs/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent("Analisa Operator")}`;
+
+      let response = await fetch(url);
+      if (!response.ok) {
+        response = await fetch(fallbackUrl);
+      }
+      if (!response.ok) throw new Error('Failed to fetch analisa operator sheet');
+      const csvData = await response.text();
+      return parseAnalisaOperatorSheet(csvData);
+    } catch (err) {
+      analisaSheetPromise = null;
+      throw err;
     }
-    if (!response.ok) throw new Error('Failed to fetch analisa operator data');
-    const csvData = await response.text();
-    const { prodData } = parseAnalisaOperatorSheet(csvData);
+  })();
+
+  return analisaSheetPromise;
+}
+
+export async function fetchAnalisaOperatorDataFromSheet(): Promise<ProductionData[]> {
+  try {
+    const { prodData } = await fetchAnalisaOperatorSheetRaw();
 
     if (prodData.length > 0) {
       const { STATIC_ANALISA_OPERATOR_DATA } = await import('../data/staticAnalisaOperatorData');
@@ -843,7 +919,7 @@ export async function fetchAnalisaOperatorDataFromSheet(): Promise<ProductionDat
 
 async function _fetchAnalisaOperatorData_internal(): Promise<ProductionData[]> {
   const fsData = await fetchChunkedData<ProductionData>('analisaOperatorData');
-  if (fsData && fsData.length > 0 && fsData.some(d => d.month === 8)) {
+  if (fsData && fsData.length > 0) {
     const { STATIC_ANALISA_OPERATOR_DATA } = await import('../data/staticAnalisaOperatorData');
     const map = new Map<string, ProductionData>();
     STATIC_ANALISA_OPERATOR_DATA.forEach((d: any) => {
@@ -860,17 +936,8 @@ async function _fetchAnalisaOperatorData_internal(): Promise<ProductionData[]> {
 }
 
 export async function fetchAnalisaOperatorDetailDataFromSheet(): Promise<AnalisaOperatorDetailData[]> {
-  const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent("Analisa Operator ")}`;
-  const fallbackUrl = `https://docs.google.com/spreadsheets/d/18utqaTIADTvxx2jEErSMXNozvmdogaBh3z-0Myc1Hzs/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent("Analisa Operator")}`;
-
   try {
-    let response = await fetch(url);
-    if (!response.ok) {
-      response = await fetch(fallbackUrl);
-    }
-    if (!response.ok) throw new Error('Failed to fetch analisa operator detail');
-    const csvData = await response.text();
-    const { detailData } = parseAnalisaOperatorSheet(csvData);
+    const { detailData } = await fetchAnalisaOperatorSheetRaw();
 
     if (detailData.length > 0) {
       const { STATIC_ANALISA_OPERATOR_DETAIL } = await import('../data/staticAnalisaOperatorData');
@@ -895,7 +962,7 @@ export async function fetchAnalisaOperatorDetailDataFromSheet(): Promise<Analisa
 
 async function _fetchAnalisaOperatorDetailData_internal(): Promise<AnalisaOperatorDetailData[]> {
   const fsData = await fetchChunkedData<AnalisaOperatorDetailData>('analisaOperatorDetail');
-  if (fsData && fsData.length > 0 && fsData.some(d => (d.tanggal || '').includes('2026-08'))) {
+  if (fsData && fsData.length > 0) {
     const { STATIC_ANALISA_OPERATOR_DETAIL } = await import('../data/staticAnalisaOperatorData');
     const map = new Map<string, AnalisaOperatorDetailData>();
     STATIC_ANALISA_OPERATOR_DETAIL.forEach((d: any) => {
@@ -1224,10 +1291,8 @@ async function _fetchLogDikerjakan_internal(): Promise<LogDikerjakanData[]> {
 
 export async function fetchLogDikerjakan(forceRefresh = false): Promise<LogDikerjakanData[]> {
   if (!forceRefresh) {
-    const cached = memoryCache.get('fetchLogDikerjakan');
-    if (cached && (Date.now() - cached.timestamp < CACHE_DURATION)) {
-      return cached.data;
-    }
+    const cached = getValidCache<LogDikerjakanData[]>('fetchLogDikerjakan');
+    if (cached) return cached;
   }
   const data = await _fetchLogDikerjakan_internal();
   memoryCache.set('fetchLogDikerjakan', { data, timestamp: Date.now() });
@@ -1363,10 +1428,8 @@ async function _fetchOrderUrgentDataFromSheet_internal(): Promise<{data: any[], 
 
 export async function fetchOperatorData(forceRefresh = false): Promise<OperatorData[]> {
   if (!forceRefresh) {
-    const cached = memoryCache.get('fetchOperatorData');
-    if (cached && (Date.now() - cached.timestamp < CACHE_DURATION)) {
-      return cached.data;
-    }
+    const cached = getValidCache<OperatorData[]>('fetchOperatorData');
+    if (cached) return cached;
   }
   const data = await _fetchOperatorData_internal();
   memoryCache.set('fetchOperatorData', { data, timestamp: Date.now() });
@@ -1375,10 +1438,8 @@ export async function fetchOperatorData(forceRefresh = false): Promise<OperatorD
 
 export async function fetchProductionData(forceRefresh = false): Promise<ProductionData[]> {
   if (!forceRefresh) {
-    const cached = memoryCache.get('fetchProductionData');
-    if (cached && (Date.now() - cached.timestamp < CACHE_DURATION)) {
-      return cached.data;
-    }
+    const cached = getValidCache<ProductionData[]>('fetchProductionData');
+    if (cached) return cached;
   }
   const data = await _fetchProductionData_internal();
   memoryCache.set('fetchProductionData', { data, timestamp: Date.now() });
@@ -1387,10 +1448,8 @@ export async function fetchProductionData(forceRefresh = false): Promise<Product
 
 export async function fetchSupplierData(forceRefresh = false): Promise<SupplierData[]> {
   if (!forceRefresh) {
-    const cached = memoryCache.get('fetchSupplierData');
-    if (cached && (Date.now() - cached.timestamp < CACHE_DURATION)) {
-      return cached.data;
-    }
+    const cached = getValidCache<SupplierData[]>('fetchSupplierData');
+    if (cached) return cached;
   }
   const data = await _fetchSupplierData_internal();
   memoryCache.set('fetchSupplierData', { data, timestamp: Date.now() });
@@ -1399,10 +1458,8 @@ export async function fetchSupplierData(forceRefresh = false): Promise<SupplierD
 
 export async function fetchMonthlyLogData(forceRefresh = false): Promise<MonthlyLogData[]> {
   if (!forceRefresh) {
-    const cached = memoryCache.get('fetchMonthlyLogData');
-    if (cached && (Date.now() - cached.timestamp < CACHE_DURATION)) {
-      return cached.data;
-    }
+    const cached = getValidCache<MonthlyLogData[]>('fetchMonthlyLogData');
+    if (cached) return cached;
   }
   const data = await _fetchMonthlyLogData_internal();
   memoryCache.set('fetchMonthlyLogData', { data, timestamp: Date.now() });
@@ -1411,10 +1468,8 @@ export async function fetchMonthlyLogData(forceRefresh = false): Promise<Monthly
 
 export async function fetchAnalisaOperatorDetailData(forceRefresh = false): Promise<AnalisaOperatorDetailData[]> {
   if (!forceRefresh) {
-    const cached = memoryCache.get('fetchAnalisaOperatorDetailData');
-    if (cached && (Date.now() - cached.timestamp < CACHE_DURATION)) {
-      return cached.data;
-    }
+    const cached = getValidCache<AnalisaOperatorDetailData[]>('fetchAnalisaOperatorDetailData');
+    if (cached) return cached;
   }
   const data = await _fetchAnalisaOperatorDetailData_internal();
   memoryCache.set('fetchAnalisaOperatorDetailData', { data, timestamp: Date.now() });
@@ -1423,10 +1478,8 @@ export async function fetchAnalisaOperatorDetailData(forceRefresh = false): Prom
 
 export async function fetchAnalisaOperatorData(forceRefresh = false): Promise<ProductionData[]> {
   if (!forceRefresh) {
-    const cached = memoryCache.get('fetchAnalisaOperatorData');
-    if (cached && (Date.now() - cached.timestamp < CACHE_DURATION)) {
-      return cached.data;
-    }
+    const cached = getValidCache<ProductionData[]>('fetchAnalisaOperatorData');
+    if (cached) return cached;
   }
   const data = await _fetchAnalisaOperatorData_internal();
   memoryCache.set('fetchAnalisaOperatorData', { data, timestamp: Date.now() });
@@ -1435,10 +1488,8 @@ export async function fetchAnalisaOperatorData(forceRefresh = false): Promise<Pr
 
 export async function fetchOrderUrgentDataFromSheet(forceRefresh = false): Promise<{data: any[], dateH1: string, dateHariIni: string, availableDates: string[]}> {
   if (!forceRefresh) {
-    const cached = memoryCache.get('fetchOrderUrgentDataFromSheet');
-    if (cached && (Date.now() - cached.timestamp < CACHE_DURATION)) {
-      return cached.data;
-    }
+    const cached = getValidCache<{data: any[], dateH1: string, dateHariIni: string, availableDates: string[]}>('fetchOrderUrgentDataFromSheet');
+    if (cached) return cached;
   }
   const data = await _fetchOrderUrgentDataFromSheet_internal();
   memoryCache.set('fetchOrderUrgentDataFromSheet', { data, timestamp: Date.now() });

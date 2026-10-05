@@ -36,9 +36,48 @@ const DowntimePage = lazy(() => import('./components/Pages/DowntimePage').then(m
 const HistoryPage = lazy(() => import('./components/Pages/HistoryPage').then(module => ({ default: module.HistoryPage })));
 const PerformancePage = lazy(() => import('./components/Pages/PerformancePage').then(module => ({ default: module.PerformancePage })));
 
-const CACHE_VERSION = 'v1.2'; // Increment to force cache invalidation
+const CACHE_VERSION = 'v1.3'; // Increment to force cache invalidation & clean unused caches
 
-// Automatically clear old caches to prevent stale data bugs
+// Set of active and valid cache keys used across the app
+export const ACTIVE_CACHE_KEYS = new Set([
+  'app_cache_version',
+  'cache_data_prod',
+  'cache_data_supp',
+  'cache_data_month',
+  'cache_data_op',
+  'cache_data_analisa',
+  'cache_data_log',
+  'cache_data_analisaOpData',
+  'operator_avatars',
+  'operator_avatar_locks'
+]);
+
+// Clean unused, orphaned, or obsolete caches to free localStorage space and ensure fast loading
+export function cleanUnusedCache(): void {
+  try {
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+      // Remove any cache_data_ key that is not in ACTIVE_CACHE_KEYS (e.g. cache_data_order_urgent, old keys)
+      if (key.startsWith('cache_data_') && !ACTIVE_CACHE_KEYS.has(key)) {
+        keysToRemove.push(key);
+      } else if (key.startsWith('temp_') || key.startsWith('old_') || key.includes('test') || key === 'cache_data_order_urgent') {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(k => {
+      try { localStorage.removeItem(k); } catch {}
+    });
+    if (keysToRemove.length > 0) {
+      console.log(`[Cache Cleanup] Removed ${keysToRemove.length} unused or orphaned cache keys.`);
+    }
+  } catch (err) {
+    console.warn('[Cache Cleanup] Error scanning unused cache:', err);
+  }
+}
+
+// Automatically clear old caches to prevent stale data bugs and remove unused keys
 try {
   const currentVersion = localStorage.getItem('app_cache_version');
   if (currentVersion !== CACHE_VERSION) {
@@ -53,6 +92,7 @@ try {
     localStorage.setItem('app_cache_version', CACHE_VERSION);
     console.log('Old cache successfully cleared for new version.');
   }
+  cleanUnusedCache();
 } catch (e) {
   console.warn('Failed to verify cache version:', e);
 }
@@ -79,13 +119,14 @@ function setLocalCache<T>(key: string, data: T): void {
     if (Array.isArray(data) && data.length === 0) return;
     localStorage.setItem(`cache_data_${key}`, JSON.stringify(data));
   } catch (e) {
-    // If quota is exceeded, clear caches to free space, then try saving again
-    console.warn('Storage quota exceeded. Clearing older caches to free space...');
+    // If quota is exceeded, clear unused and older caches to free space, then try saving again
+    console.warn('Storage quota exceeded. Clearing unused and older caches to free space...');
+    cleanUnusedCache();
     try {
       const keysToRemove = [];
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
-        if (k && k.startsWith('cache_data_') && k !== `cache_data_${key}`) {
+        if (k && k.startsWith('cache_data_') && k !== `cache_data_${key}` && k !== 'cache_data_prod') {
           keysToRemove.push(k);
         }
       }
@@ -375,7 +416,7 @@ export default function App() {
     // 1. Seed with data from DATABASE APPSCRIPT (which contains latest October data)
     data.forEach(d => {
       if (d.tanggal && d.mesin) {
-        const key = `${d.tanggal}_${normalizeMachineName(d.mesin)}`;
+        const key = `${d.tanggal.trim()}_${normalizeMachineName(d.mesin)}`;
         map.set(key, d);
       }
     });
@@ -383,7 +424,7 @@ export default function App() {
     if (analisaOperatorData && analisaOperatorData.length > 0) {
       analisaOperatorData.forEach(d => {
         if (d.tanggal && d.mesin) {
-          const key = `${d.tanggal}_${normalizeMachineName(d.mesin)}`;
+          const key = `${d.tanggal.trim()}_${normalizeMachineName(d.mesin)}`;
           map.set(key, d);
         }
       });
@@ -395,17 +436,17 @@ export default function App() {
     const map = new Map<string, AnalisaOperatorDetailData>();
     if (analisaOperatorDetailData) {
       analisaOperatorDetailData.forEach(d => {
-        const key = `${d.tanggal}_${normalizeMachineName(d.mesin)}`;
+        const key = `${(d.tanggal || '').trim()}_${normalizeMachineName(d.mesin)}`;
         map.set(key, d);
       });
     }
     // Ensure all machines for each active date in data have an entry in detailData
     data.forEach(d => {
       if (d.tanggal && d.mesin && d.input > 0) {
-        const key = `${d.tanggal}_${normalizeMachineName(d.mesin)}`;
+        const key = `${d.tanggal.trim()}_${normalizeMachineName(d.mesin)}`;
         if (!map.has(key)) {
           map.set(key, {
-            tanggal: d.tanggal,
+            tanggal: d.tanggal.trim(),
             mesin: normalizeMachineName(d.mesin),
             rkOrderan: '',
             komposisiLog: '',

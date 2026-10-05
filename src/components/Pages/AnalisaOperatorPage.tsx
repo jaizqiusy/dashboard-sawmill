@@ -403,11 +403,6 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
 
   // Matrix calculation for 7 days of the selected week/month
   const matrixWeekData = useMemo(() => {
-    let weekFiltered = data.filter(d => d.month === selectedMonth);
-    if (selectedWeek !== 'all') {
-      weekFiltered = weekFiltered.filter(d => d.week === selectedWeek);
-    }
-
     let datesToUse: string[] = [];
 
     if (selectedWeek !== 'all') {
@@ -434,7 +429,8 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
       datesToUse = datesInMonth.length > 0 ? datesInMonth : fullWeekDates;
     } else {
       // For "all" (recap), we typically don't show day columns, but if needed we extract from data
-      const rawDates = Array.from(new Set(weekFiltered.map(d => normalizeDateKey(d.tanggal))))
+      const monthRecords = data.filter(d => d.month === selectedMonth);
+      const rawDates = Array.from(new Set(monthRecords.map(d => normalizeDateKey(d.tanggal))))
         .filter(Boolean)
         .sort((a, b) => {
           const pA = parseDateParts(a);
@@ -446,6 +442,14 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
         });
       datesToUse = rawDates;
     }
+
+    const targetDateSet = new Set(datesToUse.map(normalizeDateKey));
+    let weekFiltered = data.filter(d => {
+      if (selectedWeek !== 'all') {
+        return targetDateSet.has(normalizeDateKey(d.tanggal));
+      }
+      return d.month === selectedMonth;
+    });
 
     // Build machine rows
     const machineRows = MACHINES.map(mName => {
@@ -641,7 +645,7 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
             } else if (data.column.index === offset) { // Akumulasi
               const raw = data.cell.raw as string;
               const val = parseFloat(raw.replace('%', ''));
-              if (!isNaN(val) && val < 65) {
+              if (!isNaN(val) && val < 30) {
                 data.cell.styles.fillColor = [253, 230, 138];
                 data.cell.styles.textColor = [120, 53, 15];
               } else {
@@ -662,8 +666,8 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
               data.cell.styles.textColor = [120, 53, 15];
               data.cell.styles.fontStyle = 'bold';
             } else if (data.column.index === offset + 4) { // Ket Hijau
-              data.cell.styles.fillColor = [253, 230, 138];
-              data.cell.styles.textColor = [120, 53, 15];
+              data.cell.styles.fillColor = [220, 252, 231];
+              data.cell.styles.textColor = [20, 83, 45];
               data.cell.styles.fontStyle = 'bold';
             }
           }
@@ -758,7 +762,7 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
             } else if (data.column.index === offset) { // Akumulasi
               const raw = data.cell.raw as string;
               const val = parseFloat(raw.replace('%', ''));
-              if (!isNaN(val) && val < 30) {
+              if (!isNaN(val) && val < 65) {
                 data.cell.styles.fillColor = [253, 230, 138];
                 data.cell.styles.textColor = [120, 53, 15];
               } else {
@@ -779,8 +783,8 @@ export function AnalisaOperatorPage({ data, detailData = [] }: AnalisaOperatorPa
               data.cell.styles.textColor = [120, 53, 15];
               data.cell.styles.fontStyle = 'bold';
             } else if (data.column.index === offset + 4) { // Ket Hijau
-              data.cell.styles.fillColor = [253, 230, 138];
-              data.cell.styles.textColor = [120, 53, 15];
+              data.cell.styles.fillColor = [220, 252, 231];
+              data.cell.styles.textColor = [20, 83, 45];
               data.cell.styles.fontStyle = 'bold';
             }
           }

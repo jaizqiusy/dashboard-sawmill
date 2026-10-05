@@ -40,6 +40,17 @@ export function MobileLayout({
     setIsSyncing(true);
     try {
       await syncSpreadsheetToFirestore(setSyncStatus);
+      // Clear local caches to ensure fresh data loads cleanly on reload
+      try {
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith('cache_data_')) {
+            keysToRemove.push(k);
+          }
+        }
+        keysToRemove.forEach(k => localStorage.removeItem(k));
+      } catch {}
       setSyncStatus('Selesai! Memuat ulang...');
       setTimeout(() => window.location.reload(), 1500);
     } catch (err: any) {

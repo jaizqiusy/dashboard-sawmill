@@ -52,23 +52,13 @@ let cachedOrderData: OrderUrgentItem[] | null = null;
 let cachedDateCols: DateColInfo[] = [];
 let cachedOrderLastUpdate: string = "-";
 
-// LocalStorage helpers for instant zero-delay render
+// In-memory cache helpers for instant zero-delay render
 function getLocalOrderCache() {
-  try {
-    const raw = localStorage.getItem('cache_data_order_urgent');
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch (e) {
-    return null;
-  }
+  return null;
 }
 
-function setLocalOrderCache(data: OrderUrgentItem[], cols: DateColInfo[], lastUpdate: string) {
-  try {
-    localStorage.setItem('cache_data_order_urgent', JSON.stringify({ data, cols, lastUpdate }));
-  } catch (e) {
-    // ignore
-  }
+function setLocalOrderCache(_data: OrderUrgentItem[], _cols: DateColInfo[], _lastUpdate: string) {
+  // Kept in memory to prevent localStorage bloat
 }
 
 const getUnit = (jo: string) => {
